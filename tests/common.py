@@ -15,7 +15,7 @@ from io import StringIO
 from unittest.mock import MagicMock, Mock, patch
 
 import homeassistant.util.dt as date_util
-import homeassistant.util.yaml as yaml
+import homeassistant.util.yaml.loader as yaml_loader
 
 from homeassistant import auth, config_entries, core as ha, loader
 from homeassistant.auth import (
@@ -28,9 +28,11 @@ from homeassistant.const import (
     ATTR_DISCOVERED, ATTR_SERVICE, DEVICE_DEFAULT_NAME,
     EVENT_HOMEASSISTANT_CLOSE, EVENT_PLATFORM_DISCOVERED, EVENT_STATE_CHANGED,
     EVENT_TIME_CHANGED, SERVER_PORT, STATE_ON, STATE_OFF)
+from homeassistant.core import State
 from homeassistant.helpers import (
     area_registry, device_registry, entity, entity_platform, entity_registry,
     intent, restore_state, storage)
+from homeassistant.helpers.json import JSONEncoder
 from homeassistant.setup import async_setup_component, setup_component
 from homeassistant.util.unit_system import METRIC_SYSTEM
 from homeassistant.util.async_ import (
@@ -86,6 +88,7 @@ def get_test_home_assistant():
     else:
         loop = asyncio.new_event_loop()
 
+    asyncio.set_event_loop(loop)
     hass = loop.run_until_complete(async_test_home_assistant(loop))
 
     stop_event = threading.Event()
@@ -101,7 +104,7 @@ def get_test_home_assistant():
 
     def start_hass(*mocks):
         """Start hass."""
-        run_coroutine_threadsafe(hass.async_start(), loop=hass.loop).result()
+        run_coroutine_threadsafe(hass.async_start(), loop).result()
 
     def stop_hass():
         """Stop hass."""
@@ -121,7 +124,6 @@ def get_test_home_assistant():
 async def async_test_home_assistant(loop):
     """Return a Home Assistant object pointing at test config dir."""
     hass = ha.HomeAssistant(loop)
-    hass.config.async_load = Mock()
     store = auth_store.AuthStore(hass)
     hass.auth = auth.AuthManager(hass, store, {}, {})
     ensure_auth_manager_loaded(hass.auth)
@@ -328,7 +330,7 @@ mock_mqtt_component = threadsafe_coroutine_factory(async_mock_mqtt_component)
 def mock_component(hass, component):
     """Mock a component is setup."""
     if component in hass.config.components:
-        AssertionError("Component {} is already setup".format(component))
+        AssertionError("Integration {} is already setup".format(component))
 
     hass.config.components.add(component)
 
@@ -680,7 +682,7 @@ def patch_yaml_files(files_dict, endswith=True):
         # Not found
         raise FileNotFoundError("File not found: {}".format(fname))
 
-    return patch.object(yaml, 'open', mock_open_f, create=True)
+    return patch.object(yaml_loader, 'open', mock_open_f, create=True)
 
 
 def mock_coro(return_value=None, exception=None):
@@ -761,9 +763,14 @@ def mock_restore_cache(hass, states):
     data = restore_state.RestoreStateData(hass)
     now = date_util.utcnow()
 
-    data.last_states = {
-        state.entity_id: restore_state.StoredState(state, now)
-        for state in states}
+    last_states = {}
+    for state in states:
+        restored_state = state.as_dict()
+        restored_state['attributes'] = json.loads(json.dumps(
+            restored_state['attributes'], cls=JSONEncoder))
+        last_states[state.entity_id] = restore_state.StoredState(
+            State.from_dict(restored_state), now)
+    data.last_states = last_states
     _LOGGER.debug('Restore cache: %s', data.last_states)
     assert len(data.last_states) == len(states), \
         "Duplicate entity_id? {}".format(states)
@@ -924,7 +931,7 @@ async def get_system_health_info(hass, domain):
 def mock_integration(hass, module):
     """Mock an integration."""
     integration = loader.Integration(
-        hass, 'homeassisant.components.{}'.format(module.DOMAIN), None,
+        hass, 'homeassistant.components.{}'.format(module.DOMAIN), None,
         module.mock_manifest())
 
     _LOGGER.info("Adding mock integration: %s", module.DOMAIN)
@@ -949,3 +956,16 @@ def mock_entity_platform(hass, platform_path, module):
 
     _LOGGER.info("Adding mock integration platform: %s", platform_path)
     module_cache["{}.{}".format(platform_name, domain)] = module
+
+
+def async_capture_events(hass, event_name):
+    """Create a helper that captures events."""
+    events = []
+
+    @ha.callback
+    def capture_events(event):
+        events.append(event)
+
+    hass.bus.async_listen(event_name, capture_events)
+
+    return events

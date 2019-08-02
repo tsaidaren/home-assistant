@@ -2,8 +2,8 @@
 import logging
 from typing import Any, Dict, Iterable, Optional
 
-from homeassistant import config_entries
-from homeassistant.loader import async_get_integration, bind_hass
+from homeassistant.loader import (
+    async_get_integration, bind_hass, async_get_config_flows)
 from homeassistant.util.json import load_json
 from .typing import HomeAssistantType
 
@@ -106,7 +106,8 @@ async def async_get_component_resources(hass: HomeAssistantType,
     translation_cache = hass.data[TRANSLATION_STRING_CACHE][language]
 
     # Get the set of components
-    components = hass.config.components | set(config_entries.FLOWS)
+    components = (hass.config.components |
+                  await async_get_config_flows(hass))
 
     # Calculate the missing components
     missing_components = components - set(translation_cache)
