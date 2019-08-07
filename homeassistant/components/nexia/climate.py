@@ -84,8 +84,7 @@ class NexiaZone(ClimateDevice):
     def supported_features(self):
         """Return the list of supported features."""
         supported = (SUPPORT_TARGET_TEMPERATURE |
-                     SUPPORT_TARGET_HUMIDITY | SUPPORT_FAN_MODE |
-                     SUPPORT_PRESET_MODE | SUPPORT_AUX_HEAT)
+                     SUPPORT_FAN_MODE | SUPPORT_PRESET_MODE)
 
         if self._device.has_relative_humidity(self._thermostat_id):
             supported |= SUPPORT_TARGET_HUMIDITY
