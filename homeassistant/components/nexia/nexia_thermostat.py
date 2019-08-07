@@ -671,7 +671,7 @@ class NexiaThermostat:
         :param thermostat_id: int - the ID of the thermostat to use
         :return: bool
         """
-        if self.has_emergency_heat():
+        if self.has_emergency_heat(thermostat_id=thermostat_id):
             return self._get_thermostat_key("emergency_heat_active",
                                             thermostat_id)
         raise Exception("This system does not support emergency heat")
