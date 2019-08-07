@@ -691,11 +691,13 @@ class NexiaThermostat:
         """
         Returns the outdoor temperature.
         :param thermostat_id: int - the ID of the thermostat to use
-        :return: float
+        :return: float - the temperature, returns nan if invalid
         """
-        if self.has_outdoor_temperature(thermostat_id):
-            return float(
-                self._get_thermostat_key('outdoor_temperature', thermostat_id))
+        if self.has_outdoor_temperature(thermostat_id):\
+            outdoor_temp = self._get_thermostat_key('outdoor_temperature', thermostat_id)
+            if outdoor_temp.isnumeric():
+                return float(outdoor_temp)
+            return float("Nan")
         raise Exception(
             "This system does not have an outdoor temperature sensor")
 
