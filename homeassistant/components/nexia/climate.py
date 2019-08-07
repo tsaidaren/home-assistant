@@ -7,19 +7,18 @@ import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 from homeassistant.components.climate import ClimateDevice
 from homeassistant.components.climate.const import (
-    ATTR_FAN_MODE, ATTR_FAN_LIST, ATTR_OPERATION_MODE, ATTR_OPERATION_LIST,
+    ATTR_FAN_MODE, ATTR_FAN_MODES, ATTR_HVAC_MODE, ATTR_HVAC_MODES,
     ATTR_TARGET_TEMP_HIGH,
     ATTR_TARGET_TEMP_LOW,
     ATTR_TARGET_TEMP_STEP, ATTR_CURRENT_HUMIDITY, ATTR_MIN_HUMIDITY,
-    ATTR_MAX_HUMIDITY,
+    ATTR_MAX_HUMIDITY, ATTR_PRESET_MODE,
     ATTR_HUMIDITY,
     ATTR_MIN_TEMP, ATTR_MAX_TEMP, SUPPORT_TARGET_TEMPERATURE,
-    SUPPORT_AWAY_MODE,
-    SUPPORT_OPERATION_MODE,
-    SUPPORT_AUX_HEAT, SUPPORT_HOLD_MODE, SUPPORT_FAN_MODE,
-    SUPPORT_TARGET_HUMIDITY, ATTR_HOLD_MODE,
-    ATTR_AUX_HEAT,
-    STATE_COOL, STATE_HEAT, STATE_IDLE)
+    SUPPORT_AUX_HEAT, SUPPORT_PRESET_MODE, SUPPORT_FAN_MODE,
+    SUPPORT_TARGET_HUMIDITY,
+    ATTR_AUX_HEAT, HVAC_MODE_OFF, HVAC_MODE_AUTO, HVAC_MODE_HEAT_COOL,
+    HVAC_MODE_COOL, HVAC_MODE_HEAT,
+    CURRENT_HVAC_COOL, CURRENT_HVAC_HEAT, CURRENT_HVAC_IDLE)
 from homeassistant.const import (TEMP_CELSIUS, TEMP_FAHRENHEIT,
                                  ATTR_ATTRIBUTION, ATTR_TEMPERATURE,
                                  STATE_OFF, ATTR_ENTITY_ID)
@@ -84,9 +83,9 @@ class NexiaZone(ClimateDevice):
     @property
     def supported_features(self):
         """Return the list of supported features."""
-        supported = (
-                SUPPORT_TARGET_TEMPERATURE | SUPPORT_AWAY_MODE |
-                SUPPORT_OPERATION_MODE | SUPPORT_FAN_MODE | SUPPORT_HOLD_MODE)
+        supported = (SUPPORT_TARGET_TEMPERATURE |
+                     SUPPORT_TARGET_HUMIDITY | SUPPORT_FAN_MODE |
+                     SUPPORT_PRESET_MODE | SUPPORT_AUX_HEAT)
 
         if self._device.has_relative_humidity(self._thermostat_id):
             supported |= SUPPORT_TARGET_HUMIDITY
@@ -119,12 +118,12 @@ class NexiaZone(ClimateDevice):
                                                  self._zone)
 
     @property
-    def current_fan_mode(self):
+    def fan_mode(self):
         """Return the fan setting."""
         return self._device.get_fan_mode(self._thermostat_id)
 
     @property
-    def fan_list(self):
+    def fan_modes(self):
         """Return the list of available fan modes."""
         return self._device.FAN_MODES
 
@@ -142,8 +141,14 @@ class NexiaZone(ClimateDevice):
                                          self._zone)
 
     @property
-    def current_hold_mode(self):
+    def preset_mode(self):
+        """Returns the current preset."""
         return self._device.get_zone_preset(self._thermostat_id, self._zone)
+
+    @property
+    def preset_modes(self):
+        """Returns all presets."""
+        return self._device.get_zone_presets(self._thermostat_id, self._zone)
 
     def set_humidity(self, humidity):
         self._device.set_dehumidify_setpoint(humidity / 100.0,
@@ -167,8 +172,10 @@ class NexiaZone(ClimateDevice):
         return self._device.get_zone_heating_setpoint(self._thermostat_id,
                                                       self._zone)
 
+
+
     @property
-    def current_operation(self) -> str:
+    def hvac_action(self) -> str:
         """Return current operation ie. heat, cool, idle."""
         system_status = self._device.get_system_status(self._thermostat_id)
         zone_called = self._device.is_zone_calling(self._thermostat_id,
@@ -179,25 +186,48 @@ class NexiaZone(ClimateDevice):
                 self._device.OPERATION_MODE_OFF:
             return STATE_OFF
         if not zone_called:
-            return STATE_IDLE
+            return CURRENT_HVAC_IDLE
         if system_status == self._device.SYSTEM_STATUS_COOL:
-            return STATE_COOL
+            return CURRENT_HVAC_COOL
         if system_status == self._device.SYSTEM_STATUS_HEAT:
-            return STATE_HEAT
+            return CURRENT_HVAC_HEAT
         if system_status == self._device.SYSTEM_STATUS_IDLE:
-            return STATE_IDLE
+            return CURRENT_HVAC_IDLE
         return "idle"
 
     @property
-    def operation_mode(self):
+    def hvac_mode(self):
         """Return current operation ie. heat, cool, idle."""
         return self.mode
 
     @property
+    def hvac_modes(self):
+        """Returns a list of HVAC available modes"""
+        return [HVAC_MODE_OFF, HVAC_MODE_AUTO, HVAC_MODE_HEAT_COOL,
+                HVAC_MODE_HEAT, HVAC_MODE_COOL]
+
+    @property
     def mode(self):
         """Return current mode, as the user-visible name."""
-        return self._device.get_zone_requested_mode(self._thermostat_id,
+
+        mode = self._device.get_zone_requested_mode(self._thermostat_id,
                                                     self._zone)
+
+        hold = self._device.is_zone_in_permanent_hold(self._thermostat_id,
+                                                      self._zone)
+
+        if mode == self._device.OPERATION_MODE_OFF:
+            return HVAC_MODE_OFF
+        if not hold and mode == self._device.OPERATION_MODE_AUTO:
+            return HVAC_MODE_AUTO
+        if mode == self._device.OPERATION_MODE_AUTO:
+            return HVAC_MODE_HEAT_COOL
+        if mode == self._device.OPERATION_MODE_HEAT:
+            return HVAC_MODE_HEAT
+        if mode == self._device.OPERATION_MODE_COOL:
+            return  HVAC_MODE_COOL
+        raise KeyError(f"Unhandled mode: {mode}")
+
 
     def set_temperature(self, **kwargs):
         """Set target temperature."""
@@ -234,6 +264,11 @@ class NexiaZone(ClimateDevice):
                                              zone_id=self._zone)
 
     @property
+    def is_aux_heat(self):
+        return "on" if self._device.is_emergency_heat_active(
+            self._thermostat_id) else "off"
+
+    @property
     def device_state_attributes(self):
         """Return the device specific state attributes."""
 
@@ -242,7 +277,7 @@ class NexiaZone(ClimateDevice):
         data = {
             ATTR_ATTRIBUTION: ATTRIBUTION,
             ATTR_FAN_MODE: self._device.get_fan_mode(self._thermostat_id),
-            ATTR_OPERATION_MODE: self.mode,
+            ATTR_HVAC_MODE: self.mode,
             ATTR_TARGET_TEMP_HIGH: self._device.get_zone_cooling_setpoint(
                 self._thermostat_id,
                 self._zone),
@@ -253,10 +288,12 @@ class NexiaZone(ClimateDevice):
                 self._thermostat_id) == self._device.UNIT_FAHRENHEIT else 0.5,
             ATTR_MIN_TEMP: min_temp,
             ATTR_MAX_TEMP: max_temp,
-            ATTR_FAN_LIST: self._device.FAN_MODES,
-            ATTR_OPERATION_LIST: self._device.OPERATION_MODES,
-            ATTR_HOLD_MODE: self._device.get_zone_preset(self._thermostat_id,
-                                                         self._zone),
+            ATTR_FAN_MODES: self._device.FAN_MODES,
+            ATTR_HVAC_MODES: self.hvac_modes,
+            ATTR_PRESET_MODE: self._device.get_zone_preset(self._thermostat_id,
+                                                           self._zone),
+            # ATTR_PRESET_MODE: self._device.get_zone_setpoint_status(
+            #     self._thermostat_id, self._zone),
             # TODO - Enable HOLD_MODES once the presets can be parsed reliably
             # ATTR_HOLD_MODES: self._device.get_zone_presets(
             # self._thermostat_id, self._zone),
@@ -296,51 +333,60 @@ class NexiaZone(ClimateDevice):
             })
         return data
 
-    @property
-    def is_away_mode_on(self):
-        """Return true if away mode is on."""
-        return self._device.get_zone_preset(
-            self._thermostat_id,
-            self._zone) == self._device.PRESET_MODE_AWAY
-
-    def turn_away_mode_on(self):
-        """Turn away on. """
-        self._device.set_zone_preset(self._device.PRESET_MODE_AWAY,
-                                     self._thermostat_id, self._zone)
-
-    def turn_away_mode_off(self):
-        """Turn away off."""
-        self._device.call_return_to_schedule(self._thermostat_id, self._zone)
+    def set_preset_mode(self, preset_mode: str):
+        """Set the preset mode."""
+        self._device.set_zone_preset(preset_mode,
+                                     self._thermostat_id,
+                                     self._zone)
 
     def turn_aux_heat_off(self):
+        """Turns Aux Heat off"""
         self._device.set_emergency_heat(False, self._thermostat_id)
 
     def turn_aux_heat_on(self):
+        """Turns Aux Heat on"""
         self._device.set_emergency_heat(True, self._thermostat_id)
 
     def turn_off(self):
-        self.set_operation_mode(self._device.OPERATION_MODE_OFF)
+        """Turns off the zone"""
+        self.set_hvac_mode(self._device.OPERATION_MODE_OFF)
 
     def turn_on(self):
-        self.set_operation_mode(self._device.OPERATION_MODE_AUTO)
+        """Turns on the zone"""
+        self.set_hvac_mode(self._device.OPERATION_MODE_AUTO)
 
     def set_swing_mode(self, swing_mode):
+        """Unsupport - Swing Mode"""
         raise NotImplementedError(
             "set_swing_mode is not supported by this device")
 
-    def set_operation_mode(self, operation_mode: str) -> None:
-        """Set the system mode (Cool, Heat, etc)."""
-        operation_mode = operation_mode.upper()
+    def set_hvac_mode(self, hvac_mode: str) -> None:
+        """Set the system mode (Auto, Heat_Cool, Cool, Heat, etc)."""
 
-        if operation_mode in self._device.OPERATION_MODES:
-            self._device.set_zone_mode(
-                operation_mode,
-                self._thermostat_id,
-                self._zone)
+        if hvac_mode == HVAC_MODE_AUTO:
+            self._device.call_return_to_schedule(thermostat_id=self._thermostat_id,
+                                                 zone_id=self._zone)
+            self._device.set_zone_mode(mode=self._device.OPERATION_MODE_AUTO,
+                                       thermostat_id=self._thermostat_id,
+                                       zone_id=self._zone)
         else:
-            raise KeyError(
-                f"Operation mode {operation_mode} not in the supported " +
-                f"operations list {str(self._device.OPERATION_MODES)}")
+            if hvac_mode == HVAC_MODE_HEAT_COOL:
+                hvac_mode = HVAC_MODE_AUTO
+            self._device.call_permanent_hold(thermostat_id=self._thermostat_id,
+                                             zone_id=self._zone)
+
+            hvac_mode = hvac_mode.upper()
+
+            if hvac_mode in self._device.OPERATION_MODES:
+
+                self._device.set_zone_mode(
+                    mode=hvac_mode,
+                    thermostat_id=self._thermostat_id,
+                    zone_id=self._zone)
+            else:
+                raise KeyError(
+                    f"Operation mode {hvac_mode} not in the supported " +
+                    f"operations list {str(self._device.OPERATION_MODES)}")
 
     def set_aircleaner_mode(self, aircleaner_mode):
         """ Sets the aircleaner mode """
