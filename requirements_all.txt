@@ -737,7 +737,7 @@ incomfort-client==0.4.0
 influxdb==5.2.3
 
 # homeassistant.components.insteon
-insteonplm==0.16.6
+insteonplm==0.16.7
 
 # homeassistant.components.iperf3
 iperf3==0.1.11
@@ -1074,7 +1074,7 @@ pushetta==1.0.15
 pwmled==1.4.1
 
 # homeassistant.components.august
-py-august==0.7.0
+py-august==0.8.1
 
 # homeassistant.components.canary
 py-canary==0.5.0
@@ -1222,7 +1222,7 @@ pyebox==1.1.4
 pyeconet==0.0.11
 
 # homeassistant.components.edimax
-pyedimax==0.1
+pyedimax==0.2.1
 
 # homeassistant.components.eight_sleep
 pyeight==0.1.2
@@ -1937,7 +1937,7 @@ sucks==0.9.4
 sunwatcher==0.2.1
 
 # homeassistant.components.surepetcare
-surepy==0.1.10
+surepy==0.2.3
 
 # homeassistant.components.swiss_hydrological_data
 swisshydrodata==0.0.3
@@ -2135,6 +2135,9 @@ zhong_hong_hvac==1.0.9
 
 # homeassistant.components.ziggo_mediabox_xl
 ziggo-mediabox-xl==1.1.0
+
+# homeassistant.components.zha
+zigpy-cc==0.1.0
 
 # homeassistant.components.zha
 zigpy-deconz==0.7.0
