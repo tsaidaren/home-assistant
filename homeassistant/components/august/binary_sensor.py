@@ -173,7 +173,7 @@ class AugustDoorBinarySensor(BinarySensorDevice):
                 last_door_state_update_time_utc,
             )
             activity_start_time_utc = dt.as_utc(door_activity.activity_start_time)
-            if ACTIVITY_ACTION_STATES[door_activity.action]:
+            if door_activity.action in ACTIVITY_ACTION_STATES:
                 self._update_door_state(
                     ACTIVITY_ACTION_STATES[door_activity.action],
                     activity_start_time_utc,

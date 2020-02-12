@@ -95,7 +95,7 @@ class AugustLock(LockDevice):
                 last_lock_status_update_time_utc,
             )
             activity_start_time_utc = dt.as_utc(lock_activity.activity_start_time)
-            if ACTIVITY_ACTION_STATES[lock_activity.action]:
+            if lock_activity.action in ACTIVITY_ACTION_STATES:
                 self._update_lock_status(
                     ACTIVITY_ACTION_STATES[lock_activity.action],
                     activity_start_time_utc,
