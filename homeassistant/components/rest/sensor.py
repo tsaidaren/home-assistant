@@ -2,12 +2,12 @@
 import ast
 import json
 import logging
-from xml.parsers.expat import ExpatError
 
 import requests
 from requests.auth import HTTPBasicAuth, HTTPDigestAuth
 import voluptuous as vol
 import xmltodict
+from xmltodict import ExpatError
 
 from homeassistant.components.sensor import DEVICE_CLASSES_SCHEMA, PLATFORM_SCHEMA
 from homeassistant.const import (
