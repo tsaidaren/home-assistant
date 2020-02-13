@@ -226,6 +226,8 @@ class RestSensor(Entity):
             if value:
                 try:
                     if self._json_attrs_template is not None:
+                        # render_with_possible_json_value returns single quoted
+                        # strings so we cannot use json.loads to read it back here
                         json_dict = ast.literal_eval(
                             self._json_attrs_template.render_with_possible_json_value(
                                 value, None
