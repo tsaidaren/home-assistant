@@ -2,9 +2,11 @@
 import json
 import logging
 
+from jsonpath import jsonpath
 import requests
 from requests.auth import HTTPBasicAuth, HTTPDigestAuth
 import voluptuous as vol
+import xmltodict
 
 from homeassistant.components.sensor import DEVICE_CLASSES_SCHEMA, PLATFORM_SCHEMA
 from homeassistant.const import (
@@ -38,7 +40,12 @@ DEFAULT_VERIFY_SSL = True
 DEFAULT_FORCE_UPDATE = False
 DEFAULT_TIMEOUT = 10
 
+CONF_DATA_FORMAT = "data_format"
+DEFAULT_DATA_FORMAT = "json"
+DATA_FORMATS = ["json", "xml"]
+
 CONF_JSON_ATTRS = "json_attributes"
+CONF_JSON_PATH = "json_path"
 METHODS = ["POST", "GET"]
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
@@ -49,12 +56,15 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
             [HTTP_BASIC_AUTHENTICATION, HTTP_DIGEST_AUTHENTICATION]
         ),
         vol.Optional(CONF_HEADERS): vol.Schema({cv.string: cv.string}),
-        vol.Optional(CONF_JSON_ATTRS, default=[]): cv.ensure_list_csv,
+        vol.Optional(CONF_DATA_FORMAT, default=DEFAULT_DATA_FORMAT): vol.In(
+            DATA_FORMATS
+        ),
         vol.Optional(CONF_METHOD, default=DEFAULT_METHOD): vol.In(METHODS),
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
         vol.Optional(CONF_PASSWORD): cv.string,
         vol.Optional(CONF_PAYLOAD): cv.string,
         vol.Optional(CONF_UNIT_OF_MEASUREMENT): cv.string,
+        vol.Optional(CONF_JSON_PATH): cv.string,
         vol.Optional(CONF_DEVICE_CLASS): DEVICE_CLASSES_SCHEMA,
         vol.Optional(CONF_USERNAME): cv.string,
         vol.Optional(CONF_VALUE_TEMPLATE): cv.template,
@@ -84,6 +94,8 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     device_class = config.get(CONF_DEVICE_CLASS)
     value_template = config.get(CONF_VALUE_TEMPLATE)
     json_attrs = config.get(CONF_JSON_ATTRS)
+    data_format = config.get(CONF_DATA_FORMAT)
+    json_path = config.get(CONF_JSON_PATH)
     force_update = config.get(CONF_FORCE_UPDATE)
     timeout = config.get(CONF_TIMEOUT)
 
@@ -120,6 +132,8 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
                 json_attrs,
                 force_update,
                 resource_template,
+                data_format,
+                json_path,
             )
         ],
         True,
@@ -140,6 +154,8 @@ class RestSensor(Entity):
         json_attrs,
         force_update,
         resource_template,
+        data_format,
+        json_path,
     ):
         """Initialize the REST sensor."""
         self._hass = hass
@@ -153,6 +169,8 @@ class RestSensor(Entity):
         self._attributes = None
         self._force_update = force_update
         self._resource_template = resource_template
+        self._data_format = data_format
+        self._json_path = json_path
 
     @property
     def name(self):
@@ -192,12 +210,23 @@ class RestSensor(Entity):
         self.rest.update()
         value = self.rest.data
 
+        if self._data_format == "xml":
+            try:
+                value = json.dumps(xmltodict.parse(value))
+            except ValueError:
+                _LOGGER.warning(
+                    "REST xml result could not be parsed and converted to JSON."
+                )
+                _LOGGER.debug("Erroneous XML: %s", value)
+
         if self._json_attrs:
             self._attributes = {}
             if value:
                 try:
                     json_dict = json.loads(value)
-                    if isinstance(json_dict, list):
+                    if self._json_path is not None:
+                        json_dict = jsonpath(json_dict, self._json_path)
+                    elif isinstance(json_dict, list):
                         json_dict = json_dict[0]
                     if isinstance(json_dict, dict):
                         attrs = {
