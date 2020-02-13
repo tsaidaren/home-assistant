@@ -2,6 +2,7 @@
 import ast
 import json
 import logging
+from xml.parsers.expat import ExpatError
 
 import requests
 from requests.auth import HTTPBasicAuth, HTTPDigestAuth
@@ -215,7 +216,7 @@ class RestSensor(Entity):
         if self._convert_xml:
             try:
                 value = json.dumps(xmltodict.parse(value))
-            except ValueError:
+            except ExpatError:
                 _LOGGER.warning(
                     "REST xml result could not be parsed and converted to JSON."
                 )
@@ -225,6 +226,7 @@ class RestSensor(Entity):
             self._attributes = {}
             if value:
                 try:
+                    json_dict = json.loads(value)
                     if self._json_attrs_template is not None:
                         # render_with_possible_json_value returns single quoted
                         # strings so we cannot use json.loads to read it back here
@@ -233,8 +235,6 @@ class RestSensor(Entity):
                                 value, None
                             )
                         )
-                    else:
-                        json_dict = json.loads(value)
                     if isinstance(json_dict, list):
                         json_dict = json_dict[0]
                     if isinstance(json_dict, dict):
