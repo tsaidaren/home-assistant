@@ -219,7 +219,7 @@ class AugustData:
         self._filter_inoperative_locks()
 
     def _filter_inoperative_locks(self):
-        # Remove non-operative locks as there much
+        # Remove non-operative locks as there must
         # be a bridge (August Connect) for them to
         # be usable
         operative_locks = []
