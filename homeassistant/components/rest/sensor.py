@@ -245,10 +245,8 @@ class RestSensor(Entity):
                             "JSON result was not a dictionary"
                             " or list with 0th element a dictionary"
                         )
-                except ValueError as err:
-                    _LOGGER.warning(
-                        "REST result could not be parsed as JSON: " + str(err)
-                    )
+                except ValueError:
+                    _LOGGER.warning("REST result could not be parsed as JSON")
                     _LOGGER.debug("Erroneous JSON: %s", value)
             else:
                 _LOGGER.warning("Empty reply found when expecting JSON data")
