@@ -1,8 +1,8 @@
 """Support for RESTful API sensors."""
+import ast
 import json
 import logging
 
-from jsonpath import jsonpath
 import requests
 from requests.auth import HTTPBasicAuth, HTTPDigestAuth
 import voluptuous as vol
@@ -40,12 +40,11 @@ DEFAULT_VERIFY_SSL = True
 DEFAULT_FORCE_UPDATE = False
 DEFAULT_TIMEOUT = 10
 
-CONF_DATA_FORMAT = "data_format"
-DEFAULT_DATA_FORMAT = "json"
-DATA_FORMATS = ["json", "xml"]
+CONF_CONVERT_XML = "convert_xml"
+DEFAULT_CONVERT_XML = False
 
 CONF_JSON_ATTRS = "json_attributes"
-CONF_JSON_PATH = "json_path"
+CONF_JSON_ATTRS_TEMPLATE = "json_attributes_template"
 METHODS = ["POST", "GET"]
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
@@ -56,17 +55,16 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
             [HTTP_BASIC_AUTHENTICATION, HTTP_DIGEST_AUTHENTICATION]
         ),
         vol.Optional(CONF_HEADERS): vol.Schema({cv.string: cv.string}),
-        vol.Optional(CONF_DATA_FORMAT, default=DEFAULT_DATA_FORMAT): vol.In(
-            DATA_FORMATS
-        ),
+        vol.Optional(CONF_JSON_ATTRS, default=[]): cv.ensure_list_csv,
+        vol.Optional(CONF_CONVERT_XML, default=DEFAULT_CONVERT_XML): cv.boolean,
         vol.Optional(CONF_METHOD, default=DEFAULT_METHOD): vol.In(METHODS),
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
         vol.Optional(CONF_PASSWORD): cv.string,
         vol.Optional(CONF_PAYLOAD): cv.string,
         vol.Optional(CONF_UNIT_OF_MEASUREMENT): cv.string,
-        vol.Optional(CONF_JSON_PATH): cv.string,
         vol.Optional(CONF_DEVICE_CLASS): DEVICE_CLASSES_SCHEMA,
         vol.Optional(CONF_USERNAME): cv.string,
+        vol.Optional(CONF_JSON_ATTRS_TEMPLATE): cv.template,
         vol.Optional(CONF_VALUE_TEMPLATE): cv.template,
         vol.Optional(CONF_VERIFY_SSL, default=DEFAULT_VERIFY_SSL): cv.boolean,
         vol.Optional(CONF_FORCE_UPDATE, default=DEFAULT_FORCE_UPDATE): cv.boolean,
@@ -94,10 +92,13 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     device_class = config.get(CONF_DEVICE_CLASS)
     value_template = config.get(CONF_VALUE_TEMPLATE)
     json_attrs = config.get(CONF_JSON_ATTRS)
-    data_format = config.get(CONF_DATA_FORMAT)
-    json_path = config.get(CONF_JSON_PATH)
+    convert_xml = config.get(CONF_CONVERT_XML)
+    json_attrs_template = config.get(CONF_JSON_ATTRS_TEMPLATE)
     force_update = config.get(CONF_FORCE_UPDATE)
     timeout = config.get(CONF_TIMEOUT)
+
+    if json_attrs_template is not None:
+        json_attrs_template.hass = hass
 
     if value_template is not None:
         value_template.hass = hass
@@ -132,8 +133,8 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
                 json_attrs,
                 force_update,
                 resource_template,
-                data_format,
-                json_path,
+                convert_xml,
+                json_attrs_template,
             )
         ],
         True,
@@ -154,8 +155,8 @@ class RestSensor(Entity):
         json_attrs,
         force_update,
         resource_template,
-        data_format,
-        json_path,
+        convert_xml,
+        json_attrs_template,
     ):
         """Initialize the REST sensor."""
         self._hass = hass
@@ -169,8 +170,8 @@ class RestSensor(Entity):
         self._attributes = None
         self._force_update = force_update
         self._resource_template = resource_template
-        self._data_format = data_format
-        self._json_path = json_path
+        self._convert_xml = convert_xml
+        self._json_attrs_template = json_attrs_template
 
     @property
     def name(self):
@@ -209,8 +210,9 @@ class RestSensor(Entity):
 
         self.rest.update()
         value = self.rest.data
+        json_dict = None
 
-        if self._data_format == "xml":
+        if self._convert_xml:
             try:
                 value = json.dumps(xmltodict.parse(value))
             except ValueError:
@@ -223,10 +225,15 @@ class RestSensor(Entity):
             self._attributes = {}
             if value:
                 try:
-                    json_dict = json.loads(value)
-                    if self._json_path is not None:
-                        json_dict = jsonpath(json_dict, self._json_path)
-                    elif isinstance(json_dict, list):
+                    if self._json_attrs_template is not None:
+                        json_dict = ast.literal_eval(
+                            self._json_attrs_template.render_with_possible_json_value(
+                                value, None
+                            )
+                        )
+                    else:
+                        json_dict = json.loads(value)
+                    if isinstance(json_dict, list):
                         json_dict = json_dict[0]
                     if isinstance(json_dict, dict):
                         attrs = {
@@ -238,8 +245,10 @@ class RestSensor(Entity):
                             "JSON result was not a dictionary"
                             " or list with 0th element a dictionary"
                         )
-                except ValueError:
-                    _LOGGER.warning("REST result could not be parsed as JSON")
+                except ValueError as err:
+                    _LOGGER.warning(
+                        "REST result could not be parsed as JSON: " + str(err)
+                    )
                     _LOGGER.debug("Erroneous JSON: %s", value)
             else:
                 _LOGGER.warning("Empty reply found when expecting JSON data")
