@@ -159,7 +159,7 @@ defusedxml==0.6.0
 denonavr==0.7.12
 
 # homeassistant.components.directv
-directpy==0.5
+directpy==0.6
 
 # homeassistant.components.updater
 distro==1.4.0
@@ -494,7 +494,7 @@ pylitejet==0.1
 pymailgunner==1.4
 
 # homeassistant.components.melcloud
-pymelcloud==2.0.0
+pymelcloud==2.1.0
 
 # homeassistant.components.somfy
 pymfy==0.7.1
@@ -622,7 +622,7 @@ sentry-sdk==0.13.5
 simplehound==0.3
 
 # homeassistant.components.simplisafe
-simplisafe-python==6.1.0
+simplisafe-python==7.3.0
 
 # homeassistant.components.sleepiq
 sleepyq==0.7
