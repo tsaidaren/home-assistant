@@ -429,7 +429,7 @@ deluge-client==1.7.1
 denonavr==0.7.12
 
 # homeassistant.components.directv
-directpy==0.5
+directpy==0.6
 
 # homeassistant.components.discogs
 discogs_client==2.2.2
@@ -725,7 +725,7 @@ ibmiotf==0.3.4
 iglo==1.2.7
 
 # homeassistant.components.ihc
-ihcsdk==2.5.0
+ihcsdk==2.6.0
 
 # homeassistant.components.incomfort
 incomfort-client==0.4.0
@@ -1361,7 +1361,7 @@ pymailgunner==1.4
 pymediaroom==0.6.4
 
 # homeassistant.components.melcloud
-pymelcloud==2.0.0
+pymelcloud==2.1.0
 
 # homeassistant.components.somfy
 pymfy==0.7.1
@@ -1829,7 +1829,7 @@ simplehound==0.3
 simplepush==1.1.4
 
 # homeassistant.components.simplisafe
-simplisafe-python==6.1.0
+simplisafe-python==7.3.0
 
 # homeassistant.components.sisyphus
 sisyphus-control==2.2.1
