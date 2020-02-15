@@ -356,7 +356,7 @@ class AugustData:
         return self._lock_detail_by_id.get(lock_id)
 
     def get_lock_name(self, device_id):
-        """Return lock name."""
+        """Return lock name as August has it stored."""
         for lock in self._locks:
             if lock.device_id == device_id:
                 return lock.device_name
