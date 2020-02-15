@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, PropertyMock
 from august.activity import Activity
 
 from homeassistant.components.august import AugustData
+from homeassistant.components.august.lock import AugustLock
 from homeassistant.util import dt
 
 
@@ -35,6 +36,37 @@ class MockActivity(Activity):
         return self._action
 
 
+class MockAugustLock(AugustLock):
+    """A mock for august component AugustLock class."""
+
+    def __init__(self, august_data=None):
+        """Init the mock for august component AugustLock class."""
+        self._data = august_data
+        self._lock = _mock_august_lock()
+
+    @property
+    def device_id(self):
+        """Mock device_id."""
+        return "mockdeviceid1"
+
+    @property
+    def device_name(self):
+        """Mock device_name."""
+        return "Mocked Lock 1"
+
+    def _update_lock_status(self, lock_status, activity_start_time_utc):
+        """Mock updating the lock status."""
+        self._data.set_last_lock_status_update_time_utc(
+            self._lock.device_id, activity_start_time_utc
+        )
+        self.last_update_lock_status = {}
+        self.last_update_lock_status["lock_status"] = lock_status
+        self.last_update_lock_status[
+            "activity_start_time_utc"
+        ] = activity_start_time_utc
+        return MagicMock()
+
+
 class MockAugustData(AugustData):
     """A wrapper to mock AugustData."""
 
@@ -51,6 +83,7 @@ class MockAugustData(AugustData):
         self._last_door_state_update_time_utc = dt.as_utc(
             datetime.datetime.fromtimestamp(last_lock_status_update_timestamp)
         )
+        self._locks = [MockAugustLock()]
 
     def get_last_lock_status_update_time_utc(self, device_id):
         """Mock to get last lock status update time."""
