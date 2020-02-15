@@ -10,7 +10,7 @@ from . import DATA_AUGUST, DEFAULT_TIMEOUT
 SCAN_INTERVAL = timedelta(seconds=10)
 
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
+async def async_setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up August cameras."""
     data = hass.data[DATA_AUGUST]
     devices = []

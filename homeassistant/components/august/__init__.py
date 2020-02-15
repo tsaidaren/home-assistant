@@ -92,7 +92,7 @@ def request_configuration(hass, config, api, authenticator):
                 _CONFIGURING[DOMAIN], "Invalid verification code"
             )
         elif result == ValidationResult.VALIDATED:
-            setup_august(hass, config, api, authenticator)
+            async_setup_august(hass, config, api, authenticator)
 
     if DOMAIN not in _CONFIGURING:
         authenticator.send_verification_code()
@@ -113,7 +113,7 @@ def request_configuration(hass, config, api, authenticator):
     )
 
 
-def setup_august(hass, config, api, authenticator):
+async def async_setup_august(hass, config, api, authenticator):
     """Set up the August component."""
 
     authentication = None
@@ -152,7 +152,7 @@ def setup_august(hass, config, api, authenticator):
     return False
 
 
-def setup(hass, config):
+async def async_setup(hass, config):
     """Set up the August component."""
 
     conf = config[DOMAIN]
@@ -187,7 +187,7 @@ def setup(hass, config):
     hass.bus.listen_once(EVENT_HOMEASSISTANT_STOP, close_http_session)
     _LOGGER.debug("Registered for Home Assistant stop event")
 
-    return setup_august(hass, config, api, authenticator)
+    return async_setup_august(hass, config, api, authenticator)
 
 
 class AugustData:

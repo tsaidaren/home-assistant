@@ -62,7 +62,7 @@ SENSOR_TYPES_DOORBELL = {
 }
 
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
+async def async_setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the August binary sensors."""
     data = hass.data[DATA_AUGUST]
     devices = []
@@ -130,7 +130,7 @@ class AugustDoorBinarySensor(BinarySensorDevice):
             self._door.device_name, SENSOR_TYPES_DOOR[self._sensor_type][0]
         )
 
-    def update(self):
+    async def update(self):
         """Get the latest state of the sensor."""
         state_provider = SENSOR_TYPES_DOOR[self._sensor_type][2]
         self._state = state_provider(self._data, self._door)
@@ -226,7 +226,7 @@ class AugustDoorbellBinarySensor(BinarySensorDevice):
             self._doorbell.device_name, SENSOR_TYPES_DOORBELL[self._sensor_type][0]
         )
 
-    def update(self):
+    async def update(self):
         """Get the latest state of the sensor."""
         state_provider = SENSOR_TYPES_DOORBELL[self._sensor_type][2]
         self._state = state_provider(self._data, self._doorbell)
