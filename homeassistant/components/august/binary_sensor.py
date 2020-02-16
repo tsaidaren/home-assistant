@@ -60,7 +60,7 @@ SENSOR_NAME = 0
 SENSOR_DEVICE_CLASS = 1
 SENSOR_STATE_PROVIDER = 2
 
-# Sensor types: Name, device_class, async_state_provider
+# sensor_type: [name, device_class, async_state_provider]
 SENSOR_TYPES_DOOR = {"door_open": ["Open", "door", _async_retrieve_door_state]}
 
 SENSOR_TYPES_DOORBELL = {
