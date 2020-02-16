@@ -12,7 +12,7 @@ from . import DATA_AUGUST
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = timedelta(seconds=10)
+SCAN_INTERVAL = timedelta(seconds=5)
 
 
 async def _async_retrieve_door_state(data, lock):
@@ -51,7 +51,7 @@ async def _async_activity_time_based_state(data, doorbell, activity_types):
 
     if latest is not None:
         start = latest.activity_start_time
-        end = latest.activity_end_time + timedelta(seconds=30)
+        end = latest.activity_end_time + timedelta(seconds=45)
         return start <= datetime.now() <= end
     return None
 
@@ -244,7 +244,10 @@ class AugustDoorbellBinarySensor(BinarySensorDevice):
             SENSOR_STATE_PROVIDER
         ]
         self._state = await async_state_provider(self._data, self._doorbell)
-        self._available = self._doorbell.is_online
+        # The doorbell will go into standby mode when there is no motion
+        # for a short while. It will wake by itself when needed so we need
+        # to consider is available or we will not report motion or dings
+        self._available = self._doorbell.is_online or self._doorbell.status == "standby"
 
     @property
     def unique_id(self) -> str:
