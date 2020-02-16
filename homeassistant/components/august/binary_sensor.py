@@ -142,10 +142,11 @@ class AugustDoorBinarySensor(BinarySensorDevice):
         async_state_provider = SENSOR_TYPES_DOOR[self._sensor_type][
             SENSOR_STATE_PROVIDER
         ]
-        self._state = await async_state_provider(self._data, self._door)
-        self._available = self._state is not None
-
-        self._state = self._state == LockDoorStatus.OPEN
+        lock_door_state = await async_state_provider(self._data, self._door)
+        self._available = (
+            lock_door_state is not None and lock_door_state != LockDoorStatus.UNKNOWN
+        )
+        self._state = lock_door_state == LockDoorStatus.OPEN
 
         door_activity = await self._data.async_get_latest_device_activity(
             self._door.device_id, ActivityType.DOOR_OPERATION
