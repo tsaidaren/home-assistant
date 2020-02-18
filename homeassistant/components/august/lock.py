@@ -14,7 +14,7 @@ from . import DATA_AUGUST
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = timedelta(seconds=10)
+SCAN_INTERVAL = timedelta(seconds=5)
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
