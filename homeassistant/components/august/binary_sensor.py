@@ -17,7 +17,11 @@ SCAN_INTERVAL = timedelta(seconds=5)
 
 async def _async_retrieve_door_state(data, lock):
     """Get the latest state of the DoorSense sensor."""
-    return await data.async_get_door_state(lock.device_id)
+    detail = await data.async_get_lock_detail(lock.device_id)
+    if detail is None:
+        return None
+
+    return detail.door_state
 
 
 async def _async_retrieve_online_state(data, doorbell):
