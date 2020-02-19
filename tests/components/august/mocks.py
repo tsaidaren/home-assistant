@@ -1,9 +1,12 @@
 """Mocks for the august component."""
 import datetime
+import json
+import os
 from unittest.mock import MagicMock, PropertyMock
 
 from august.activity import Activity
 from august.api import Api
+from august.authenticator import AuthenticationState
 from august.exceptions import AugustApiHTTPError
 from august.lock import Lock, LockDetail
 
@@ -11,6 +14,8 @@ from homeassistant.components.august import AugustData
 from homeassistant.components.august.binary_sensor import AugustDoorBinarySensor
 from homeassistant.components.august.lock import AugustLock
 from homeassistant.util import dt
+
+from tests.common import load_fixture
 
 
 class MockAugustApiFailing(Api):
@@ -143,6 +148,9 @@ def _mock_august_authenticator():
 
 def _mock_august_authentication(token_text, token_timestamp):
     authentication = MagicMock(name="august.authentication")
+    type(authentication).state = PropertyMock(
+        return_value=AuthenticationState.AUTHENTICATED
+    )
     type(authentication).access_token = PropertyMock(return_value=token_text)
     type(authentication).access_token_expires = PropertyMock(
         return_value=token_timestamp
@@ -187,6 +195,18 @@ def _mock_inoperative_august_lock_detail(lockid):
 def _mock_doorsense_enabled_august_lock_detail(lockid):
     doorsense_lock_detail_data = _mock_august_lock_data(lockid=lockid)
     return LockDetail(doorsense_lock_detail_data)
+
+
+async def _mock_lock_from_fixture(hass, path):
+    json_dict = await _load_json_fixture(hass, path)
+    return LockDetail(json_dict)
+
+
+async def _load_json_fixture(hass, path):
+    fixture = await hass.async_add_executor_job(
+        load_fixture, os.path.join("august", path)
+    )
+    return json.loads(fixture)
 
 
 def _mock_doorsense_missing_august_lock_detail(lockid):
