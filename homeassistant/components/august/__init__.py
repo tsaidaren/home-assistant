@@ -334,6 +334,11 @@ class AugustData:
         This is called when newer activity is detected on the activity feed
         in order to keep the internal data in sync
         """
+        # When syncing the door state became available via py-august, this
+        # function caused to be actively used.  It will be again as we will
+        # update the door state from lock/unlock operations as the august api
+        # does report the door state on lock/unlock, however py-august does not
+        # expose this to us yet.
         self._lock_detail_by_id[lock_id].door_state = door_state
         self._lock_detail_by_id[lock_id].door_state_datetime = update_start_time_utc
         return True
