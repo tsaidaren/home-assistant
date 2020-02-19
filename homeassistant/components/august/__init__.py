@@ -328,6 +328,16 @@ class AugustData:
         _LOGGER.debug("Completed retrieving doorbell details")
         self._doorbell_detail_by_id = detail_by_id
 
+    def update_door_state(self, lock_id, door_state, update_start_time_utc):
+        """Set the door status and last status update time.
+
+        This is called when newer activity is detected on the activity feed
+        in order to keep the internal data in sync
+        """
+        self._lock_detail_by_id[lock_id].door_state = door_state
+        self._lock_detail_by_id[lock_id].door_state_datetime = update_start_time_utc
+        return True
+
     def update_lock_status(self, lock_id, lock_status, update_start_time_utc):
         """Set the lock status and last status update time.
 
