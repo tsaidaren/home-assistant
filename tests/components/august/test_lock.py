@@ -12,6 +12,7 @@ from homeassistant.components.august import (
     CONF_USERNAME,
     DOMAIN,
 )
+from homeassistant.const import STATE_LOCKED
 from homeassistant.helpers.json import JSONEncoder
 from homeassistant.setup import async_setup_component
 
@@ -44,6 +45,8 @@ async def test_one_lock(hass):
 
     pprint.pprint(json.dumps(hass.states.async_all(), cls=JSONEncoder))
     lock_abc_name = hass.states.get("lock.abc_name")
+
+    assert lock_abc_name.state == STATE_LOCKED
     pprint.pprint(lock_abc_name.attributes)
     # assert lock_abc_name.attributes.battery_level == 92
     # assert lock_abc_name.attributes.available == True
