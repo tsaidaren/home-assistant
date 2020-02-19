@@ -349,7 +349,7 @@ class AugustData:
                 _LOGGER.error(
                     "Request error trying to retrieve %s details for %s. %s",
                     device_type,
-                    device.device_device_type,
+                    device.device_name,
                     ex,
                 )
                 detail_by_id[device_id] = None
