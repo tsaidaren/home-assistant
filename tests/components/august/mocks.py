@@ -5,12 +5,12 @@ import os
 from unittest import mock
 from unittest.mock import MagicMock, PropertyMock
 
-from august.activity import Activity
+from august.activity import Activity, DoorOperationActivity, LockOperationActivity
 from august.api import Api
 from august.authenticator import AuthenticationState
 from august.doorbell import Doorbell, DoorbellDetail
 from august.exceptions import AugustApiHTTPError
-from august.lock import Lock, LockDetail, LockStatus
+from august.lock import Lock, LockDetail
 
 from homeassistant.components.august import (
     CONF_LOGIN_METHOD,
@@ -69,8 +69,42 @@ async def _create_august_with_devices(hass, lock_details=[], doorbell_details=[]
         api_instance.get_lock_detail.side_effect = get_lock_detail_side_effect
         api_instance.get_operable_locks.return_value = locks
         api_instance.get_doorbells.return_value = doorbells
-        api_instance.lock.return_value = LockStatus.LOCKED
-        api_instance.unlock.return_value = LockStatus.UNLOCKED
+        api_instance.lock_return_activities.return_value = [
+            LockOperationActivity(
+                {
+                    "dateTime": 1582152517000,
+                    "deviceID": lock_details[0].device_id,
+                    "deviceType": "lock",
+                    "action": "lock",
+                }
+            ),
+            DoorOperationActivity(
+                {
+                    "dateTime": 1582152517000,
+                    "deviceID": lock_details[0].device_id,
+                    "deviceType": "lock",
+                    "action": "doorclosed",
+                }
+            ),
+        ]
+        api_instance.unlock_return_activities.return_value = [
+            LockOperationActivity(
+                {
+                    "dateTime": 1582152518000,
+                    "deviceID": lock_details[0].device_id,
+                    "deviceType": "lock",
+                    "action": "unlock",
+                }
+            ),
+            DoorOperationActivity(
+                {
+                    "dateTime": 1582152518000,
+                    "deviceID": lock_details[0].device_id,
+                    "deviceType": "lock",
+                    "action": "dooropen",
+                }
+            ),
+        ]
         api.return_value = api_instance
 
     await _mock_setup_august(hass, api_mocks_callback)
