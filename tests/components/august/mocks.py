@@ -203,37 +203,38 @@ def _mock_august_doorbell(deviceid="mockdeviceid1", houseid="mockhouseid1"):
 def _mock_august_doorbell_data(deviceid="mockdeviceid1", houseid="mockhouseid1"):
     return {
         "_id": deviceid,
-        "deviceid": deviceid,
-        "devicename": deviceid + " name",
-        "houseid": houseid,
-        "usertype": "owner",
-        "serialnumber": "mockserial",
+        "DeviceID": deviceid,
+        "DeviceName": deviceid + " Name",
+        "HouseID": houseid,
+        "UserType": "owner",
+        "SerialNumber": "mockserial",
         "battery": 90,
-        "currentfirmwareversion": "mockfirmware",
-        "bridge": {
+        "currentFirmwareVersion": "mockfirmware",
+        "Bridge": {
             "_id": "bridgeid1",
-            "firmwareversion": "mockfirm",
+            "firmwareVersion": "mockfirm",
             "operative": True,
         },
+        "LockStatus": {"doorState": "open"},
     }
 
 
 def _mock_august_lock_data(lockid="mocklockid1", houseid="mockhouseid1"):
     return {
         "_id": lockid,
-        "lockid": lockid,
-        "lockname": lockid + " name",
-        "houseid": houseid,
-        "usertype": "owner",
-        "serialnumber": "mockserial",
+        "LockID": lockid,
+        "LockName": lockid + " Name",
+        "HouseID": houseid,
+        "UserType": "owner",
+        "SerialNumber": "mockserial",
         "battery": 90,
-        "currentfirmwareversion": "mockfirmware",
-        "bridge": {
+        "currentFirmwareVersion": "mockfirmware",
+        "Bridge": {
             "_id": "bridgeid1",
-            "firmwareversion": "mockfirm",
+            "firmwareVersion": "mockfirm",
             "operative": True,
         },
-        "lockstatus": {"doorstate": "open"},
+        "LockStatus": {"doorState": "open"},
     }
 
 
