@@ -34,16 +34,14 @@ async def test_doorsense(hass):
     )
 
     binary_sensor_abc_name = hass.states.get("binary_sensor.abc_name_open")
-    await binary_sensor_abc_name.schedule_update_ha_state()
-    assert binary_sensor_abc_name.state == STATE_OFF
+    assert binary_sensor_abc_name.state == STATE_ON
 
     assert await hass.services.async_call(
         LOCK_DOMAIN, SERVICE_LOCK, data, blocking=True
     )
 
     binary_sensor_abc_name = hass.states.get("binary_sensor.abc_name_open")
-    await binary_sensor_abc_name.schedule_update_ha_state()
-    assert binary_sensor_abc_name.state == STATE_ON
+    assert binary_sensor_abc_name.state == STATE_OFF
 
 
 async def test_create_doorbell(hass):
