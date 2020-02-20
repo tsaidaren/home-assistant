@@ -53,6 +53,9 @@ class AugustLock(LockDevice):
             lock_operation, self._lock.device_id
         )
         for lock_activity in activities:
+            # Its possible that one of these activities will update
+            # the door state binary sensor as well. We do not have a way
+            # to force it to schedule an update though
             update_lock_detail_from_activity(self._lock_detail, lock_activity)
 
         if self._update_lock_status_from_detail():

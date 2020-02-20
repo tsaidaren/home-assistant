@@ -2,6 +2,7 @@
 import datetime
 import json
 import os
+import time
 from unittest import mock
 from unittest.mock import MagicMock, PropertyMock
 
@@ -38,78 +39,97 @@ def _mock_get_config():
 
 @mock.patch("homeassistant.components.august.Api")
 @mock.patch("homeassistant.components.august.Authenticator.authenticate")
-async def _mock_setup_august(hass, api_mocks_callback, authenticate_mock, api_mock):
+async def _mock_setup_august(hass, api_instance, authenticate_mock, api_mock):
     """Set up august integration."""
     authenticate_mock.side_effect = MagicMock(
         return_value=_mock_august_authentication("original_token", 1234)
     )
-    api_mocks_callback(api_mock)
+    api_mock.return_value = api_instance
     assert await async_setup_component(hass, DOMAIN, _mock_get_config())
     await hass.async_block_till_done()
     return True
 
 
-async def _create_august_with_devices(hass, lock_details=[], doorbell_details=[]):
+async def _create_august_with_devices(
+    hass, lock_details=[], doorbell_details=[], api_call_side_effects={}
+):
     locks = []
     doorbells = []
     for lock in lock_details:
         if isinstance(lock, LockDetail):
             locks.append(_mock_august_lock(lock.device_id))
     for doorbell in doorbell_details:
-        if isinstance(lock, DoorbellDetail):
+        if isinstance(doorbell, DoorbellDetail):
             doorbells.append(_mock_august_doorbell(doorbell.device_id))
 
-    def api_mocks_callback(api):
-        def get_lock_detail_side_effect(access_token, device_id):
-            for lock in lock_details:
-                if isinstance(lock, LockDetail) and lock.device_id == device_id:
-                    return lock
+    def get_lock_detail_side_effect(access_token, device_id):
+        for lock in lock_details:
+            if isinstance(lock, LockDetail) and lock.device_id == device_id:
+                return lock
 
-        api_instance = MagicMock()
-        api_instance.get_lock_detail.side_effect = get_lock_detail_side_effect
-        api_instance.get_operable_locks.return_value = locks
-        api_instance.get_doorbells.return_value = doorbells
-        api_instance.lock_return_activities.return_value = [
-            LockOperationActivity(
-                {
-                    "dateTime": 1582152517000,
-                    "deviceID": lock_details[0].device_id,
-                    "deviceType": "lock",
-                    "action": "lock",
-                }
-            ),
-            DoorOperationActivity(
-                {
-                    "dateTime": 1582152517000,
-                    "deviceID": lock_details[0].device_id,
-                    "deviceType": "lock",
-                    "action": "doorclosed",
-                }
-            ),
+    def get_operable_locks_side_effect(access_token):
+        return locks
+
+    def get_doorbells_side_effect(access_token):
+        return doorbells
+
+    def get_house_activities_side_effect(access_token, house_id, limit=10):
+        return []
+
+    def lock_return_activities_side_effect(access_token, device_id):
+        for lock in lock_details:
+            if isinstance(lock, LockDetail) and lock.device_id == device_id:
+                return [
+                    _mock_lock_operation_activity(lock, "lock"),
+                    _mock_door_operation_activity(lock, "doorclosed"),
+                ]
+        return []
+
+    def unlock_return_activities_side_effect(access_token, device_id):
+        for lock in lock_details:
+            if isinstance(lock, LockDetail) and lock.device_id == device_id:
+                return [
+                    _mock_lock_operation_activity(lock, "unlock"),
+                    _mock_door_operation_activity(lock, "dooropen"),
+                ]
+        return []
+
+    api_call_side_effects["get_lock_detail"] = get_lock_detail_side_effect
+    api_call_side_effects["get_operable_locks"] = get_operable_locks_side_effect
+    api_call_side_effects["get_doorbells"] = get_doorbells_side_effect
+    api_call_side_effects["lock_return_activities"] = lock_return_activities_side_effect
+    api_call_side_effects[
+        "unlock_return_activities"
+    ] = unlock_return_activities_side_effect
+    return await _mock_setup_august_with_api_side_effects(hass, api_call_side_effects)
+
+
+async def _mock_setup_august_with_api_side_effects(hass, api_call_side_effects):
+    api_instance = MagicMock(name="Api")
+
+    if api_call_side_effects["get_lock_detail"]:
+        api_instance.get_lock_detail.side_effect = api_call_side_effects[
+            "get_lock_detail"
         ]
-        api_instance.unlock_return_activities.return_value = [
-            LockOperationActivity(
-                {
-                    "dateTime": 1582152518000,
-                    "deviceID": lock_details[0].device_id,
-                    "deviceType": "lock",
-                    "action": "unlock",
-                }
-            ),
-            DoorOperationActivity(
-                {
-                    "dateTime": 1582152518000,
-                    "deviceID": lock_details[0].device_id,
-                    "deviceType": "lock",
-                    "action": "dooropen",
-                }
-            ),
+
+    if api_call_side_effects["get_operable_locks"]:
+        api_instance.get_operable_locks.side_effect = api_call_side_effects[
+            "get_operable_locks"
         ]
-        api.return_value = api_instance
 
-    await _mock_setup_august(hass, api_mocks_callback)
+    if api_call_side_effects["get_doorbells"]:
+        api_instance.get_doorbells.side_effect = api_call_side_effects["get_doorbells"]
 
-    return True
+    if api_call_side_effects["lock_return_activities"]:
+        api_instance.lock_return_activities.side_effect = api_call_side_effects[
+            "lock_return_activities"
+        ]
+
+    if api_call_side_effects["unlock_return_activities"]:
+        api_instance.unlock_return_activities.side_effect = api_call_side_effects[
+            "unlock_return_activities"
+        ]
+    return await _mock_setup_august(hass, api_instance)
 
 
 class MockAugustApiFailing(Api):
@@ -230,7 +250,7 @@ def _mock_august_lock(lockid="mocklockid1", houseid="mockhouseid1"):
 
 def _mock_august_doorbell(deviceid="mockdeviceid1", houseid="mockhouseid1"):
     return Doorbell(
-        deviceid, _mock_august_doorbell_data(device=deviceid, houseid=houseid)
+        deviceid, _mock_august_doorbell_data(deviceid=deviceid, houseid=houseid)
     )
 
 
@@ -238,11 +258,12 @@ def _mock_august_doorbell_data(deviceid="mockdeviceid1", houseid="mockhouseid1")
     return {
         "_id": deviceid,
         "DeviceID": deviceid,
-        "DeviceName": deviceid + " Name",
+        "name": deviceid + " Name",
         "HouseID": houseid,
         "UserType": "owner",
-        "SerialNumber": "mockserial",
+        "serialNumber": "mockserial",
         "battery": 90,
+        "status": "standby",
         "currentFirmwareVersion": "mockfirmware",
         "Bridge": {
             "_id": "bridgeid1",
@@ -293,6 +314,11 @@ async def _mock_lock_from_fixture(hass, path):
     return LockDetail(json_dict)
 
 
+async def _mock_doorbell_from_fixture(hass, path):
+    json_dict = await _load_json_fixture(hass, path)
+    return DoorbellDetail(json_dict)
+
+
 async def _load_json_fixture(hass, path):
     fixture = await hass.async_add_executor_job(
         load_fixture, os.path.join("august", path)
@@ -304,3 +330,25 @@ def _mock_doorsense_missing_august_lock_detail(lockid):
     doorsense_lock_detail_data = _mock_august_lock_data(lockid=lockid)
     del doorsense_lock_detail_data["LockStatus"]["doorState"]
     return LockDetail(doorsense_lock_detail_data)
+
+
+def _mock_lock_operation_activity(lock, action):
+    return LockOperationActivity(
+        {
+            "dateTime": time.time() * 1000,
+            "deviceID": lock.device_id,
+            "deviceType": "lock",
+            "action": action,
+        }
+    )
+
+
+def _mock_door_operation_activity(lock, action):
+    return DoorOperationActivity(
+        {
+            "dateTime": time.time() * 1000,
+            "deviceID": lock.device_id,
+            "deviceType": "lock",
+            "action": action,
+        }
+    )
