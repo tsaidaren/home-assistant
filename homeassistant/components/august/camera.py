@@ -60,9 +60,11 @@ class AugustCamera(Camera):
 
     async def async_camera_image(self):
         """Return bytes of camera image."""
-        # FIXME: if there was recent motion we need to change the Throttle on this
-        # and only this device to 30 seconds instead of 1800
         latest = await self._data.async_get_doorbell_detail(self._doorbell.device_id)
+
+        # FIXME mix in activity
+        # DoorbellMotionActivity and DoorbellDingActivity both have
+        # image_url and we can check activity start time using the original sync code
 
         if self._image_url is not latest.image_url:
             self._image_url = latest.image_url
