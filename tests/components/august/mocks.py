@@ -3,9 +3,9 @@ import datetime
 import json
 import os
 import time
-from unittest import mock
 from unittest.mock import MagicMock, PropertyMock
 
+from asynctest import mock
 from august.activity import Activity, DoorOperationActivity, LockOperationActivity
 from august.api import Api
 from august.authenticator import AuthenticationState

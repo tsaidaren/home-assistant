@@ -6,6 +6,7 @@ from homeassistant.const import (
     SERVICE_LOCK,
     SERVICE_UNLOCK,
     STATE_LOCKED,
+    STATE_ON,
     STATE_UNLOCKED,
 )
 
@@ -48,3 +49,6 @@ async def test_one_lock_operation(hass):
 
     lock_abc_name = hass.states.get("lock.abc_name")
     assert lock_abc_name.state == STATE_LOCKED
+
+    binary_sensor_abc_name = hass.states.get("binary_sensor.abc_name_open")
+    assert binary_sensor_abc_name.state == STATE_ON
