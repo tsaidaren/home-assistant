@@ -127,8 +127,15 @@ def setup_august(
         _LOGGER.error("Unable to connect to August service: %s", str(ex))
 
     state = authentication.state
+    entry_id = config_entry.entry_id
 
     if state == AuthenticationState.AUTHENTICATED:
+        # We still use the configurator to get a new 2fa code
+        # when needed since config_flow doesn't have a way
+        # to re-request if it expires
+        if entry_id in _CONFIGURING:
+            hass.components.configurator.request_done(_CONFIGURING.pop(entry_id))
+
         hass.data[DOMAIN][config_entry.entry_id] = AugustData(
             hass,
             api,
