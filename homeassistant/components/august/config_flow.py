@@ -124,7 +124,7 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     self._authenticator,
                     self._access_token_cache_file,
                 )
-                await _async_close_http_session(self.hass, self._http_session)
+                await _async_close_http_session(self.hass, self._api_http_session)
                 await self.async_set_unique_id(user_input[CONF_USERNAME])
                 return self.async_create_entry(title=info["title"], data=info["data"])
             except CannotConnect:
@@ -144,19 +144,21 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     def _setup_authenticator(self, user_input):
-        if self._api_http_session is None:
+        try:
+            self._api_http_session is None
+        except AttributeError:
             self._api_http_session = Session()
         if not user_input.get("code"):
-            self.api = Api(
-                timeout=user_input.get(CONF_TIMEOUT), http_session=self.api_http_session
-            )
             username = user_input.get(CONF_USERNAME)
             access_token_cache_file = user_input.get(CONF_ACCESS_TOKEN_CACHE_FILE)
             if access_token_cache_file is None:
                 access_token_cache_file = "." + username + AUGUST_CONFIG_FILE
             self._access_token_cache_file = access_token_cache_file
             self._authenticator = Authenticator(
-                self.api,
+                Api(
+                    timeout=user_input.get(CONF_TIMEOUT),
+                    http_session=self._api_http_session,
+                ),
                 user_input.get(CONF_LOGIN_METHOD),
                 username,
                 user_input.get(CONF_PASSWORD),
