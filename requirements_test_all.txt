@@ -50,7 +50,7 @@ aio_georss_gdacs==0.3
 aioambient==1.0.2
 
 # homeassistant.components.asuswrt
-aioasuswrt==1.1.22
+aioasuswrt==1.2.2
 
 # homeassistant.components.automatic
 aioautomatic==0.6.5
@@ -168,7 +168,7 @@ distro==1.4.0
 dsmr_parser==0.18
 
 # homeassistant.components.dynalite
-dynalite_devices==0.1.17
+dynalite_devices==0.1.22
 
 # homeassistant.components.ee_brightbox
 eebrightbox==0.0.4
