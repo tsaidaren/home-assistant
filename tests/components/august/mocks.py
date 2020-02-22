@@ -21,7 +21,6 @@ from homeassistant.components.august import (
     AugustData,
 )
 from homeassistant.setup import async_setup_component
-from homeassistant.util import dt
 
 from tests.common import load_fixture
 
@@ -185,51 +184,16 @@ class MockAugustComponentData(AugustData):
     # mocking we currently only mock one lockid
 
     def __init__(
-        self,
-        last_lock_status_update_timestamp=1,
-        last_door_state_update_timestamp=1,
-        api=MockAugustApiFailing(),
-        access_token="mocked_access_token",
-        locks=[],
-        doorbells=[],
+        self, api=MockAugustApiFailing(), access_token="mocked_access_token", locks=[],
     ):
         """Mock AugustData."""
-        self._last_lock_status_update_time_utc = dt.as_utc(
-            datetime.datetime.fromtimestamp(last_lock_status_update_timestamp)
-        )
-        self._last_door_state_update_time_utc = dt.as_utc(
-            datetime.datetime.fromtimestamp(last_lock_status_update_timestamp)
-        )
         self._api = api
         self._access_token = access_token
         self._locks = locks
-        self._doorbells = doorbells
-        self._lock_status_by_id = {}
-        self._lock_last_status_update_time_utc_by_id = {}
 
     def set_mocked_locks(self, locks):
         """Set lock mocks."""
         self._locks = locks
-
-    def set_mocked_doorbells(self, doorbells):
-        """Set doorbell mocks."""
-        self._doorbells = doorbells
-
-    def get_last_lock_status_update_time_utc(self, device_id):
-        """Mock to get last lock status update time."""
-        return self._last_lock_status_update_time_utc
-
-    def set_last_lock_status_update_time_utc(self, device_id, update_time):
-        """Mock to set last lock status update time."""
-        self._last_lock_status_update_time_utc = update_time
-
-    def get_last_door_state_update_time_utc(self, device_id):
-        """Mock to get last door state update time."""
-        return self._last_door_state_update_time_utc
-
-    def set_last_door_state_update_time_utc(self, device_id, update_time):
-        """Mock to set last door state update time."""
-        self._last_door_state_update_time_utc = update_time
 
 
 def _mock_august_authenticator():
@@ -304,20 +268,12 @@ def _mock_august_lock_data(lockid="mocklockid1", houseid="mockhouseid1"):
     }
 
 
-def _mock_operative_august_lock_detail(lockid):
-    operative_lock_detail_data = _mock_august_lock_data(lockid=lockid)
-    return LockDetail(operative_lock_detail_data)
+async def _mock_operative_august_lock_detail(hass):
+    return await _mock_lock_from_fixture(hass, "get_lock.online.json")
 
 
-def _mock_inoperative_august_lock_detail(lockid):
-    inoperative_lock_detail_data = _mock_august_lock_data(lockid=lockid)
-    del inoperative_lock_detail_data["Bridge"]
-    return LockDetail(inoperative_lock_detail_data)
-
-
-def _mock_doorsense_enabled_august_lock_detail(lockid):
-    doorsense_lock_detail_data = _mock_august_lock_data(lockid=lockid)
-    return LockDetail(doorsense_lock_detail_data)
+async def _mock_inoperative_august_lock_detail(hass):
+    return await _mock_lock_from_fixture(hass, "get_lock.offline.json")
 
 
 async def _mock_lock_from_fixture(hass, path):
@@ -335,6 +291,11 @@ async def _load_json_fixture(hass, path):
         load_fixture, os.path.join("august", path)
     )
     return json.loads(fixture)
+
+
+def _mock_doorsense_enabled_august_lock_detail(lockid):
+    doorsense_lock_detail_data = _mock_august_lock_data(lockid=lockid)
+    return LockDetail(doorsense_lock_detail_data)
 
 
 def _mock_doorsense_missing_august_lock_detail(lockid):
