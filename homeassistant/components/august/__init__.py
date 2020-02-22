@@ -21,6 +21,8 @@ from homeassistant.util import Throttle
 
 _LOGGER = logging.getLogger(__name__)
 
+DEFAULT_NAME = "August"
+
 DEFAULT_TIMEOUT = 10
 ACTIVITY_FETCH_LIMIT = 10
 
@@ -153,6 +155,8 @@ async def async_setup(hass: HomeAssistant, config: dict):
     if not conf:
         return True
 
+    hass.data.setdefault(DOMAIN, {})
+
     hass.async_create_task(
         hass.config_entries.flow.async_init(
             DOMAIN,
@@ -166,7 +170,6 @@ async def async_setup(hass: HomeAssistant, config: dict):
             },
         )
     )
-    hass.data.setdefault(DOMAIN, {})
     return True
 
 
