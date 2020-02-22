@@ -215,8 +215,9 @@ class AugustData:
         # We check the locks right away so we can
         # remove inoperative ones
         self._update_locks_detail()
-
         self._filter_inoperative_locks()
+
+        self._update_doorbells_detail()
 
     @property
     def house_ids(self):

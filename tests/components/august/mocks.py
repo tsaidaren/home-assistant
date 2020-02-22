@@ -67,6 +67,11 @@ async def _create_august_with_devices(
             if isinstance(lock, LockDetail) and lock.device_id == device_id:
                 return lock
 
+    def get_doorbell_detail_side_effect(access_token, device_id):
+        for doorbell in doorbell_details:
+            if isinstance(doorbell, DoorbellDetail) and doorbell.device_id == device_id:
+                return doorbell
+
     def get_operable_locks_side_effect(access_token):
         return locks
 
@@ -97,6 +102,7 @@ async def _create_august_with_devices(
     api_call_side_effects["get_lock_detail"] = get_lock_detail_side_effect
     api_call_side_effects["get_operable_locks"] = get_operable_locks_side_effect
     api_call_side_effects["get_doorbells"] = get_doorbells_side_effect
+    api_call_side_effects["get_doorbell_detail"] = get_doorbell_detail_side_effect
     api_call_side_effects["lock_return_activities"] = lock_return_activities_side_effect
     api_call_side_effects[
         "unlock_return_activities"
@@ -119,6 +125,11 @@ async def _mock_setup_august_with_api_side_effects(hass, api_call_side_effects):
 
     if api_call_side_effects["get_doorbells"]:
         api_instance.get_doorbells.side_effect = api_call_side_effects["get_doorbells"]
+
+    if api_call_side_effects["get_doorbell_detail"]:
+        api_instance.get_doorbell_detail.side_effect = api_call_side_effects[
+            "get_doorbell_detail"
+        ]
 
     if api_call_side_effects["lock_return_activities"]:
         api_instance.lock_return_activities.side_effect = api_call_side_effects[

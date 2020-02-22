@@ -14,10 +14,7 @@ SCAN_INTERVAL = MIN_TIME_BETWEEN_DETAIL_UPDATES
 async def _async_retrieve_battery_state(data, doorbell):
     """Get the latest state of the sensor."""
     detail = await data.async_get_doorbell_detail(doorbell.device_id)
-    import pprint
 
-    pprint.pprint(detail)
-    pprint.pprint(detail.battery_level)
     if detail is None:
         return None
 

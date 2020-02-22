@@ -20,5 +20,5 @@ async def test_create_doorbell(hass):
     sensor_k98gidt45gul_name_battery = hass.states.get(
         "sensor.k98gidt45gul_name_battery"
     )
-    assert sensor_k98gidt45gul_name_battery.state == 88
-    assert sensor_k98gidt45gul_name_battery.attributes.unit_of_measure == "%"
+    assert sensor_k98gidt45gul_name_battery.state == "96"
+    assert sensor_k98gidt45gul_name_battery.attributes["unit_of_measurement"] == "%"
