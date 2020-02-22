@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 import logging
 
 from august.activity import ActivityType
-from august.bridge import BridgeStatus
 from august.lock import LockDoorStatus
 from august.util import update_lock_detail_from_activity
 
@@ -148,17 +147,12 @@ class AugustDoorBinarySensor(AugustBinarySensor):
             update_lock_detail_from_activity(detail, door_activity)
 
         lock_door_state = None
+        self._available = False
         if detail is not None:
             lock_door_state = detail.door_state
+            self._available = detail.bridge_is_online
 
         self._state = lock_door_state == LockDoorStatus.OPEN
-
-        self._available = (
-            detail is not None
-            and detail.bridge is not None
-            and detail.bridge.status is not None
-            and detail.bridge.status.current == BridgeStatus.ONLINE
-        )
 
     @property
     def unique_id(self) -> str:

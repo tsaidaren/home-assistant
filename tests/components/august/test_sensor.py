@@ -12,11 +12,6 @@ async def test_create_doorbell(hass):
     doorbell_details = [doorbell_one]
     await _create_august_with_devices(hass, doorbell_details=doorbell_details)
 
-    import pprint
-    from homeassistant.helpers.json import JSONEncoder
-    import json
-
-    pprint.pprint(json.dumps(hass.states.async_all(), cls=JSONEncoder))
     sensor_k98gidt45gul_name_battery = hass.states.get(
         "sensor.k98gidt45gul_name_battery"
     )
@@ -30,11 +25,18 @@ async def test_create_doorbell_offline(hass):
     doorbell_details = [doorbell_one]
     await _create_august_with_devices(hass, doorbell_details=doorbell_details)
 
-    import pprint
-    from homeassistant.helpers.json import JSONEncoder
-    import json
-
-    pprint.pprint(json.dumps(hass.states.async_all(), cls=JSONEncoder))
     sensor_tmt100_name_battery = hass.states.get("sensor.tmt100_name_battery")
     assert sensor_tmt100_name_battery.state == "81"
     assert sensor_tmt100_name_battery.attributes["unit_of_measurement"] == "%"
+
+
+async def test_create_doorbell_hardwired(hass):
+    """Test creation of a doorbell that is hardwired without a battery."""
+    doorbell_one = await _mock_doorbell_from_fixture(
+        hass, "get_doorbell.nobattery.json"
+    )
+    doorbell_details = [doorbell_one]
+    await _create_august_with_devices(hass, doorbell_details=doorbell_details)
+
+    sensor_tmt100_name_battery = hass.states.get("sensor.tmt100_name_battery")
+    assert sensor_tmt100_name_battery is None
