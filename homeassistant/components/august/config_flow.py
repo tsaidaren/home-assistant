@@ -44,71 +44,48 @@ async def _async_close_http_session(hass, http_session):
         pass
 
 
-async def validate_input(hass: core.HomeAssistant, data):
+async def validate_input(
+    hass: core.HomeAssistant, data, authenticator, access_token_cache_file
+):
     """Validate the user input allows us to connect.
 
     Data has the keys from DATA_SCHEMA with values provided by the user.
     """
     """Request configuration steps from the user."""
-    api_http_session = Session()
-    api = Api(timeout=data.get(CONF_TIMEOUT), http_session=api_http_session)
 
-    username = data.get(CONF_USERNAME)
-    access_token_cache_file = data.get(CONF_ACCESS_TOKEN_CACHE_FILE)
-    if access_token_cache_file is None:
-        access_token_cache_file = "." + username + AUGUST_CONFIG_FILE
+    code = data.get("code")
 
-    authenticator = Authenticator(
-        api,
-        data.get(CONF_LOGIN_METHOD),
-        username,
-        data.get(CONF_PASSWORD),
-        install_id=data.get(CONF_INSTALL_ID),
-        access_token_cache_file=hass.config.path(access_token_cache_file),
-    )
+    if code is not None:
+        result = await hass.async_add_executor_job(
+            authenticator.validate_verification_code, code
+        )
+        _LOGGER.debug("Verification code validation: %s", result)
+        if result != ValidationResult.VALIDATED:
+            raise RequireValidation
 
     authentication = None
     try:
         authentication = await hass.async_add_executor_job(authenticator.authenticate)
     except RequestException as ex:
         _LOGGER.error("Unable to connect to August service: %s", str(ex))
-        await _async_close_http_session(hass, api_http_session)
         raise CannotConnect
 
     state = authentication.state
 
     if state == AuthenticationState.BAD_PASSWORD:
-        await _async_close_http_session(hass, api_http_session)
         raise InvalidAuth
 
     if state == AuthenticationState.REQUIRES_VALIDATION:
-        code = data.get("code")
-        result = None
-
-        if code:
-            result = await hass.async_add_executor_job(
-                authenticator.validate_verification_code, code
-            )
-            _LOGGER.debug("Verification code validation: %s", result)
-            if result != ValidationResult.VALIDATED:
-                raise RequireValidation
-
-            # we have to call authenticate again to write the token
-            authentication = await hass.async_add_executor_job(
-                authenticator.authenticate
-            )
-        else:
-            _LOGGER.debug(
-                "Requesting new verification code for %s via %s",
-                data.get(CONF_USERNAME),
-                data.get(CONF_LOGIN_METHOD),
-            )
-            await hass.async_add_executor_job(authenticator.send_verification_code)
-            await _async_close_http_session(hass, api_http_session)
-            raise RequireValidation
+        _LOGGER.debug(
+            "Requesting new verification code for %s via %s",
+            data.get(CONF_USERNAME),
+            data.get(CONF_LOGIN_METHOD),
+        )
+        await hass.async_add_executor_job(authenticator.send_verification_code)
+        raise RequireValidation
 
     return {
-        "title": username,
+        "title": data.get(CONF_USERNAME),
         "data": {
             CONF_LOGIN_METHOD: data.get(CONF_LOGIN_METHOD),
             CONF_USERNAME: data.get(CONF_USERNAME),
@@ -138,8 +115,16 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle the initial step."""
         errors = {}
         if user_input is not None:
+            self._setup_authenticator(user_input)
+
             try:
-                info = await validate_input(self.hass, user_input)
+                info = await validate_input(
+                    self.hass,
+                    user_input,
+                    self._authenticator,
+                    self._access_token_cache_file,
+                )
+                await _async_close_http_session(self.hass, self._http_session)
                 await self.async_set_unique_id(user_input[CONF_USERNAME])
                 return self.async_create_entry(title=info["title"], data=info["data"])
             except CannotConnect:
@@ -157,6 +142,28 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="user", data_schema=DATA_SCHEMA, errors=errors
         )
+
+    def _setup_authenticator(self, user_input):
+        if self._api_http_session is None:
+            self._api_http_session = Session()
+        if not user_input.get("code"):
+            self.api = Api(
+                timeout=user_input.get(CONF_TIMEOUT), http_session=self.api_http_session
+            )
+            username = user_input.get(CONF_USERNAME)
+            access_token_cache_file = user_input.get(CONF_ACCESS_TOKEN_CACHE_FILE)
+            if access_token_cache_file is None:
+                access_token_cache_file = "." + username + AUGUST_CONFIG_FILE
+            self._access_token_cache_file = access_token_cache_file
+            self._authenticator = Authenticator(
+                self.api,
+                user_input.get(CONF_LOGIN_METHOD),
+                username,
+                user_input.get(CONF_PASSWORD),
+                install_id=user_input.get(CONF_INSTALL_ID),
+                access_token_cache_file=self.hass.config.path(access_token_cache_file),
+            )
+        return
 
     async def async_step_validation(self, user_input=None):
         """Handle validation (2fa) step."""
