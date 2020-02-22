@@ -6,7 +6,12 @@ from august.activity import ActivityType
 from august.lock import LockDoorStatus
 from august.util import update_lock_detail_from_activity
 
-from homeassistant.components.binary_sensor import BinarySensorDevice
+from homeassistant.components.binary_sensor import (
+    DEVICE_CLASS_CONNECTIVITY,
+    DEVICE_CLASS_MOTION,
+    DEVICE_CLASS_OCCUPANCY,
+    BinarySensorDevice,
+)
 
 from . import DATA_AUGUST, find_linked_doorsense_unique_id
 
@@ -57,9 +62,13 @@ SENSOR_STATE_PROVIDER = 2
 
 # sensor_type: [name, device_class, async_state_provider]
 SENSOR_TYPES_DOORBELL = {
-    "doorbell_ding": ["Ding", "occupancy", _async_retrieve_ding_state],
-    "doorbell_motion": ["Motion", "motion", _async_retrieve_motion_state],
-    "doorbell_online": ["Online", "connectivity", _async_retrieve_online_state],
+    "doorbell_ding": ["Ding", DEVICE_CLASS_OCCUPANCY, _async_retrieve_ding_state],
+    "doorbell_motion": ["Motion", DEVICE_CLASS_MOTION, _async_retrieve_motion_state],
+    "doorbell_online": [
+        "Online",
+        DEVICE_CLASS_CONNECTIVITY,
+        _async_retrieve_online_state,
+    ],
 }
 
 
@@ -189,7 +198,7 @@ class AugustDoorbellBinarySensor(BinarySensorDevice):
         # The doorbell will go into standby mode when there is no motion
         # for a short while. It will wake by itself when needed so we need
         # to consider is available or we will not report motion or dings
-        self._available = self._doorbell.is_online or self._doorbell.status == "standby"
+        self._available = self._doorbell.is_online or self._doorbell.is_standby
 
     @property
     def unique_id(self) -> str:
