@@ -123,7 +123,7 @@ async def validate_input(hass: core.HomeAssistant, data):
     }
 
 
-class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for August."""
 
     VERSION = 1
