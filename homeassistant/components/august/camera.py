@@ -3,7 +3,6 @@ from datetime import timedelta
 
 from august.activity import ActivityType
 from august.util import update_doorbell_image_from_activity
-import requests
 
 from homeassistant.components.camera import Camera
 
@@ -84,9 +83,8 @@ class AugustCamera(Camera):
         return self._image_content
 
     def _camera_image(self):
-        """Return bytes of camera image via http get."""
-        # Move this to py-august: see issue#32048
-        return requests.get(self._image_url, timeout=self._timeout).content
+        """Return bytes of camera image."""
+        return self._doorbell_detail.get_camera_image(timeout=self._timeout)
 
     @property
     def unique_id(self) -> str:
