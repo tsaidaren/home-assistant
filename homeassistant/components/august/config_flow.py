@@ -1,9 +1,8 @@
 """Config flow for August integration."""
 import logging
 
-# , ValidationResult
 from august.api import Api
-from august.authenticator import AuthenticationState, Authenticator
+from august.authenticator import AuthenticationState, Authenticator, ValidationResult
 from requests import RequestException, Session
 import voluptuous as vol
 
@@ -38,32 +37,26 @@ DATA_SCHEMA = vol.Schema(
 )
 
 
+async def _async_close_http_session(hass, http_session):
+    try:
+        await hass.async_add_executor_job(http_session.close)
+    except RequestException:
+        pass
+
+
 async def validate_input(hass: core.HomeAssistant, data):
     """Validate the user input allows us to connect.
 
     Data has the keys from DATA_SCHEMA with values provided by the user.
     """
     """Request configuration steps from the user."""
-
-    # def august_configuration_callback(data):
-    # """Run when the configuration callback is called."""
-
-    # result = authenticator.validate_verification_code(data.get("verification_code"))
-
-    # if result == ValidationResult.INVALID_VERIFICATION_CODE:
-    # configurator.notify_errors(
-    # _CONFIGURING[DOMAIN], "Invalid verification code"
-    # )
-    # elif result == ValidationResult.VALIDATED:
-    # setup_august(hass, config, api, authenticator, token_refresh_lock)
-
     api_http_session = Session()
     api = Api(timeout=data.get(CONF_TIMEOUT), http_session=api_http_session)
 
     username = data.get(CONF_USERNAME)
     access_token_cache_file = data.get(CONF_ACCESS_TOKEN_CACHE_FILE)
     if access_token_cache_file is None:
-        access_token_cache_file = username + "." + AUGUST_CONFIG_FILE
+        access_token_cache_file = "." + username + AUGUST_CONFIG_FILE
 
     authenticator = Authenticator(
         api,
@@ -79,35 +72,38 @@ async def validate_input(hass: core.HomeAssistant, data):
         authentication = await hass.async_add_executor_job(authenticator.authenticate)
     except RequestException as ex:
         _LOGGER.error("Unable to connect to August service: %s", str(ex))
+        await _async_close_http_session(hass, api_http_session)
         raise CannotConnect
 
     state = authentication.state
 
     if state == AuthenticationState.BAD_PASSWORD:
-        authenticator.send_verification_code()
+        await _async_close_http_session(hass, api_http_session)
         raise InvalidAuth
 
-    # if state == AuthenticationState.AUTHENTICATED:
-    #    return True
-    #
     if state == AuthenticationState.REQUIRES_VALIDATION:
-        raise RequireValidation
-    #    # ok ?
+        code = data.get("code")
+        result = None
 
-    # if DOMAIN not in _CONFIGURING:
+        if code:
+            result = await hass.async_add_executor_job(
+                authenticator.validate_verification_code, code
+            )
+            _LOGGER.debug("Verification code validation: %s", result)
+            if result == ValidationResult.VALIDATED:
+                # we have to call authenticate again to write the token
+                await hass.async_add_executor_job(authenticator.authenticate)
 
-    # _CONFIGURING[DOMAIN] = configurator.request_config(
-    #    NOTIFICATION_TITLE,
-    #    august_configuration_callback,
-    #    description="Please check your {} ({}) and enter the verification "
-    #    "code below".format(login_method, username),
-    #    submit_caption="Verify",
-    #    fields=[
-    #        {"id": "verification_code", "name": "Verification code", "type": "string"}
-    #    ],
-    # )
+        if result != ValidationResult.VALIDATED:
+            _LOGGER.debug(
+                "Requesting new verification code for %s via %s",
+                data.get(CONF_USERNAME),
+                data.get(CONF_LOGIN_METHOD),
+            )
+            authenticator.send_verification_code()
+            await _async_close_http_session(hass, api_http_session)
+            raise RequireValidation
 
-    # Return info that you want to store in the config entry.
     return {
         "title": username,
         "data": {
@@ -148,7 +144,7 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except InvalidAuth:
                 errors["base"] = "invalid_auth"
             except RequireValidation:
-                self.user_config = user_input
+                self.user_auth_details = user_input
 
                 return await self.async_step_validation()
             except Exception:  # pylint: disable=broad-except
@@ -162,14 +158,14 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_validation(self, user_input=None):
         """Handle validation (2fa) step."""
         if user_input:
-            return await self.async_step_user({**self.user_pass, **user_input})
+            return await self.async_step_user({**self.user_auth_details, **user_input})
 
         return self.async_show_form(
             step_id="validation",
             data_schema=vol.Schema({vol.Required("code"): vol.All(str, vol.Strip)}),
             description_placeholders={
-                CONF_USERNAME: self.user_config.get(CONF_USERNAME),
-                CONF_LOGIN_METHOD: self.user_config.get(CONF_LOGIN_METHOD),
+                CONF_USERNAME: self.user_auth_details.get(CONF_USERNAME),
+                CONF_LOGIN_METHOD: self.user_auth_details.get(CONF_LOGIN_METHOD),
             },
         )
 

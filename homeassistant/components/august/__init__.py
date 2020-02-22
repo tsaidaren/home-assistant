@@ -4,9 +4,8 @@ from datetime import timedelta
 from functools import partial
 import logging
 
-# , ValidationResult
 from august.api import Api, AugustApiHTTPError
-from august.authenticator import AuthenticationState, Authenticator
+from august.authenticator import AuthenticationState, Authenticator, ValidationResult
 from august.doorbell import Doorbell
 from august.lock import Lock
 from requests import RequestException, Session
@@ -31,11 +30,14 @@ CONF_LOGIN_METHOD = "login_method"
 CONF_INSTALL_ID = "install_id"
 
 NOTIFICATION_ID = "august_notification"
-NOTIFICATION_TITLE = "August Setup"
+NOTIFICATION_TITLE = "August"
 
 AUGUST_CONFIG_FILE = ".august.conf"
 
 DOMAIN = "august"
+
+_CONFIGURING = {}
+
 
 # Limit battery, online, and hardware updates to 1800 seconds
 # in order to reduce the number of api requests and
@@ -69,64 +71,65 @@ CONFIG_SCHEMA = vol.Schema(
 PLATFORMS = ["camera", "binary_sensor", "sensor", "lock"]
 
 
-# def request_configuration(hass, config, api, authenticator, token_refresh_lock):
-#    """Request configuration steps from the user."""
-#    configurator = hass.components.configurator
-#
-#    def august_configuration_callback(data):
-#        """Run when the configuration callback is called."""
-#
-#        result = authenticator.validate_verification_code(data.get("verification_code"))
-#
-#        if result == ValidationResult.INVALID_VERIFICATION_CODE:
-#            configurator.notify_errors(
-#                _CONFIGURING[DOMAIN], "Invalid verification code"
-#            )
-#        elif result == ValidationResult.VALIDATED:
-#            setup_august(hass, config, api, authenticator, token_refresh_lock)
-#
-#    if DOMAIN not in _CONFIGURING:
-#        authenticator.send_verification_code()
-#
-#    conf = config[DOMAIN]
-#    username = conf.get(CONF_USERNAME)
-#    login_method = conf.get(CONF_LOGIN_METHOD)
-#
-#    _CONFIGURING[DOMAIN] = configurator.request_config(
-#        NOTIFICATION_TITLE,
-#        august_configuration_callback,
-#        description="Please check your {} ({}) and enter the verification "
-#        "code below".format(login_method, username),
-#        submit_caption="Verify",
-#        fields=[
-#            {"id": "verification_code", "name": "Verification code", "type": "string"}
-#        ],
-#    )
+def request_configuration(
+    hass, config_entry, api, authenticator, token_refresh_lock, api_http_session
+):
+    """Request a new verification code from the user."""
+    configurator = hass.components.configurator
+    entry_id = config_entry.entry_id
+
+    def august_configuration_validation_callback(data):
+        result = authenticator.validate_verification_code(data.get("verification_code"))
+
+        if result == ValidationResult.INVALID_VERIFICATION_CODE:
+            configurator.notify_errors(
+                _CONFIGURING[entry_id], "Invalid verification code"
+            )
+        elif result == ValidationResult.VALIDATED:
+            setup_august(
+                hass,
+                config_entry,
+                api,
+                authenticator,
+                token_refresh_lock,
+                api_http_session,
+            )
+
+    _LOGGER.error("Access token is no longer valid.")
+    if entry_id not in _CONFIGURING:
+        authenticator.send_verification_code()
+
+    entry_data = config_entry.data
+    login_method = entry_data.get(CONF_LOGIN_METHOD)
+    username = entry_data.get(CONF_USERNAME)
+
+    _CONFIGURING[entry_id] = configurator.request_config(
+        NOTIFICATION_TITLE + " (" + username + ")",
+        august_configuration_validation_callback,
+        description="August must be re-verified. Please check your {} ({}) and enter the verification "
+        "code below".format(login_method, username),
+        submit_caption="Verify",
+        fields=[
+            {"id": "verification_code", "name": "Verification code", "type": "string"}
+        ],
+    )
+    return
 
 
 def setup_august(
     hass, config_entry, api, authenticator, token_refresh_lock, api_http_session
 ):
     """Set up the August component."""
-
     authentication = None
     try:
         authentication = authenticator.authenticate()
     except RequestException as ex:
         _LOGGER.error("Unable to connect to August service: %s", str(ex))
 
-        hass.components.persistent_notification.create(
-            "Error: {}<br />"
-            "You will need to restart hass after fixing."
-            "".format(ex),
-            title=NOTIFICATION_TITLE,
-            notification_id=NOTIFICATION_ID,
-        )
-
     state = authentication.state
 
     if state == AuthenticationState.AUTHENTICATED:
-        hass.data[DOMAIN][config_entry] = AugustData(
+        hass.data[DOMAIN][config_entry.entry_id] = AugustData(
             hass,
             api,
             authentication,
@@ -134,15 +137,14 @@ def setup_august(
             token_refresh_lock,
             api_http_session,
         )
-
         return True
+
     if state == AuthenticationState.BAD_PASSWORD:
-        _LOGGER.error("Invalid password provided")
-        return False
+        _LOGGER.error("Password is no longer valid. Please set up August again")
     if state == AuthenticationState.REQUIRES_VALIDATION:
-        _LOGGER.error("Requires Validation")
-        # request_configuration(hass, config, api, authenticator, token_refresh_lock)
-        return False
+        request_configuration(
+            hass, config_entry, api, authenticator, token_refresh_lock, api_http_session
+        )
 
     return False
 
@@ -203,7 +205,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     setup_ok = await hass.async_add_executor_job(
         setup_august,
         hass,
-        entry.entry_id,
+        entry,
         api,
         authenticator,
         token_refresh_lock,
@@ -231,6 +233,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
             ]
         )
     )
+
+    # FIXME: close_http_session doesn't seem to happen now
 
     if unload_ok:
         hass.data[DOMAIN][entry.entry_id].close_http_session()
