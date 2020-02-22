@@ -121,7 +121,8 @@ class AugustLock(LockDevice):
     @property
     def is_locked(self):
         """Return true if device is on."""
-
+        if self._lock_status is None or self._lock_status is LockStatus.UNKNOWN:
+            return None
         return self._lock_status is LockStatus.LOCKED
 
     @property
