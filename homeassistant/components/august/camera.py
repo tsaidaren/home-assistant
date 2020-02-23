@@ -1,8 +1,7 @@
 """Support for August camera."""
 from datetime import timedelta
 
-from august.activity import ActivityType
-from august.util import update_doorbell_image_from_activity
+import requests
 
 from homeassistant.components.camera import Camera
 
@@ -78,22 +77,16 @@ class AugustCamera(Camera):
         self._doorbell_detail = await self._data.async_get_doorbell_detail(
             self._doorbell.device_id
         )
-        doorbell_activity = await self._data.async_get_latest_device_activity(
-            self._doorbell.device_id, ActivityType.DOORBELL_MOTION
-        )
 
         if self._doorbell_detail is None:
             return None
 
-        if doorbell_activity is not None:
-            update_doorbell_image_from_activity(
-                self._doorbell_detail, doorbell_activity
-            )
         self._firmware_version = self._doorbell_detail.firmware_version
 
     def _camera_image(self):
-        """Return bytes of camera image."""
-        return self._doorbell_detail.get_doorbell_image(timeout=self._timeout)
+        """Return bytes of camera image via http get."""
+        # Move this to py-august: see issue#32048
+        return requests.get(self._image_url, timeout=self._timeout).content
 
     @property
     def unique_id(self) -> str:
