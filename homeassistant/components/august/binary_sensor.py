@@ -13,7 +13,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorDevice,
 )
 
-from . import DATA_AUGUST, find_linked_doorsense_unique_id
+from . import DATA_AUGUST
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -157,7 +157,7 @@ class AugustDoorBinarySensor(AugustBinarySensor):
     @property
     def unique_id(self) -> str:
         """Get the unique of the door open binary sensor."""
-        return find_linked_doorsense_unique_id(self._door.device_id)
+        return f"{self._door.device_id}_open"
 
 
 class AugustDoorbellBinarySensor(AugustBinarySensor):
