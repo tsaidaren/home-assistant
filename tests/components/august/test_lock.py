@@ -59,12 +59,6 @@ async def test_one_lock_unknown_state(hass):
     lock_details = [lock_one]
     await _create_august_with_devices(hass, lock_details)
 
-    import pprint
-    from homeassistant.helpers.json import JSONEncoder
-    import json
-
-    pprint.pprint(json.dumps(hass.states.async_all(), cls=JSONEncoder))
-
     lock_brokenid_name = hass.states.get("lock.brokenid_name")
 
     assert lock_brokenid_name.state == STATE_UNKNOWN

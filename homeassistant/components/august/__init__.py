@@ -36,6 +36,7 @@ NOTIFICATION_TITLE = "August"
 
 AUGUST_CONFIG_FILE = ".august.conf"
 
+DEFAULT_NAME = "August"
 DOMAIN = "august"
 
 _CONFIGURING = {}
@@ -70,7 +71,7 @@ CONFIG_SCHEMA = vol.Schema(
     extra=vol.ALLOW_EXTRA,
 )
 
-PLATFORMS = ["camera", "binary_sensor", "sensor", "lock"]
+AUGUST_COMPONENTS = ["camera", "binary_sensor", "lock", "sensor"]
 
 
 async def async_request_configuration(hass, config_entry, august_connection):
@@ -154,7 +155,7 @@ async def async_setup_august(hass, config_entry, august_connection):
         AugustData, hass, august_connection, authentication, token_refresh_lock,
     )
 
-    for component in PLATFORMS:
+    for component in AUGUST_COMPONENTS:
         hass.async_create_task(
             hass.config_entries.async_forward_entry_setup(config_entry, component)
         )
@@ -205,7 +206,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
         await asyncio.gather(
             *[
                 hass.config_entries.async_forward_entry_unload(entry, component)
-                for component in PLATFORMS
+                for component in AUGUST_COMPONENTS
             ]
         )
     )
@@ -280,7 +281,6 @@ class AugustConnection:
 
     def close_http_session(self):
         """Close API sessions used to connect to August."""
-        _LOGGER.debug("Closing August HTTP sessions")
         if self._api_http_session:
             try:
                 self._api_http_session.close()
@@ -320,9 +320,8 @@ class AugustData:
         # We check the locks right away so we can
         # remove inoperative ones
         self._update_locks_detail()
-        self._filter_inoperative_locks()
-
         self._update_doorbells_detail()
+        self._filter_inoperative_locks()
 
     @property
     def house_ids(self):
@@ -398,6 +397,14 @@ class AugustData:
                 ]
 
         _LOGGER.debug("Completed retrieving device activities")
+
+    async def async_get_device_detail(self, device):
+        """Return the detail for a device."""
+        if isinstance(device, Lock):
+            return await self.async_get_lock_detail(device.device_id)
+        if isinstance(device, Doorbell):
+            return await self.async_get_doorbell_detail(device.device_id)
+        raise ValueError
 
     async def async_get_doorbell_detail(self, device_id):
         """Return doorbell detail."""
@@ -523,12 +530,3 @@ def _call_api_operation_that_requires_bridge(
         raise HomeAssistantError(device_name + ": " + str(err))
 
     return ret
-
-
-async def async_detail_provider(data, device):
-    """Return the py-august detail for a device."""
-    if isinstance(device, Lock):
-        return await data.async_get_lock_detail(device.device_id)
-    if isinstance(device, Doorbell):
-        return await data.async_get_doorbell_detail(device.device_id)
-    raise ValueError
