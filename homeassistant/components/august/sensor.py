@@ -86,19 +86,21 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
             ]
             detail = await data.async_get_device_detail(device)
             state = await async_state_provider(detail)
+            sensor_name = SENSOR_TYPES_BATTERY[sensor_type][SENSOR_NAME]
+            device_class = SENSOR_TYPES_BATTERY[sensor_type][SENSOR_DEVICE_CLASS]
             if state is None:
                 _LOGGER.debug(
                     "Not adding battery sensor class %s for %s %s because it is not present",
-                    SENSOR_TYPES_BATTERY[sensor_type][SENSOR_DEVICE_CLASS],
+                    device_class,
                     device.device_name,
-                    SENSOR_TYPES_BATTERY[sensor_type][SENSOR_NAME],
+                    sensor_name,
                 )
             else:
                 _LOGGER.debug(
                     "Adding battery sensor class %s for %s %s",
-                    SENSOR_TYPES_BATTERY[sensor_type][SENSOR_DEVICE_CLASS],
+                    device_class,
                     device.device_name,
-                    SENSOR_TYPES_BATTERY[sensor_type][SENSOR_NAME],
+                    sensor_name,
                 )
                 devices.append(AugustBatterySensor(data, sensor_type, device))
 
