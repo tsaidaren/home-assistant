@@ -525,11 +525,6 @@ def _call_api_operation_that_requires_bridge(
     return ret
 
 
-def find_linked_doorsense_unique_id(device_id):
-    """Find the unique_id assigned to doorsense sensor from the august device_id."""
-    return f"{device_id}_open"
-
-
 async def async_detail_provider(data, device):
     """Return the py-august detail for a device."""
     if isinstance(device, Lock):
