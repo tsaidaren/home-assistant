@@ -115,7 +115,6 @@ class AugustBatterySensor(Entity):
         self._device = device
         self._state = None
         self._available = False
-        self._model = None
         self._firmware_version = None
 
     @property
@@ -156,7 +155,6 @@ class AugustBatterySensor(Entity):
         self._available = self._state is not None
         if detail is not None:
             self._firmware_version = detail.firmware_version
-            self._model = detail.model
 
     @property
     def unique_id(self) -> str:
@@ -173,6 +171,5 @@ class AugustBatterySensor(Entity):
             "identifiers": {(DOMAIN, self._device.device_id)},
             "name": self._device.device_name,
             "manufacturer": DEFAULT_NAME,
-            "model": self._model,
             "sw_version": self._firmware_version,
         }

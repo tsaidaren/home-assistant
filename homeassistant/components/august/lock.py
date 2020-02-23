@@ -40,7 +40,6 @@ class AugustLock(LockDevice):
         self._changed_by = None
         self._available = False
         self._firmware_version = None
-        self._model = None
 
     async def async_lock(self, **kwargs):
         """Lock the device."""
@@ -88,7 +87,6 @@ class AugustLock(LockDevice):
 
         if self._lock_detail is not None:
             self._firmware_version = self._lock_detail.firmware_version
-            self._model = self._lock_detail.model
 
         self._update_lock_status_from_detail()
 
@@ -134,7 +132,6 @@ class AugustLock(LockDevice):
             "identifiers": {(DOMAIN, self._lock.device_id)},
             "name": self._lock.device_name,
             "manufacturer": DEFAULT_NAME,
-            "model": self._model,
             "sw_version": self._firmware_version,
         }
 

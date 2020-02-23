@@ -124,7 +124,6 @@ class AugustDoorBinarySensor(AugustBinarySensor):
         self._door = door
         self._state = None
         self._available = False
-        self._model = None
         self._firmware_version = None
 
     @property
@@ -152,7 +151,6 @@ class AugustDoorBinarySensor(AugustBinarySensor):
         if detail is not None:
             lock_door_state = detail.door_state
             self._firmware_version = detail.firmware_version
-            self._model = detail.model
             self._available = detail.bridge_is_online
 
         self._state = lock_door_state == LockDoorStatus.OPEN
@@ -169,7 +167,6 @@ class AugustDoorBinarySensor(AugustBinarySensor):
             "identifiers": {(DOMAIN, self._door.device_id)},
             "name": self._door.device_name,
             "manufacturer": DEFAULT_NAME,
-            "model": self._model,
             "sw_version": self._firmware_version,
         }
 
@@ -184,7 +181,6 @@ class AugustDoorbellBinarySensor(AugustBinarySensor):
         self._doorbell = doorbell
         self._state = None
         self._available = False
-        self._model = None
         self._firmware_version = None
 
     @property
@@ -235,6 +231,5 @@ class AugustDoorbellBinarySensor(AugustBinarySensor):
             "identifiers": {(DOMAIN, self._doorbell.device_id)},
             "name": self._doorbell.device_name,
             "manufacturer": "August",
-            "model": self._model,
             "sw_version": self._firmware_version,
         }
