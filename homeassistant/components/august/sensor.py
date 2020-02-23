@@ -1,14 +1,15 @@
 """Support for August sensors."""
+from datetime import timedelta
 import logging
 
 from homeassistant.components.sensor import DEVICE_CLASS_BATTERY
 from homeassistant.helpers.entity import Entity
 
-from . import DEFAULT_NAME, DOMAIN, MIN_TIME_BETWEEN_DETAIL_UPDATES
+from . import DATA_AUGUST, DEFAULT_NAME, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = MIN_TIME_BETWEEN_DETAIL_UPDATES
+SCAN_INTERVAL = timedelta(seconds=5)
 
 
 async def _async_retrieve_device_battery_state(detail):
@@ -63,9 +64,9 @@ SENSOR_TYPES_BATTERY = {
 }
 
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the August sensors."""
-    data = hass.data[DOMAIN][config_entry.entry_id]
+    data = hass.data[DATA_AUGUST]
     devices = []
 
     batteries = {

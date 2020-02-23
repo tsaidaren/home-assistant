@@ -9,16 +9,16 @@ from august.util import update_lock_detail_from_activity
 from homeassistant.components.lock import LockDevice
 from homeassistant.const import ATTR_BATTERY_LEVEL
 
-from . import DEFAULT_NAME, DOMAIN
+from . import DATA_AUGUST, DEFAULT_NAME, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(seconds=5)
 
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up August locks."""
-    data = hass.data[DOMAIN][config_entry.entry_id]
+    data = hass.data[DATA_AUGUST]
     devices = []
 
     for lock in data.locks:
