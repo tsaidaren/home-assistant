@@ -1,23 +1,20 @@
 """Config flow for August integration."""
 import logging
 
-from august.api import Api
-from august.authenticator import AuthenticationState, Authenticator, ValidationResult
-from requests import RequestException, Session
+from august.authenticator import AuthenticationState, ValidationResult
+from requests import RequestException
 import voluptuous as vol
 
 from homeassistant import config_entries, core, exceptions
 
 from . import (
-    AUGUST_CONFIG_FILE,
-    CONF_ACCESS_TOKEN_CACHE_FILE,
-    CONF_INSTALL_ID,
     CONF_LOGIN_METHOD,
     CONF_PASSWORD,
     CONF_TIMEOUT,
     CONF_USERNAME,
     DEFAULT_TIMEOUT,
     VALIDATION_CODE_KEY,
+    AugustConnection,
 )
 from . import DOMAIN  # pylint:disable=unused-import
 
@@ -143,82 +140,6 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._abort_if_unique_id_configured()
 
         return await self.async_step_user(user_input)
-
-
-class AugustConnection:
-    """Handle the connection to August."""
-
-    def __init__(self):
-        """Init the connection."""
-        self._api_http_session = Session()
-
-    @property
-    def authenticator(self):
-        """August authentication object from py-august."""
-        return self._authenticator
-
-    @property
-    def api(self):
-        """August api object from py-august."""
-        return self._api
-
-    @property
-    def access_token_cache_file(self):
-        """Basename of the access token cache file."""
-        return self._access_token_cache_file
-
-    def config_entry(self):
-        """Config entry."""
-        return {
-            CONF_LOGIN_METHOD: self._login_method,
-            CONF_USERNAME: self._username,
-            CONF_PASSWORD: self._password,
-            CONF_INSTALL_ID: self._install_id,
-            CONF_TIMEOUT: self._timeout,
-            CONF_ACCESS_TOKEN_CACHE_FILE: self._access_token_cache_file,
-        }
-
-    def setup(self, hass, conf):
-        """Create the api and authenticator objects."""
-        if not conf.get(VALIDATION_CODE_KEY):
-            self._login_method = conf.get(CONF_LOGIN_METHOD)
-            self._username = conf.get(CONF_USERNAME)
-            self._password = conf.get(CONF_PASSWORD)
-            self._install_id = conf.get(CONF_INSTALL_ID)
-            self._timeout = conf.get(CONF_TIMEOUT)
-
-            self._access_token_cache_file = conf.get(CONF_ACCESS_TOKEN_CACHE_FILE)
-            if self._access_token_cache_file is None:
-                self._access_token_cache_file = (
-                    "." + self._username + AUGUST_CONFIG_FILE
-                )
-
-            self._api = Api(timeout=self._timeout, http_session=self._api_http_session,)
-
-            self._authenticator = Authenticator(
-                self._api,
-                self._login_method,
-                self._username,
-                self._password,
-                install_id=self._install_id,
-                access_token_cache_file=self.hass.config.path(
-                    self._access_token_cache_file
-                ),
-            )
-
-    def close_http_session(self):
-        """Close API sessions used to connect to August."""
-        _LOGGER.debug("Closing August HTTP sessions")
-        if self._api_http_session:
-            try:
-                self._api_http_session.close()
-            except RequestException:
-                pass
-
-    def __del__(self):
-        """Close out the http session on destroy."""
-        self.close_http_session()
-        return
 
 
 class RequireValidation(exceptions.HomeAssistantError):
