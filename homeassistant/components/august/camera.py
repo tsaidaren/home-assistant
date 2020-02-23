@@ -5,7 +5,7 @@ import requests
 
 from homeassistant.components.camera import Camera
 
-from . import DATA_AUGUST, DEFAULT_NAME, DEFAULT_TIMEOUT, DOMAIN
+from . import DATA_AUGUST, DEFAULT_NAME, DEFAULT_TIMEOUT
 
 SCAN_INTERVAL = timedelta(seconds=5)
 
@@ -92,13 +92,3 @@ class AugustCamera(Camera):
     def unique_id(self) -> str:
         """Get the unique id of the camera."""
         return f"{self._doorbell.device_id:s}_camera"
-
-    @property
-    def device_info(self):
-        """Return the device_info of the device."""
-        return {
-            "identifiers": {(DOMAIN, self._doorbell.device_id)},
-            "name": self._doorbell.device_name + " Camera",
-            "manufacturer": DEFAULT_NAME,
-            "sw_version": self._firmware_version,
-        }

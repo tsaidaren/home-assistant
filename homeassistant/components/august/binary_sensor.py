@@ -13,7 +13,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorDevice,
 )
 
-from . import DATA_AUGUST, DEFAULT_NAME, DOMAIN
+from . import DATA_AUGUST
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -160,16 +160,6 @@ class AugustDoorBinarySensor(AugustBinarySensor):
         """Get the unique of the door open binary sensor."""
         return f"{self._door.device_id}_open"
 
-    @property
-    def device_info(self):
-        """Return the device_info of the device."""
-        return {
-            "identifiers": {(DOMAIN, self._door.device_id)},
-            "name": self._door.device_name,
-            "manufacturer": DEFAULT_NAME,
-            "sw_version": self._firmware_version,
-        }
-
 
 class AugustDoorbellBinarySensor(AugustBinarySensor):
     """Representation of an August binary sensor."""
@@ -223,13 +213,3 @@ class AugustDoorbellBinarySensor(AugustBinarySensor):
             self._doorbell.device_id,
             SENSOR_TYPES_DOORBELL[self._sensor_type][SENSOR_NAME].lower(),
         )
-
-    @property
-    def device_info(self):
-        """Return the device_info of the device."""
-        return {
-            "identifiers": {(DOMAIN, self._doorbell.device_id)},
-            "name": self._doorbell.device_name,
-            "manufacturer": "August",
-            "sw_version": self._firmware_version,
-        }

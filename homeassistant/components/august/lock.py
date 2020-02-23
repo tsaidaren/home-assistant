@@ -9,7 +9,7 @@ from august.util import update_lock_detail_from_activity
 from homeassistant.components.lock import LockDevice
 from homeassistant.const import ATTR_BATTERY_LEVEL
 
-from . import DATA_AUGUST, DEFAULT_NAME, DOMAIN
+from . import DATA_AUGUST
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -124,16 +124,6 @@ class AugustLock(LockDevice):
             attributes["keypad_battery_level"] = self._lock_detail.keypad.battery_level
 
         return attributes
-
-    @property
-    def device_info(self):
-        """Return the device_info of the device."""
-        return {
-            "identifiers": {(DOMAIN, self._lock.device_id)},
-            "name": self._lock.device_name,
-            "manufacturer": DEFAULT_NAME,
-            "sw_version": self._firmware_version,
-        }
 
     @property
     def unique_id(self) -> str:

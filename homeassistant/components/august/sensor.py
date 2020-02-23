@@ -5,7 +5,7 @@ import logging
 from homeassistant.components.sensor import DEVICE_CLASS_BATTERY
 from homeassistant.helpers.entity import Entity
 
-from . import DATA_AUGUST, DEFAULT_NAME, DOMAIN
+from . import DATA_AUGUST
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -145,17 +145,4 @@ class AugustBatterySensor(Entity):
     @property
     def unique_id(self) -> str:
         """Get the unique id of the device sensor."""
-        return "{:s}_{:s}".format(
-            self._device.device_id,
-            SENSOR_TYPES_BATTERY[self._sensor_type]["name"].lower(),
-        )
-
-    @property
-    def device_info(self):
-        """Return the device_info of the device."""
-        return {
-            "identifiers": {(DOMAIN, self._device.device_id)},
-            "name": self._device.device_name,
-            "manufacturer": DEFAULT_NAME,
-            "sw_version": self._firmware_version,
-        }
+        return f"{self._device.device_id}_{self._sensor_type}"
