@@ -78,7 +78,7 @@ CONFIG_SCHEMA = vol.Schema(
     extra=vol.ALLOW_EXTRA,
 )
 
-AUGUST_COMPONENTS = ["camera", "binary_sensor", "lock"]
+AUGUST_COMPONENTS = ["camera", "binary_sensor", "lock", "sensor"]
 
 
 def request_configuration(hass, config, api, authenticator, token_refresh_lock):

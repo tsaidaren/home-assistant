@@ -25,7 +25,7 @@ async def _async_retrieve_online_state(data, doorbell, detail):
     if detail is None:
         return None
 
-    return detail.is_online or detail.is_standby
+    return detail.is_online or detail.status == "standby"
 
 
 async def _async_retrieve_motion_state(data, doorbell, detail):
@@ -210,7 +210,7 @@ class AugustDoorbellBinarySensor(AugustBinarySensor):
             self._available = True
         else:
             self._available = detail is not None and (
-                detail.is_online or detail.is_standby
+                detail.is_online or detail.status == "standby"
             )
 
         if detail is not None:
