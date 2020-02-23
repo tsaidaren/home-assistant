@@ -20,7 +20,7 @@ from homeassistant.util import Throttle
 
 _LOGGER = logging.getLogger(__name__)
 
-DEFAULT_NAME = "August"
+_CONFIGURING = {}
 
 DEFAULT_TIMEOUT = 10
 ACTIVITY_FETCH_LIMIT = 10
@@ -38,8 +38,6 @@ AUGUST_CONFIG_FILE = ".august.conf"
 
 DEFAULT_NAME = "August"
 DOMAIN = "august"
-
-_CONFIGURING = {}
 
 
 # Limit battery, online, and hardware updates to 1800 seconds
