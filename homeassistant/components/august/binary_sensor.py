@@ -20,7 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(seconds=5)
 
 
-async def _async_retrieve_online_state(data, doorbell, detail):
+async def _async_retrieve_online_state(data, detail):
     """Get the latest state of the sensor."""
     if detail is None:
         return None
@@ -28,25 +28,25 @@ async def _async_retrieve_online_state(data, doorbell, detail):
     return detail.is_online or detail.status == "standby"
 
 
-async def _async_retrieve_motion_state(data, doorbell, detail):
+async def _async_retrieve_motion_state(data, detail):
 
     return await _async_activity_time_based_state(
-        data, doorbell, [ActivityType.DOORBELL_MOTION, ActivityType.DOORBELL_DING]
+        data,
+        detail.device_id,
+        [ActivityType.DOORBELL_MOTION, ActivityType.DOORBELL_DING],
     )
 
 
-async def _async_retrieve_ding_state(data, doorbell, detail):
+async def _async_retrieve_ding_state(data, detail):
 
     return await _async_activity_time_based_state(
-        data, doorbell, [ActivityType.DOORBELL_DING]
+        data, detail.device_id, [ActivityType.DOORBELL_DING]
     )
 
 
-async def _async_activity_time_based_state(data, doorbell, activity_types):
+async def _async_activity_time_based_state(data, device_id, activity_types):
     """Get the latest state of the sensor."""
-    latest = await data.async_get_latest_device_activity(
-        doorbell.device_id, *activity_types
-    )
+    latest = await data.async_get_latest_device_activity(device_id, *activity_types)
 
     if latest is not None:
         start = latest.activity_start_time
@@ -202,7 +202,7 @@ class AugustDoorbellBinarySensor(AugustBinarySensor):
             SENSOR_STATE_PROVIDER
         ]
         detail = await self._data.async_get_doorbell_detail(self._doorbell.device_id)
-        self._state = await async_state_provider(self._data, self._doorbell, detail)
+        self._state = await async_state_provider(self._data, detail)
         # The doorbell will go into standby mode when there is no motion
         # for a short while. It will wake by itself when needed so we need
         # to consider is available or we will not report motion or dings
