@@ -29,6 +29,8 @@ CONF_ACCESS_TOKEN_CACHE_FILE = "access_token_cache_file"
 CONF_LOGIN_METHOD = "login_method"
 CONF_INSTALL_ID = "install_id"
 
+VALIDATION_CODE_KEY = "code"
+
 NOTIFICATION_ID = "august_notification"
 NOTIFICATION_TITLE = "August"
 
