@@ -3,14 +3,14 @@
 from tests.components.august.mocks import (
     _create_august_with_devices,
     _mock_doorbell_from_fixture,
+    _mock_lock_from_fixture,
 )
 
 
 async def test_create_doorbell(hass):
     """Test creation of a doorbell."""
     doorbell_one = await _mock_doorbell_from_fixture(hass, "get_doorbell.json")
-    doorbell_details = [doorbell_one]
-    await _create_august_with_devices(hass, doorbell_details)
+    await _create_august_with_devices(hass, [doorbell_one])
 
     sensor_k98gidt45gul_name_battery = hass.states.get(
         "sensor.k98gidt45gul_name_battery"
@@ -22,8 +22,7 @@ async def test_create_doorbell(hass):
 async def test_create_doorbell_offline(hass):
     """Test creation of a doorbell that is offline."""
     doorbell_one = await _mock_doorbell_from_fixture(hass, "get_doorbell.offline.json")
-    doorbell_details = [doorbell_one]
-    await _create_august_with_devices(hass, doorbell_details)
+    await _create_august_with_devices(hass, [doorbell_one])
 
     sensor_tmt100_name_battery = hass.states.get("sensor.tmt100_name_battery")
     assert sensor_tmt100_name_battery.state == "81"
@@ -35,8 +34,35 @@ async def test_create_doorbell_hardwired(hass):
     doorbell_one = await _mock_doorbell_from_fixture(
         hass, "get_doorbell.nobattery.json"
     )
-    doorbell_details = [doorbell_one]
-    await _create_august_with_devices(hass, doorbell_details)
+    await _create_august_with_devices(hass, [doorbell_one])
 
     sensor_tmt100_name_battery = hass.states.get("sensor.tmt100_name_battery")
     assert sensor_tmt100_name_battery is None
+
+
+async def test_create_lock_with_linked_keypad(hass):
+    """Test creation of a lock with a linked keypad that both have a battery."""
+    lock_one = await _mock_lock_from_fixture(hass, "get_lock.doorsense_init.json")
+    await _create_august_with_devices(hass, [lock_one])
+
+    sensor_a6697750d607098bae8d6baa11ef8063_name_battery = hass.states.get(
+        "sensor.a6697750d607098bae8d6baa11ef8063_name_battery"
+    )
+    assert sensor_a6697750d607098bae8d6baa11ef8063_name_battery.state == "88"
+    assert (
+        sensor_a6697750d607098bae8d6baa11ef8063_name_battery.attributes[
+            "unit_of_measurement"
+        ]
+        == "%"
+    )
+
+    sensor_a6697750d607098bae8d6baa11ef8063_name_keypad_battery = hass.states.get(
+        "sensor.a6697750d607098bae8d6baa11ef8063_name_keypad_battery"
+    )
+    assert sensor_a6697750d607098bae8d6baa11ef8063_name_keypad_battery.state == "60"
+    assert (
+        sensor_a6697750d607098bae8d6baa11ef8063_name_keypad_battery.attributes[
+            "unit_of_measurement"
+        ]
+        == "%"
+    )
