@@ -38,6 +38,7 @@ NOTIFICATION_TITLE = "August Setup"
 
 AUGUST_CONFIG_FILE = ".august.conf"
 
+DEFAULT_NAME = "August"
 DATA_AUGUST = "august"
 DOMAIN = "august"
 DEFAULT_ENTITY_NAMESPACE = "august"
