@@ -4,12 +4,7 @@ import logging
 from homeassistant.components.sensor import DEVICE_CLASS_BATTERY
 from homeassistant.helpers.entity import Entity
 
-from . import (
-    DEFAULT_NAME,
-    DOMAIN,
-    MIN_TIME_BETWEEN_DETAIL_UPDATES,
-    async_detail_provider,
-)
+from . import DEFAULT_NAME, DOMAIN, MIN_TIME_BETWEEN_DETAIL_UPDATES
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -57,13 +52,13 @@ SENSOR_TYPES_BATTERY = {
         "Battery",
         DEVICE_CLASS_BATTERY,
         _async_retrieve_device_battery_state,
-        "%",
+        "%",  # TODO: UNIT_PERCENTAGE
     ],
     "linked_keypad_battery": [
         "Keypad Battery",
         DEVICE_CLASS_BATTERY,
         _async_retrieve_linked_keypad_battery_state,
-        "%",
+        "%",  # TODO: UNIT_PERCENTAGE
     ],
 }
 
@@ -88,7 +83,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             async_state_provider = SENSOR_TYPES_BATTERY[sensor_type][
                 SENSOR_STATE_PROVIDER
             ]
-            detail = await async_detail_provider(data, device)
+            detail = await data.async_get_device_detail(device)
             state = await async_state_provider(detail)
             if state is None:
                 _LOGGER.debug(
@@ -155,7 +150,7 @@ class AugustBatterySensor(Entity):
         async_state_provider = SENSOR_TYPES_BATTERY[self._sensor_type][
             SENSOR_STATE_PROVIDER
         ]
-        detail = await async_detail_provider(self._data, self._device)
+        detail = await self._data.async_get_device_detail(self._device)
         self._state = await async_state_provider(detail)
         self._available = self._state is not None
         if detail is not None:

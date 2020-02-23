@@ -11,40 +11,47 @@ from august.lock import Lock
 from requests import RequestException, Session
 import voluptuous as vol
 
-from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
-from homeassistant.const import CONF_PASSWORD, CONF_TIMEOUT, CONF_USERNAME
-from homeassistant.core import HomeAssistant
+from homeassistant.const import (
+    CONF_PASSWORD,
+    CONF_TIMEOUT,
+    CONF_USERNAME,
+    EVENT_HOMEASSISTANT_STOP,
+)
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import discovery
 import homeassistant.helpers.config_validation as cv
 from homeassistant.util import Throttle
 
 _LOGGER = logging.getLogger(__name__)
 
-DEFAULT_NAME = "August"
+_CONFIGURING = {}
 
 DEFAULT_TIMEOUT = 10
 ACTIVITY_FETCH_LIMIT = 10
+ACTIVITY_INITIAL_FETCH_LIMIT = 20
 
-CONF_ACCESS_TOKEN_CACHE_FILE = "access_token_cache_file"
 CONF_LOGIN_METHOD = "login_method"
 CONF_INSTALL_ID = "install_id"
 
-VALIDATION_CODE_KEY = "code"
-
 NOTIFICATION_ID = "august_notification"
-NOTIFICATION_TITLE = "August"
+NOTIFICATION_TITLE = "August Setup"
 
 AUGUST_CONFIG_FILE = ".august.conf"
 
+DATA_AUGUST = "august"
 DOMAIN = "august"
-
-_CONFIGURING = {}
-
+DEFAULT_ENTITY_NAMESPACE = "august"
 
 # Limit battery, online, and hardware updates to 1800 seconds
 # in order to reduce the number of api requests and
 # avoid hitting rate limits
-MIN_TIME_BETWEEN_DETAIL_UPDATES = timedelta(seconds=1800)
+MIN_TIME_BETWEEN_LOCK_DETAIL_UPDATES = timedelta(seconds=1800)
+
+# Doorbells need to update more frequently than locks
+# since we get an image from the doorbell api. Once
+# py-august 0.18.0 is released doorbell status updates
+# can be reduced in the same was as locks have been
+MIN_TIME_BETWEEN_DOORBELL_DETAIL_UPDATES = timedelta(seconds=20)
 
 # Activity needs to be checked more frequently as the
 # doorbell motion and rings are included here
@@ -70,239 +77,135 @@ CONFIG_SCHEMA = vol.Schema(
     extra=vol.ALLOW_EXTRA,
 )
 
-PLATFORMS = ["camera", "binary_sensor", "sensor", "lock"]
+AUGUST_COMPONENTS = ["camera", "binary_sensor", "lock"]
 
 
-async def async_request_configuration(hass, config_entry, august_connection):
-    """Request a new verification code from the user."""
+def request_configuration(hass, config, api, authenticator, token_refresh_lock):
+    """Request configuration steps from the user."""
     configurator = hass.components.configurator
-    entry_id = config_entry.entry_id
 
-    async def async_august_configuration_validation_callback(data):
-        code = data.get("verification_code")
-        result = await hass.async_add_executor_job(
-            august_connection.authenticator.validate_verification_code, code
-        )
+    def august_configuration_callback(data):
+        """Run when the configuration callback is called."""
+
+        result = authenticator.validate_verification_code(data.get("verification_code"))
 
         if result == ValidationResult.INVALID_VERIFICATION_CODE:
-            configurator.async_notify_errors(
-                _CONFIGURING[entry_id],
-                "Invalid verification code, please make sure you are using the latest code and try again.",
+            configurator.notify_errors(
+                _CONFIGURING[DOMAIN], "Invalid verification code"
             )
         elif result == ValidationResult.VALIDATED:
-            return await async_setup_august(hass, config_entry, august_connection)
+            setup_august(hass, config, api, authenticator, token_refresh_lock)
 
-        return False
+    if DOMAIN not in _CONFIGURING:
+        authenticator.send_verification_code()
 
-    _LOGGER.error("Access token is no longer valid.")
-    if entry_id not in _CONFIGURING:
-        await hass.async_add_executor_job(
-            august_connection.authenticator.send_verification_code
-        )
+    conf = config[DOMAIN]
+    username = conf.get(CONF_USERNAME)
+    login_method = conf.get(CONF_LOGIN_METHOD)
 
-    entry_data = config_entry.data
-    login_method = entry_data.get(CONF_LOGIN_METHOD)
-    username = entry_data.get(CONF_USERNAME)
-
-    _CONFIGURING[entry_id] = configurator.async_request_config(
-        NOTIFICATION_TITLE + " (" + username + ")",
-        async_august_configuration_validation_callback,
-        description="August must be re-verified. Please check your {} ({}) and enter the verification "
+    _CONFIGURING[DOMAIN] = configurator.request_config(
+        NOTIFICATION_TITLE,
+        august_configuration_callback,
+        description="Please check your {} ({}) and enter the verification "
         "code below".format(login_method, username),
         submit_caption="Verify",
         fields=[
             {"id": "verification_code", "name": "Verification code", "type": "string"}
         ],
     )
-    return
 
 
-async def async_setup_august(hass, config_entry, august_connection):
+def setup_august(hass, config, api, authenticator, token_refresh_lock):
     """Set up the August component."""
+
     authentication = None
     try:
-        authentication = await hass.async_add_executor_job(
-            august_connection.authenticator.authenticate
-        )
+        authentication = authenticator.authenticate()
     except RequestException as ex:
         _LOGGER.error("Unable to connect to August service: %s", str(ex))
-        return False
+
+        hass.components.persistent_notification.create(
+            "Error: {}<br />"
+            "You will need to restart hass after fixing."
+            "".format(ex),
+            title=NOTIFICATION_TITLE,
+            notification_id=NOTIFICATION_ID,
+        )
 
     state = authentication.state
 
+    if state == AuthenticationState.AUTHENTICATED:
+        if DOMAIN in _CONFIGURING:
+            hass.components.configurator.request_done(_CONFIGURING.pop(DOMAIN))
+
+        hass.data[DATA_AUGUST] = AugustData(
+            hass, api, authentication, authenticator, token_refresh_lock
+        )
+
+        for component in AUGUST_COMPONENTS:
+            discovery.load_platform(hass, component, DOMAIN, {}, config)
+
+        return True
     if state == AuthenticationState.BAD_PASSWORD:
-        _LOGGER.error("Password is no longer valid. Please set up August again")
+        _LOGGER.error("Invalid password provided")
         return False
     if state == AuthenticationState.REQUIRES_VALIDATION:
-        await async_request_configuration(hass, config_entry, august_connection)
-        return False
-
-    if state != AuthenticationState.AUTHENTICATED:
-        _LOGGER.error("Unknown authentication state: " + str(state))
-        return False
-
-    entry_id = config_entry.entry_id
-    # We still use the configurator to get a new 2fa code
-    # when needed since config_flow doesn't have a way
-    # to re-request if it expires
-    if entry_id in _CONFIGURING:
-        hass.components.configurator.async_request_done(_CONFIGURING.pop(entry_id))
-
-    token_refresh_lock = asyncio.Lock()
-
-    hass.data[DOMAIN][config_entry.entry_id] = await hass.async_add_executor_job(
-        AugustData, hass, august_connection, authentication, token_refresh_lock,
-    )
-
-    for component in PLATFORMS:
-        hass.async_create_task(
-            hass.config_entries.async_forward_entry_setup(config_entry, component)
-        )
-
-    return True
-
-
-async def async_setup(hass: HomeAssistant, config: dict):
-    """Set up the August component from YAML."""
-
-    conf = config.get(DOMAIN)
-
-    if not conf:
+        request_configuration(hass, config, api, authenticator, token_refresh_lock)
         return True
 
-    hass.data.setdefault(DOMAIN, {})
-
-    hass.async_create_task(
-        hass.config_entries.flow.async_init(
-            DOMAIN,
-            context={"source": SOURCE_IMPORT},
-            data={
-                CONF_LOGIN_METHOD: conf.get(CONF_LOGIN_METHOD),
-                CONF_USERNAME: conf.get(CONF_USERNAME),
-                CONF_PASSWORD: conf.get(CONF_PASSWORD),
-                CONF_INSTALL_ID: conf.get(CONF_INSTALL_ID),
-                CONF_ACCESS_TOKEN_CACHE_FILE: AUGUST_CONFIG_FILE,
-            },
-        )
-    )
-    return True
+    return False
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
-    """Set up August from a config entry."""
+async def async_setup(hass, config):
+    """Set up the August component."""
 
-    hass.data.setdefault(DOMAIN, {})
+    conf = config[DOMAIN]
+    api_http_session = None
+    try:
+        api_http_session = Session()
+    except RequestException as ex:
+        _LOGGER.warning("Creating HTTP session failed with: %s", str(ex))
 
-    august_connection = AugustConnection()
-    august_connection.setup(hass, entry.data)
+    api = Api(timeout=conf.get(CONF_TIMEOUT), http_session=api_http_session)
 
-    return await async_setup_august(hass, entry, august_connection)
-
-
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
-    """Unload a config entry."""
-    unload_ok = all(
-        await asyncio.gather(
-            *[
-                hass.config_entries.async_forward_entry_unload(entry, component)
-                for component in PLATFORMS
-            ]
-        )
+    authenticator = Authenticator(
+        api,
+        conf.get(CONF_LOGIN_METHOD),
+        conf.get(CONF_USERNAME),
+        conf.get(CONF_PASSWORD),
+        install_id=conf.get(CONF_INSTALL_ID),
+        access_token_cache_file=hass.config.path(AUGUST_CONFIG_FILE),
     )
 
-    if unload_ok:
-        hass.data[DOMAIN].pop(entry.entry_id)
-
-    return unload_ok
-
-
-class AugustConnection:
-    """Handle the connection to August."""
-
-    def __init__(self):
-        """Init the connection."""
-        try:
-            self._api_http_session = Session()
-        except RequestException as ex:
-            _LOGGER.warning("Creating HTTP session failed with: %s", str(ex))
-
-    @property
-    def authenticator(self):
-        """August authentication object from py-august."""
-        return self._authenticator
-
-    @property
-    def api(self):
-        """August api object from py-august."""
-        return self._api
-
-    @property
-    def access_token_cache_file(self):
-        """Basename of the access token cache file."""
-        return self._access_token_cache_file
-
-    def config_entry(self):
-        """Config entry."""
-        return {
-            CONF_LOGIN_METHOD: self._login_method,
-            CONF_USERNAME: self._username,
-            CONF_PASSWORD: self._password,
-            CONF_INSTALL_ID: self._install_id,
-            CONF_TIMEOUT: self._timeout,
-            CONF_ACCESS_TOKEN_CACHE_FILE: self._access_token_cache_file,
-        }
-
-    def setup(self, hass, conf):
-        """Create the api and authenticator objects."""
-        if not conf.get(VALIDATION_CODE_KEY):
-            self._login_method = conf.get(CONF_LOGIN_METHOD)
-            self._username = conf.get(CONF_USERNAME)
-            self._password = conf.get(CONF_PASSWORD)
-            self._install_id = conf.get(CONF_INSTALL_ID)
-            self._timeout = conf.get(CONF_TIMEOUT)
-
-            self._access_token_cache_file = conf.get(CONF_ACCESS_TOKEN_CACHE_FILE)
-            if self._access_token_cache_file is None:
-                self._access_token_cache_file = (
-                    "." + self._username + AUGUST_CONFIG_FILE
-                )
-
-            self._api = Api(timeout=self._timeout, http_session=self._api_http_session,)
-
-            self._authenticator = Authenticator(
-                self._api,
-                self._login_method,
-                self._username,
-                self._password,
-                install_id=self._install_id,
-                access_token_cache_file=hass.config.path(self._access_token_cache_file),
-            )
-
-    def close_http_session(self):
+    def close_http_session(event):
         """Close API sessions used to connect to August."""
         _LOGGER.debug("Closing August HTTP sessions")
-        if self._api_http_session:
+        if api_http_session:
             try:
-                self._api_http_session.close()
+                api_http_session.close()
             except RequestException:
                 pass
 
-    def __del__(self):
-        """Close out the http session on destroy."""
-        self.close_http_session()
-        return
+        _LOGGER.debug("August HTTP session closed.")
+
+    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, close_http_session)
+    _LOGGER.debug("Registered for Home Assistant stop event")
+
+    token_refresh_lock = asyncio.Lock()
+
+    return await hass.async_add_executor_job(
+        setup_august, hass, config, api, authenticator, token_refresh_lock
+    )
 
 
 class AugustData:
     """August data object."""
 
-    def __init__(
-        self, hass, august_connection, authentication, token_refresh_lock,
-    ):
+    def __init__(self, hass, api, authentication, authenticator, token_refresh_lock):
         """Init August data object."""
         self._hass = hass
-        self._august_connection = august_connection
-        self._api = august_connection.api
+        self._api = api
+        self._authenticator = authenticator
         self._access_token = authentication.access_token
         self._access_token_expires = authentication.access_token_expires
 
@@ -320,9 +223,8 @@ class AugustData:
         # We check the locks right away so we can
         # remove inoperative ones
         self._update_locks_detail()
-        self._filter_inoperative_locks()
 
-        self._update_doorbells_detail()
+        self._filter_inoperative_locks()
 
     @property
     def house_ids(self):
@@ -341,14 +243,12 @@ class AugustData:
 
     async def _async_refresh_access_token_if_needed(self):
         """Refresh the august access token if needed."""
-        if self._august_connection.authenticator.should_refresh():
+        if self._authenticator.should_refresh():
             async with self._token_refresh_lock:
                 await self._hass.async_add_executor_job(self._refresh_access_token)
 
     def _refresh_access_token(self):
-        refreshed_authentication = self._august_connection.authenticator.refresh_access_token(
-            force=False
-        )
+        refreshed_authentication = self._authenticator.refresh_access_token(force=False)
         _LOGGER.info(
             "Refreshed august access token. The old token expired at %s, and the new token expires at %s",
             self._access_token_expires,
@@ -399,12 +299,20 @@ class AugustData:
 
         _LOGGER.debug("Completed retrieving device activities")
 
+    async def async_get_device_detail(self, device):
+        """Return the detail for a device."""
+        if isinstance(device, Lock):
+            return await self.async_get_lock_detail(device.device_id)
+        if isinstance(device, Doorbell):
+            return await self.async_get_doorbell_detail(device.device_id)
+        raise ValueError
+
     async def async_get_doorbell_detail(self, device_id):
         """Return doorbell detail."""
         await self._async_update_doorbells_detail()
         return self._doorbell_detail_by_id.get(device_id)
 
-    @Throttle(MIN_TIME_BETWEEN_DETAIL_UPDATES)
+    @Throttle(MIN_TIME_BETWEEN_DOORBELL_DETAIL_UPDATES)
     async def _async_update_doorbells_detail(self):
         await self._hass.async_add_executor_job(self._update_doorbells_detail)
 
@@ -432,7 +340,7 @@ class AugustData:
             if lock.device_id == device_id:
                 return lock.device_name
 
-    @Throttle(MIN_TIME_BETWEEN_DETAIL_UPDATES)
+    @Throttle(MIN_TIME_BETWEEN_LOCK_DETAIL_UPDATES)
     async def _async_update_locks_detail(self):
         await self._hass.async_add_executor_job(self._update_locks_detail)
 
@@ -523,12 +431,3 @@ def _call_api_operation_that_requires_bridge(
         raise HomeAssistantError(device_name + ": " + str(err))
 
     return ret
-
-
-async def async_detail_provider(data, device):
-    """Return the py-august detail for a device."""
-    if isinstance(device, Lock):
-        return await data.async_get_lock_detail(device.device_id)
-    if isinstance(device, Doorbell):
-        return await data.async_get_doorbell_detail(device.device_id)
-    raise ValueError
