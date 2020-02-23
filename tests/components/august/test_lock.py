@@ -57,7 +57,7 @@ async def test_one_lock_unknown_state(hass):
         hass, "get_lock.online.unknown_state.json",
     )
     lock_details = [lock_one]
-    await _create_august_with_devices(hass, lock_details=lock_details)
+    await _create_august_with_devices(hass, lock_details)
 
     import pprint
     from homeassistant.helpers.json import JSONEncoder

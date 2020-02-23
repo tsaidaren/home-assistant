@@ -76,7 +76,7 @@ async def test_create_doorbell_offline(hass):
     """Test creation of a doorbell that is offline."""
     doorbell_one = await _mock_doorbell_from_fixture(hass, "get_doorbell.offline.json")
     doorbell_details = [doorbell_one]
-    await _create_august_with_devices(hass, doorbell_details=doorbell_details)
+    await _create_august_with_devices(hass, doorbell_details)
 
     binary_sensor_tmt100_name_motion = hass.states.get(
         "binary_sensor.tmt100_name_motion"

@@ -111,6 +111,8 @@ async def _create_august_with_devices(hass, devices, api_call_side_effects=None)
 
     if "get_lock_detail" not in api_call_side_effects:
         api_call_side_effects["get_lock_detail"] = get_lock_detail_side_effect
+    if "get_doorbell_detail" not in api_call_side_effects:
+        api_call_side_effects["get_doorbell_detail"] = get_doorbell_detail_side_effect
     if "get_operable_locks" not in api_call_side_effects:
         api_call_side_effects["get_operable_locks"] = get_operable_locks_side_effect
     if "get_doorbells" not in api_call_side_effects:
