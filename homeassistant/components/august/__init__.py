@@ -47,7 +47,7 @@ MIN_TIME_BETWEEN_LOCK_DETAIL_UPDATES = timedelta(seconds=1800)
 
 # Doorbells need to update more frequently than locks
 # since we get an image from the doorbell api. Once
-# py-august 0.18.0 is released doorbell status update
+# py-august 0.18.0 is released doorbell status updates
 # can be reduced in the same was as locks have been
 MIN_TIME_BETWEEN_DOORBELL_DETAIL_UPDATES = timedelta(seconds=20)
 
