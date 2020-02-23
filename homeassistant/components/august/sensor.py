@@ -53,13 +53,13 @@ SENSOR_TYPES_BATTERY = {
         "Battery",
         DEVICE_CLASS_BATTERY,
         _async_retrieve_device_battery_state,
-        "%",  # TODO: UNIT_PERCENTAGE
+        "%",  # UNIT_PERCENTAGE will be available after PR#32094
     ],
     "linked_keypad_battery": [
         "Keypad Battery",
         DEVICE_CLASS_BATTERY,
         _async_retrieve_linked_keypad_battery_state,
-        "%",  # TODO: UNIT_PERCENTAGE
+        "%",  # UNIT_PERCENTAGE will be available after PR#32094
     ],
 }
 
