@@ -98,16 +98,18 @@ class AugustGateway:
                 ),
             )
 
-    async def async_authenticate(self):
+    def authenticate(self):
         """Authenticate with the details provided to setup."""
         self._authentication = None
         try:
-            self._authentication = await self._hass.async_add_executor_job(
-                self.authenticator.authenticate
-            )
+            self._authentication = self.authenticator.authenticate()
         except RequestException as ex:
             _LOGGER.error("Unable to connect to August service: %s", str(ex))
             raise CannotConnect
+
+        import pprint
+
+        pprint.pprint(self._authentication)
 
         if self._authentication.state == AuthenticationState.BAD_PASSWORD:
             raise InvalidAuth
@@ -136,7 +138,7 @@ class AugustGateway:
             self.authentication.access_token_expires,
             refreshed_authentication.access_token_expires,
         )
-        self.authentication = refreshed_authentication
+        self._authentication = refreshed_authentication
 
     def _close_http_session(self):
         """Close API sessions used to connect to August."""

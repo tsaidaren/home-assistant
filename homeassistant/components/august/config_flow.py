@@ -2,8 +2,6 @@
 import logging
 
 from august.authenticator import ValidationResult
-from const import DOMAIN  # pylint:disable=unused-import
-from gateway import AugustGateway
 import voluptuous as vol
 
 from homeassistant import config_entries, core
@@ -17,7 +15,9 @@ from .const import (
     LOGIN_METHODS,
     VALIDATION_CODE_KEY,
 )
+from .const import DOMAIN  # pylint:disable=unused-import
 from .exceptions import CannotConnect, InvalidAuth, RequireValidation
+from .gateway import AugustGateway
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ async def async_validate_input(
             raise RequireValidation
 
     try:
-        await august_gateway.async_authenticate()
+        august_gateway.authenticate()
     except RequireValidation:
         _LOGGER.debug(
             "Requesting new verification code for %s via %s",
@@ -77,14 +77,16 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     def __init__(self):
         """Store an AugustGateway()."""
+        self._august_gateway = None
         super().__init__()
-        self._august_gateway = AugustGateway(self.hass)
 
     async def async_step_user(self, user_input=None):
         """Handle the initial step."""
+        if self._august_gateway is None:
+            self._august_gateway = AugustGateway(self.hass)
         errors = {}
         if user_input is not None:
-            self._august_gateway.setup(self.hass, user_input)
+            self._august_gateway.setup(user_input)
 
             try:
                 info = await async_validate_input(

@@ -16,7 +16,7 @@ async def test_form(hass):
     assert result["errors"] == {}
 
     with patch(
-        "homeassistant.components.august.config_flow.PlaceholderHub.authenticate",
+        "homeassistant.components.august.config_flow.AugustGateway.authenticate",
         return_value=True,
     ), patch(
         "homeassistant.components.august.async_setup", return_value=True
@@ -51,7 +51,7 @@ async def test_form_invalid_auth(hass):
     )
 
     with patch(
-        "homeassistant.components.august.config_flow.PlaceholderHub.authenticate",
+        "homeassistant.components.august.config_flow.AugustGateway.authenticate",
         side_effect=InvalidAuth,
     ):
         result2 = await hass.config_entries.flow.async_configure(
@@ -74,7 +74,7 @@ async def test_form_cannot_connect(hass):
     )
 
     with patch(
-        "homeassistant.components.august.config_flow.PlaceholderHub.authenticate",
+        "homeassistant.components.august.config_flow.AugustGateway.authenticate",
         side_effect=CannotConnect,
     ):
         result2 = await hass.config_entries.flow.async_configure(

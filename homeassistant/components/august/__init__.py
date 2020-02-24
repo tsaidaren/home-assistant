@@ -8,7 +8,6 @@ from august.api import AugustApiHTTPError
 from august.authenticator import ValidationResult
 from august.doorbell import Doorbell
 from august.lock import Lock
-from gateway import AugustGateway
 from requests import RequestException
 import voluptuous as vol
 
@@ -33,6 +32,7 @@ from .const import (
     NOTIFICATION_TITLE,
 )
 from .exceptions import InvalidAuth, RequireValidation
+from .gateway import AugustGateway
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -106,7 +106,7 @@ async def async_setup_august(hass, config_entry, august_gateway):
     """Set up the August component."""
 
     try:
-        await august_gateway.async_authenticate()
+        august_gateway.authenticate()
     except RequireValidation:
         await async_request_validation(hass, config_entry, august_gateway)
         return False
@@ -165,7 +165,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.data.setdefault(DOMAIN, {})
 
     august_gateway = AugustGateway(hass)
-    august_gateway.setup(hass, entry.data)
+    august_gateway.setup(entry.data)
 
     return await async_setup_august(hass, entry, august_gateway)
 
