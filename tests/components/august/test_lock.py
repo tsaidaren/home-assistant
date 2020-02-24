@@ -6,7 +6,7 @@ from homeassistant.const import (
     SERVICE_LOCK,
     SERVICE_UNLOCK,
     STATE_LOCKED,
-    STATE_UNAVAILABLE,
+    STATE_UNKNOWN,
     STATE_UNLOCKED,
 )
 
@@ -61,6 +61,4 @@ async def test_one_lock_unknown_state(hass):
 
     lock_brokenid_name = hass.states.get("lock.brokenid_name")
 
-    # Once we have bridge_is_online support in py-august
-    # this can change to STATE_UNKNOWN
-    assert lock_brokenid_name.state == STATE_UNAVAILABLE
+    assert lock_brokenid_name.state == STATE_UNKNOWN
