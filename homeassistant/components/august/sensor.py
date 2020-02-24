@@ -2,10 +2,10 @@
 from datetime import timedelta
 import logging
 
+from const import DEFAULT_NAME, DOMAIN
+
 from homeassistant.components.sensor import DEVICE_CLASS_BATTERY
 from homeassistant.helpers.entity import Entity
-
-from . import DEFAULT_NAME, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 

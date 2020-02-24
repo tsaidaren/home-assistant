@@ -3,10 +3,9 @@ from datetime import timedelta
 
 from august.activity import ActivityType
 from august.util import update_doorbell_image_from_activity
+from const import DEFAULT_NAME, DEFAULT_TIMEOUT, DOMAIN
 
 from homeassistant.components.camera import Camera
-
-from . import DEFAULT_NAME, DEFAULT_TIMEOUT, DOMAIN
 
 SCAN_INTERVAL = timedelta(seconds=5)
 

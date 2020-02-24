@@ -1,26 +1,25 @@
 """Config flow for August integration."""
+from exceptions import CannotConnect, InvalidAuth, RequireValidation
 import logging
 
-from august.authenticator import AuthenticationState, ValidationResult
-from requests import RequestException
-import voluptuous as vol
-
-from homeassistant import config_entries, core, exceptions
-
-from . import (
+from august.authenticator import ValidationResult
+from const import (
     CONF_LOGIN_METHOD,
     CONF_PASSWORD,
     CONF_TIMEOUT,
     CONF_USERNAME,
     DEFAULT_TIMEOUT,
+    LOGIN_METHODS,
     VALIDATION_CODE_KEY,
-    AugustConnection,
 )
-from . import DOMAIN  # pylint:disable=unused-import
+from const import DOMAIN  # pylint:disable=unused-import
+from gateway import AugustGateway
+import voluptuous as vol
+
+from homeassistant import config_entries, core
 
 _LOGGER = logging.getLogger(__name__)
 
-LOGIN_METHODS = ["phone", "email"]
 DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_LOGIN_METHOD, default="phone"): vol.In(LOGIN_METHODS),
@@ -32,7 +31,7 @@ DATA_SCHEMA = vol.Schema(
 
 
 async def async_validate_input(
-    hass: core.HomeAssistant, data, august_connection,
+    hass: core.HomeAssistant, data, august_gateway,
 ):
     """Validate the user input allows us to connect.
 
@@ -44,38 +43,28 @@ async def async_validate_input(
 
     if code is not None:
         result = await hass.async_add_executor_job(
-            august_connection.authenticator.validate_verification_code, code
+            august_gateway.authenticator.validate_verification_code, code
         )
         _LOGGER.debug("Verification code validation: %s", result)
         if result != ValidationResult.VALIDATED:
             raise RequireValidation
 
-    authentication = None
     try:
-        authentication = await hass.async_add_executor_job(
-            august_connection.authenticator.authenticate
-        )
-    except RequestException as ex:
-        _LOGGER.error("Unable to connect to August service: %s", str(ex))
-        raise CannotConnect
-
-    if authentication.state == AuthenticationState.BAD_PASSWORD:
-        raise InvalidAuth
-
-    if authentication.state == AuthenticationState.REQUIRES_VALIDATION:
+        await august_gateway.async_authenticate()
+    except RequireValidation:
         _LOGGER.debug(
             "Requesting new verification code for %s via %s",
             data.get(CONF_USERNAME),
             data.get(CONF_LOGIN_METHOD),
         )
         await hass.async_add_executor_job(
-            august_connection.authenticator.send_verification_code
+            august_gateway.authenticator.send_verification_code
         )
-        raise RequireValidation
+        raise
 
     return {
         "title": data.get(CONF_USERNAME),
-        "data": august_connection.config_entry(),
+        "data": august_gateway.config_entry(),
     }
 
 
@@ -86,19 +75,19 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_POLL
 
     def __init__(self):
-        """Store an AugustConnection()."""
-        self._august_connection = AugustConnection()
+        """Store an AugustGateway()."""
         super().__init__()
+        self._august_gateway = AugustGateway(self.hass)
 
     async def async_step_user(self, user_input=None):
         """Handle the initial step."""
         errors = {}
         if user_input is not None:
-            self._august_connection.setup(self.hass, user_input)
+            self._august_gateway.setup(self.hass, user_input)
 
             try:
                 info = await async_validate_input(
-                    self.hass, user_input, self._august_connection,
+                    self.hass, user_input, self._august_gateway,
                 )
                 await self.async_set_unique_id(user_input[CONF_USERNAME])
                 return self.async_create_entry(title=info["title"], data=info["data"])
@@ -140,15 +129,3 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._abort_if_unique_id_configured()
 
         return await self.async_step_user(user_input)
-
-
-class RequireValidation(exceptions.HomeAssistantError):
-    """Error to indicate we require validation (2fa)."""
-
-
-class CannotConnect(exceptions.HomeAssistantError):
-    """Error to indicate we cannot connect."""
-
-
-class InvalidAuth(exceptions.HomeAssistantError):
-    """Error to indicate there is invalid auth."""
