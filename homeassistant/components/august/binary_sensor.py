@@ -5,7 +5,6 @@ import logging
 from august.activity import ActivityType
 from august.lock import LockDoorStatus
 from august.util import update_lock_detail_from_activity
-from const import DEFAULT_NAME, DOMAIN
 
 from homeassistant.components.binary_sensor import (
     DEVICE_CLASS_CONNECTIVITY,
@@ -13,6 +12,8 @@ from homeassistant.components.binary_sensor import (
     DEVICE_CLASS_OCCUPANCY,
     BinarySensorDevice,
 )
+
+from .const import DEFAULT_NAME, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 

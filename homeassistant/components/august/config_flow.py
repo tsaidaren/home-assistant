@@ -1,9 +1,14 @@
 """Config flow for August integration."""
-from exceptions import CannotConnect, InvalidAuth, RequireValidation
 import logging
 
 from august.authenticator import ValidationResult
-from const import (
+from const import DOMAIN  # pylint:disable=unused-import
+from gateway import AugustGateway
+import voluptuous as vol
+
+from homeassistant import config_entries, core
+
+from .const import (
     CONF_LOGIN_METHOD,
     CONF_PASSWORD,
     CONF_TIMEOUT,
@@ -12,11 +17,7 @@ from const import (
     LOGIN_METHODS,
     VALIDATION_CODE_KEY,
 )
-from const import DOMAIN  # pylint:disable=unused-import
-from gateway import AugustGateway
-import voluptuous as vol
-
-from homeassistant import config_entries, core
+from .exceptions import CannotConnect, InvalidAuth, RequireValidation
 
 _LOGGER = logging.getLogger(__name__)
 

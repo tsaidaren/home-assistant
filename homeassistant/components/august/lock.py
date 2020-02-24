@@ -5,10 +5,11 @@ import logging
 from august.activity import ActivityType
 from august.lock import LockStatus
 from august.util import update_lock_detail_from_activity
-from const import DEFAULT_NAME, DOMAIN
 
 from homeassistant.components.lock import LockDevice
 from homeassistant.const import ATTR_BATTERY_LEVEL
+
+from .const import DEFAULT_NAME, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
