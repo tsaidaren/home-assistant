@@ -24,12 +24,13 @@ from .const import (
     CONF_INSTALL_ID,
     CONF_LOGIN_METHOD,
     DEFAULT_AUGUST_CONFIG_FILE,
+    DEFAULT_NAME,
     DEFAULT_TIMEOUT,
     DOMAIN,
     LOGIN_METHODS,
     MIN_TIME_BETWEEN_ACTIVITY_UPDATES,
     MIN_TIME_BETWEEN_DETAIL_UPDATES,
-    NOTIFICATION_TITLE,
+    VERIFICATION_CODE_KEY,
 )
 from .exceptions import InvalidAuth, RequireValidation
 from .gateway import AugustGateway
@@ -65,7 +66,7 @@ async def async_request_validation(hass, config_entry, august_gateway):
     entry_id = config_entry.entry_id
 
     async def async_august_configuration_validation_callback(data):
-        code = data.get("verification_code")
+        code = data.get(VERIFICATION_CODE_KEY)
         result = await hass.async_add_executor_job(
             august_gateway.authenticator.validate_verification_code, code
         )
@@ -90,13 +91,13 @@ async def async_request_validation(hass, config_entry, august_gateway):
     username = entry_data.get(CONF_USERNAME)
 
     _CONFIGURING[entry_id] = configurator.async_request_config(
-        NOTIFICATION_TITLE + " (" + username + ")",
+        DEFAULT_NAME + " (" + username + ")",
         async_august_configuration_validation_callback,
         description="August must be re-verified. Please check your {} ({}) and enter the verification "
         "code below".format(login_method, username),
         submit_caption="Verify",
         fields=[
-            {"id": "verification_code", "name": "Verification code", "type": "string"}
+            {"id": VERIFICATION_CODE_KEY, "name": "Verification code", "type": "string"}
         ],
     )
     return

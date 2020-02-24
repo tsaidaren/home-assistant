@@ -13,7 +13,7 @@ from .const import (
     CONF_USERNAME,
     DEFAULT_TIMEOUT,
     LOGIN_METHODS,
-    VALIDATION_CODE_KEY,
+    VERIFICATION_CODE_KEY,
 )
 from .const import DOMAIN  # pylint:disable=unused-import
 from .exceptions import CannotConnect, InvalidAuth, RequireValidation
@@ -40,7 +40,7 @@ async def async_validate_input(
     """
     """Request configuration steps from the user."""
 
-    code = data.get(VALIDATION_CODE_KEY)
+    code = data.get(VERIFICATION_CODE_KEY)
 
     if code is not None:
         result = await hass.async_add_executor_job(
@@ -58,9 +58,10 @@ async def async_validate_input(
             data.get(CONF_USERNAME),
             data.get(CONF_LOGIN_METHOD),
         )
-        await hass.async_add_executor_job(
-            august_gateway.authenticator.send_verification_code
-        )
+        if code is None:
+            await hass.async_add_executor_job(
+                august_gateway.authenticator.send_verification_code
+            )
         raise
 
     return {
@@ -118,7 +119,7 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="validation",
             data_schema=vol.Schema(
-                {vol.Required(VALIDATION_CODE_KEY): vol.All(str, vol.Strip)}
+                {vol.Required(VERIFICATION_CODE_KEY): vol.All(str, vol.Strip)}
             ),
             description_placeholders={
                 CONF_USERNAME: self.user_auth_details.get(CONF_USERNAME),

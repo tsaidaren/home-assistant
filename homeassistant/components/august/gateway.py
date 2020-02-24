@@ -15,7 +15,7 @@ from .const import (
     CONF_TIMEOUT,
     CONF_USERNAME,
     DEFAULT_AUGUST_CONFIG_FILE,
-    VALIDATION_CODE_KEY,
+    VERIFICATION_CODE_KEY,
 )
 from .exceptions import CannotConnect, InvalidAuth, RequireValidation
 
@@ -72,7 +72,7 @@ class AugustGateway:
 
     def setup(self, conf):
         """Create the api and authenticator objects."""
-        if not conf.get(VALIDATION_CODE_KEY):
+        if not conf.get(VERIFICATION_CODE_KEY):
             self._login_method = conf.get(CONF_LOGIN_METHOD)
             self._username = conf.get(CONF_USERNAME)
             self._password = conf.get(CONF_PASSWORD)
