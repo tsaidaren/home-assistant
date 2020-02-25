@@ -118,7 +118,7 @@ async def test_create_doorbell_with_motion(hass):
     assert binary_sensor_k98gidt45gul_name_ding.state == STATE_OFF
 
 
-async def test_lock_device_registry(hass):
+async def test_doorbell_device_registry(hass):
     """Test creation of a lock with doorsense and bridge ands up in the registry."""
     doorbell_one = await _mock_doorbell_from_fixture(hass, "get_doorbell.offline.json")
     doorbell_details = [doorbell_one]
