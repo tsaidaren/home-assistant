@@ -116,3 +116,18 @@ async def test_create_doorbell_with_motion(hass):
         "binary_sensor.k98gidt45gul_name_ding"
     )
     assert binary_sensor_k98gidt45gul_name_ding.state == STATE_OFF
+
+
+async def test_lock_device_registry(hass):
+    """Test creation of a lock with doorsense and bridge ands up in the registry."""
+    doorbell_one = await _mock_doorbell_from_fixture(hass, "get_doorbell.offline.json")
+    doorbell_details = [doorbell_one]
+    await _create_august_with_devices(hass, doorbell_details)
+
+    device_registry = await hass.helpers.device_registry.async_get_registry()
+
+    reg_device = device_registry.async_get_device(
+        identifiers={("august", "tmt100")}, connections=set()
+    )
+    assert "hydra1" == reg_device.model
+    assert "3.1.0-HYDRC75+201909251139" == reg_device.sw_version
