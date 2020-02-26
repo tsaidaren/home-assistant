@@ -48,7 +48,7 @@ class ActivityStream:
                 if (
                     latest_activity is not None
                     and latest_device_activities[activity_type].activity_start_time
-                    < latest_activity.activity_start_time
+                    <= latest_activity.activity_start_time
                 ):
                     continue
                 latest_activity = latest_device_activities[activity_type]
@@ -99,6 +99,9 @@ class ActivityStream:
 
     def _signal_device_updates(self, updated_device_ids):
         for device_id in updated_device_ids:
+            _LOGGER.debug(
+                f"async_dispatcher_send (from activity stream): AUGUST_DEVICE_UPDATE-{device_id}"
+            )
             async_dispatcher_send(self._hass, f"{AUGUST_DEVICE_UPDATE}-{device_id}")
 
     def _process_newer_device_activities(self, activities):
@@ -113,7 +116,7 @@ class ActivityStream:
             # Ignore activities that are older than the latest one
             if (
                 lastest_activity
-                and lastest_activity.activity_start_time > activity.activity_start_time
+                and lastest_activity.activity_start_time >= activity.activity_start_time
             ):
                 continue
 
