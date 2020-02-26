@@ -14,6 +14,8 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.event import async_track_point_in_utc_time
+from homeassistant.util.dt import utcnow
 
 from .const import (
     AUGUST_DEVICE_UPDATE,
@@ -24,6 +26,8 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+TIME_TO_DECLARE_DETECTION = timedelta(seconds=60)
 
 SCAN_INTERVAL = MIN_TIME_BETWEEN_DETAIL_UPDATES
 
@@ -57,7 +61,7 @@ async def _async_activity_time_based_state(data, device_id, activity_types):
 
     if latest is not None:
         start = latest.activity_start_time
-        end = latest.activity_end_time + timedelta(seconds=45)
+        end = latest.activity_end_time + TIME_TO_DECLARE_DETECTION
         return start <= datetime.now() <= end
     return None
 
@@ -197,6 +201,7 @@ class AugustDoorbellBinarySensor(BinarySensorDevice):
     def __init__(self, data, sensor_type, doorbell):
         """Initialize the sensor."""
         self._undo_dispatch_subscription = None
+        self._update_listener = None
         self._data = data
         self._sensor_type = sensor_type
         self._doorbell = doorbell
@@ -227,6 +232,7 @@ class AugustDoorbellBinarySensor(BinarySensorDevice):
 
     async def async_update(self):
         """Get the latest state of the sensor."""
+        self._cancel_any_pending_updates()
         async_state_provider = SENSOR_TYPES_DOORBELL[self._sensor_type][
             SENSOR_STATE_PROVIDER
         ]
@@ -246,6 +252,28 @@ class AugustDoorbellBinarySensor(BinarySensorDevice):
             self._firmware_version = detail.firmware_version
             self._model = detail.model
             self._state = await async_state_provider(self._data, detail)
+            if self.device_class != DEVICE_CLASS_CONNECTIVITY:
+                self._schedule_update_to_recheck_sensor()
+
+    def _schedule_update_to_recheck_sensor(self):
+        """Schedule an update to turn recheck the sensor after TIME_TO_DECLARE_DETECTION."""
+
+        @callback
+        def _scheduled_update(now):
+            """Timer callback for sensor update."""
+            _LOGGER.debug("%s: executing scheduled update", self.entity_id)
+            self.async_schedule_update_ha_state(True)
+            self._update_listener = None
+
+        self._update_listener = async_track_point_in_utc_time(
+            self.hass, _scheduled_update, utcnow() + TIME_TO_DECLARE_DETECTION
+        )
+
+    def _cancel_any_pending_updates(self):
+        """Time based activities schedule a callback to recheck the sensor after TIME_TO_DECLARE_DETECTION."""
+        if self._update_listener:
+            self._update_listener()
+            self._update_listener = None
 
     @property
     def unique_id(self) -> str:
