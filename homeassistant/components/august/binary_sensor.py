@@ -201,7 +201,7 @@ class AugustDoorbellBinarySensor(BinarySensorDevice):
     def __init__(self, data, sensor_type, doorbell):
         """Initialize the sensor."""
         self._undo_dispatch_subscription = None
-        self._update_listener = None
+        self._check_for_off_update_listener = None
         self._data = data
         self._sensor_type = sensor_type
         self._doorbell = doorbell
@@ -252,28 +252,28 @@ class AugustDoorbellBinarySensor(BinarySensorDevice):
             self._firmware_version = detail.firmware_version
             self._model = detail.model
             self._state = await async_state_provider(self._data, detail)
-            if self.device_class != DEVICE_CLASS_CONNECTIVITY:
-                self._schedule_update_to_recheck_sensor()
+            if self._state and self.device_class != DEVICE_CLASS_CONNECTIVITY:
+                self._schedule_update_to_recheck_turn_off_sensor()
 
-    def _schedule_update_to_recheck_sensor(self):
-        """Schedule an update to turn recheck the sensor after TIME_TO_DECLARE_DETECTION."""
+    def _schedule_update_to_recheck_turn_off_sensor(self):
+        """Schedule an update to recheck the sensor to see if it is ready to turn off."""
 
         @callback
         def _scheduled_update(now):
             """Timer callback for sensor update."""
             _LOGGER.debug("%s: executing scheduled update", self.entity_id)
             self.async_schedule_update_ha_state(True)
-            self._update_listener = None
+            self._check_for_off_update_listener = None
 
-        self._update_listener = async_track_point_in_utc_time(
+        self._check_for_off_update_listener = async_track_point_in_utc_time(
             self.hass, _scheduled_update, utcnow() + TIME_TO_DECLARE_DETECTION
         )
 
     def _cancel_any_pending_updates(self):
-        """Time based activities schedule a callback to recheck the sensor after TIME_TO_DECLARE_DETECTION."""
-        if self._update_listener:
-            self._update_listener()
-            self._update_listener = None
+        """Cancel any updates to recheck a sensor to see if it is ready to turn off."""
+        if self._check_for_off_update_listener:
+            self._check_for_off_update_listener()
+            self._check_for_off_update_listener = None
 
     @property
     def unique_id(self) -> str:
