@@ -1,12 +1,12 @@
 """Support for monitoring a Sense energy sensor."""
 import asyncio
-from datetime import timedelta
 import logging
 
 from sense_energy import (
     ASyncSenseable,
     SenseAPITimeoutException,
     SenseAuthenticationException,
+    SenseWebsocketException,
 )
 import voluptuous as vol
 
@@ -16,7 +16,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.dispatcher import async_dispatcher_send
-from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.event import async_call_later
 
 from .const import (
     ACTIVE_UPDATE_RATE,
@@ -24,7 +24,11 @@ from .const import (
     DOMAIN,
     SENSE_DATA,
     SENSE_DEVICE_UPDATE,
+    SENSE_WEBSOCKET,
 )
+
+DEFAULT_WATCHDOG_SECONDS = 5 * 60
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -42,6 +46,61 @@ CONFIG_SCHEMA = vol.Schema(
     },
     extra=vol.ALLOW_EXTRA,
 )
+
+
+class SenseWebSocket:
+    """The sense websocket."""
+
+    def __init__(self, hass, gateway):
+        """Create the sense websocket."""
+        self._gateway = gateway
+        self._hass = hass
+        self._watchdog_listener = None
+        self._async_realtime_stream = None
+
+    async def start(self):
+        """Start the sense websocket."""
+        if self._async_realtime_stream is not None:
+            await self.stop()
+
+        self._async_realtime_stream = asyncio.create_task(
+            self._gateway.async_realtime_stream(callback=self._on_realtime_update)
+        )
+        await self._async_reset_watchdog()
+
+    async def stop(self):
+        """Stop the sense websocket."""
+        if self._async_realtime_stream is not None:
+            return
+
+        self._async_realtime_stream.cancel()
+
+        try:
+            self._async_realtime_stream.result()
+        except SenseAPITimeoutException:
+            _LOGGER.error("Websocket timed out retrieving data.")
+        except SenseWebsocketException as ex:
+            _LOGGER.error("Websocket error: %s", ex)
+
+        self._async_realtime_stream = None
+
+    async def _async_reset_watchdog(self):
+        if self._watchdog_listener is not None:
+            self._watchdog_listener()
+
+        self._watchdog_listener = async_call_later(
+            self._hass, DEFAULT_WATCHDOG_SECONDS, self._restart_websocket
+        )
+
+    async def _restart_websocket(self):
+        await self.stop()
+        await self.start()
+
+    def _on_realtime_update(self):
+        self._async_reset_watchdog()
+        async_dispatcher_send(
+            self._hass, f"{SENSE_DEVICE_UPDATE}-{self._gateway.sense_monitor_id}"
+        )
 
 
 async def async_setup(hass: HomeAssistant, config: dict):
@@ -91,22 +150,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             hass.config_entries.async_forward_entry_setup(entry, component)
         )
 
-    async def async_sense_update(now):
-        """Retrieve latest state."""
-        try:
-            gateway = hass.data[DOMAIN][entry.entry_id][SENSE_DATA]
-            await gateway.update_realtime()
-            async_dispatcher_send(
-                hass, f"{SENSE_DEVICE_UPDATE}-{gateway.sense_monitor_id}"
-            )
-        except SenseAPITimeoutException:
-            _LOGGER.error("Timeout retrieving data")
+    hass.data[DOMAIN][entry.entry_id][SENSE_WEBSOCKET] = SenseWebSocket(hass, gateway)
+    await hass.data[DOMAIN][entry.entry_id][SENSE_WEBSOCKET].start()
 
-    hass.data[DOMAIN][entry.entry_id][
-        "track_time_remove_callback"
-    ] = async_track_time_interval(
-        hass, async_sense_update, timedelta(seconds=ACTIVE_UPDATE_RATE)
-    )
     return True
 
 
@@ -120,10 +166,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
             ]
         )
     )
-    track_time_remove_callback = hass.data[DOMAIN][entry.entry_id][
-        "track_time_remove_callback"
-    ]
-    track_time_remove_callback()
+
+    await hass.data[DOMAIN][entry.entry_id][SENSE_WEBSOCKET].stop()
 
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)
