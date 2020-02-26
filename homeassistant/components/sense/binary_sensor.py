@@ -6,7 +6,7 @@ from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_registry import async_get_registry
 
-from .const import DOMAIN, SENSE_DATA, SENSE_DEVICE_UPDATE
+from .const import DOMAIN, SENSE_DATA, SENSE_DEVICE_UPDATE, SENSE_DEVICES_DATA
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -57,11 +57,13 @@ MDI_ICONS = {
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the Sense binary sensor."""
     data = hass.data[DOMAIN][config_entry.entry_id][SENSE_DATA]
+    sense_devices_data = hass.data[DOMAIN][config_entry.entry_id][SENSE_DEVICES_DATA]
+
     sense_monitor_id = data.sense_monitor_id
 
     sense_devices = await data.get_discovered_device_data()
     devices = [
-        SenseDevice(data, device, sense_monitor_id)
+        SenseDevice(sense_devices_data, device, sense_monitor_id)
         for device in sense_devices
         if device["id"] == DEVICE_ID_SOLAR
         or device["tags"]["DeviceListAllowed"] == "true"
@@ -96,20 +98,20 @@ def sense_to_mdi(sense_icon):
 class SenseDevice(BinarySensorDevice):
     """Implementation of a Sense energy device binary sensor."""
 
-    def __init__(self, data, device, sense_monitor_id):
+    def __init__(self, sense_devices_data, device, sense_monitor_id):
         """Initialize the Sense binary sensor."""
         self._name = device["name"]
         self._id = device["id"]
         self._sense_monitor_id = sense_monitor_id
         self._unique_id = f"{sense_monitor_id}-{self._id}"
         self._icon = sense_to_mdi(device["icon"])
-        self._data = data
+        self._sense_devices_data = sense_devices_data
         self._undo_dispatch_subscription = None
 
     @property
     def is_on(self):
         """Return true if the binary sensor is on."""
-        return self._name in self._data.active_devices
+        return self._sense_devices_data.get_device_data(self._id) is not None
 
     @property
     def name(self):

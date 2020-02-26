@@ -5,10 +5,12 @@ import logging
 from sense_energy import SenseAPITimeoutException
 
 from homeassistant.const import ENERGY_KILO_WATT_HOUR, POWER_WATT
+from homeassistant.core import callback
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity
 from homeassistant.util import Throttle
 
-from .const import DOMAIN, SENSE_DATA
+from .const import DOMAIN, SENSE_DATA, SENSE_DEVICE_UPDATE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -55,10 +57,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         """Update the daily power usage."""
         await data.update_trend_data()
 
-    async def update_active():
-        """Update the active power usage."""
-        await data.update_realtime()
-
     sense_monitor_id = data.sense_monitor_id
 
     devices = []
@@ -69,14 +67,21 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             sensor_type = typ.sensor_type
             is_production = var == PRODUCTION_NAME.lower()
             if sensor_type == ACTIVE_TYPE:
-                update_call = update_active
+                update_call = None
             else:
                 update_call = update_trends
 
             unique_id = f"{sense_monitor_id}-{type_id}-{var}".lower()
             devices.append(
                 Sense(
-                    data, name, sensor_type, is_production, update_call, var, unique_id
+                    data,
+                    name,
+                    sensor_type,
+                    is_production,
+                    update_call,
+                    var,
+                    unique_id,
+                    data.sense_monitor_id,
                 )
             )
 
@@ -87,17 +92,27 @@ class Sense(Entity):
     """Implementation of a Sense energy sensor."""
 
     def __init__(
-        self, data, name, sensor_type, is_production, update_call, sensor_id, unique_id
+        self,
+        data,
+        name,
+        sensor_type,
+        is_production,
+        update_call,
+        sensor_id,
+        unique_id,
+        sense_monitor_id,
     ):
         """Initialize the Sense sensor."""
         name_type = PRODUCTION_NAME if is_production else CONSUMPTION_NAME
         self._name = f"{name} {name_type}"
+        self._sense_monitor_id = sense_monitor_id
         self._unique_id = unique_id
         self._available = False
         self._data = data
         self._sensor_type = sensor_type
         self.update_sensor = update_call
         self._is_production = is_production
+        self._undo_dispatch_subscription = None
         self._state = None
 
         if sensor_type == ACTIVE_TYPE:
@@ -135,14 +150,20 @@ class Sense(Entity):
         """Return the unique id."""
         return self._unique_id
 
+    @property
+    def should_poll(self):
+        """Return the deviceshould not poll for updates."""
+        return False
+
     async def async_update(self):
         """Get the latest data, update state."""
 
-        try:
-            await self.update_sensor()
-        except SenseAPITimeoutException:
-            _LOGGER.error("Timeout retrieving data")
-            return
+        if self.update_sensor is not None:
+            try:
+                await self.update_sensor()
+            except SenseAPITimeoutException:
+                _LOGGER.error("Timeout retrieving data")
+                return
 
         if self._sensor_type == ACTIVE_TYPE:
             if self._is_production:
@@ -151,6 +172,23 @@ class Sense(Entity):
                 self._state = round(self._data.active_power)
         else:
             state = self._data.get_trend(self._sensor_type, self._is_production)
-            self._state = round(state, 1)
+            self._state = round(state)
 
         self._available = True
+
+    async def async_added_to_hass(self):
+        """Register callbacks."""
+
+        @callback
+        def update():
+            """Update the state."""
+            self.async_schedule_update_ha_state(True)
+
+        self._undo_dispatch_subscription = async_dispatcher_connect(
+            self.hass, f"{SENSE_DEVICE_UPDATE}-{self._sense_monitor_id}", update
+        )
+
+    async def async_will_remove_from_hass(self):
+        """Undo subscription."""
+        if self._undo_dispatch_subscription:
+            self._undo_dispatch_subscription()

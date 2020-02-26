@@ -9,7 +9,7 @@ from sense_energy import (
 import voluptuous as vol
 
 from homeassistant import config_entries, core
-from homeassistant.const import CONF_EMAIL, CONF_PASSWORD, CONF_TIMEOUT
+from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 
 from .const import ACTIVE_UPDATE_RATE, DEFAULT_TIMEOUT
 
@@ -18,11 +18,7 @@ from .const import DOMAIN  # pylint:disable=unused-import; pylint:disable=unused
 _LOGGER = logging.getLogger(__name__)
 
 DATA_SCHEMA = vol.Schema(
-    {
-        vol.Required(CONF_EMAIL): str,
-        vol.Required(CONF_PASSWORD): str,
-        vol.Optional(CONF_TIMEOUT, default=DEFAULT_TIMEOUT): vol.Coerce(int),
-    }
+    {vol.Required(CONF_EMAIL): str, vol.Required(CONF_PASSWORD): str,}
 )
 
 
@@ -31,9 +27,7 @@ async def validate_input(hass: core.HomeAssistant, data):
 
     Data has the keys from DATA_SCHEMA with values provided by the user.
     """
-    timeout = data[CONF_TIMEOUT]
-
-    gateway = ASyncSenseable(api_timeout=timeout, wss_timeout=timeout)
+    gateway = ASyncSenseable(api_timeout=DEFAULT_TIMEOUT, wss_timeout=DEFAULT_TIMEOUT)
     gateway.rate_limit = ACTIVE_UPDATE_RATE
     await gateway.authenticate(data[CONF_EMAIL], data[CONF_PASSWORD])
 
