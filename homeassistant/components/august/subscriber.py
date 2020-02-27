@@ -21,7 +21,7 @@ class AugustSubscriberMixin:
         """Add an callback subscriber."""
         if not self._subscriptions:
             self._unsub_interval = async_track_time_interval(
-                self.hass, self._refresh, self._update_interval
+                self._hass, self._refresh, self._update_interval
             )
         self._subscriptions.setdefault(device_id, []).append(update_callback)
 

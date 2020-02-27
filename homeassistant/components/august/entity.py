@@ -1,6 +1,10 @@
 """Base class for August entity."""
 
+import logging
+
 from . import DEFAULT_NAME, DOMAIN
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class AugustEntityMixin:
@@ -14,22 +18,17 @@ class AugustEntityMixin:
         self._undo_dispatch_subscription = None
 
     @property
-    def ring_objects(self):
-        """Return the August API objects."""
-        return self.hass.data[DOMAIN][self._config_entry_id]
-
-    @property
     def should_poll(self):
         """Return False, updates are controlled via the hub."""
         return False
 
     @property
     def _device_id(self):
-        self._device.device_id
+        return self._device.device_id
 
     @property
     def _detail(self):
-        self._data.get_device_detail(self._device.device_id)
+        return self._data.get_device_detail(self._device.device_id)
 
     @property
     def device_info(self):
@@ -48,6 +47,7 @@ class AugustEntityMixin:
         self._data.activity_stream.async_subscribe_device_id(
             self._device_id, self._update_from_data
         )
+        self._update_from_data()
 
     async def async_will_remove_from_hass(self):
         """Undo subscription."""
