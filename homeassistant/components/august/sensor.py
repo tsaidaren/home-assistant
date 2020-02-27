@@ -2,9 +2,11 @@
 import logging
 
 from homeassistant.components.sensor import DEVICE_CLASS_BATTERY
+from homeassistant.core import callback
 from homeassistant.helpers.entity import Entity
 
-from .const import DATA_AUGUST, DEFAULT_NAME, DOMAIN, MIN_TIME_BETWEEN_DETAIL_UPDATES
+from .const import DATA_AUGUST, DOMAIN, MIN_TIME_BETWEEN_DETAIL_UPDATES
+from .entity import AugustEntityMixin
 
 BATTERY_LEVEL_FULL = "Full"
 BATTERY_LEVEL_MEDIUM = "Medium"
@@ -91,7 +93,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     async_add_entities(devices, True)
 
 
-class AugustBatterySensor(Entity):
+class AugustBatterySensor(AugustEntityMixin, Entity):
     """Representation of an August sensor."""
 
     def __init__(self, data, sensor_type, device):
@@ -129,33 +131,15 @@ class AugustBatterySensor(Entity):
         sensor_name = SENSOR_TYPES_BATTERY[self._sensor_type]["name"]
         return f"{device_name} {sensor_name}"
 
+    @callback
     def _update_from_data(self):
         """Get the latest state of the sensor."""
         state_provider = SENSOR_TYPES_BATTERY[self._sensor_type]["state_provider"]
         self._state = state_provider(self._detail)
         self._available = self._state is not None
+        self.async_write_ha_state()
 
     @property
     def unique_id(self) -> str:
         """Get the unique id of the device sensor."""
-        return f"{self._device.device_id}_{self._sensor_type}"
-
-    @property
-    def device_info(self):
-        """Return the device_info of the device."""
-        return {
-            "identifiers": {(DOMAIN, self._device.device_id)},
-            "name": self._device.device_name,
-            "manufacturer": DEFAULT_NAME,
-            "sw_version": self._detail.firmware_version,
-            "model": self._detail.model,
-        }
-
-    #    @property
-    #    def should_poll(self):
-    #        """Return the devices should not poll for updates."""
-    #        return False
-
-    @property
-    def _detail(self):
-        self._data.get_device_detail(self._device.device_id)
+        return f"{self._device_id}_{self._sensor_type}"

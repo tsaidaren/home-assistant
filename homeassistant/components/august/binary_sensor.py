@@ -13,17 +13,11 @@ from homeassistant.components.binary_sensor import (
     BinarySensorDevice,
 )
 from homeassistant.core import callback
-from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.event import async_track_point_in_utc_time
 from homeassistant.util.dt import utcnow
 
-from .const import (
-    AUGUST_DEVICE_UPDATE,
-    DATA_AUGUST,
-    DEFAULT_NAME,
-    DOMAIN,
-    MIN_TIME_BETWEEN_DETAIL_UPDATES,
-)
+from .const import DATA_AUGUST, DOMAIN, MIN_TIME_BETWEEN_DETAIL_UPDATES
+from .entity import AugustEntityMixin
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -113,18 +107,17 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     async_add_entities(devices, True)
 
 
-class AugustDoorBinarySensor(BinarySensorDevice):
+class AugustDoorBinarySensor(AugustEntityMixin, BinarySensorDevice):
     """Representation of an August Door binary sensor."""
 
-    def __init__(self, data, sensor_type, door):
+    def __init__(self, data, sensor_type, device):
         """Initialize the sensor."""
-        self._undo_dispatch_subscription = None
+        super().__init__(data, device)
         self._data = data
         self._sensor_type = sensor_type
-        self._door = door
+        self._device = device
         self._state = None
         self._available = False
-        self._model = None
 
     @property
     def available(self):
@@ -144,12 +137,13 @@ class AugustDoorBinarySensor(BinarySensorDevice):
     @property
     def name(self):
         """Return the name of the binary sensor."""
-        return f"{self._door.device_name} Open"
+        return f"{self._device.device_name} Open"
 
+    @callback
     def _update_from_data(self):
         """Get the latest state of the sensor and update activity."""
         door_activity = self._data.activity_stream.get_latest_device_activity(
-            self._door.device_id, [ActivityType.DOOR_OPERATION]
+            self._device_id, [ActivityType.DOOR_OPERATION]
         )
         detail = self._detail
 
@@ -167,52 +161,19 @@ class AugustDoorBinarySensor(BinarySensorDevice):
     @property
     def unique_id(self) -> str:
         """Get the unique of the door open binary sensor."""
-        return f"{self._door.device_id}_open"
-
-    @property
-    def device_info(self):
-        """Return the device_info of the device."""
-        return {
-            "identifiers": {(DOMAIN, self._door.device_id)},
-            "name": self._door.device_name,
-            "manufacturer": DEFAULT_NAME,
-            "sw_version": self._detail.firmware_version,
-            "model": self._detail.model,
-        }
-
-    @property
-    def should_poll(self):
-        """Return the devices should not poll for updates."""
-        return False
-
-    @property
-    def _detail(self):
-        self._data.get_device_detail(self._door.device_id)
-
-    async def async_added_to_hass(self):
-        """Register callbacks."""
-        self._undo_dispatch_subscription = async_dispatcher_connect(
-            self.hass,
-            f"{AUGUST_DEVICE_UPDATE}-{self._door.device_id}",
-            self._update_from_data,
-        )
-
-    async def async_will_remove_from_hass(self):
-        """Undo subscription."""
-        if self._undo_dispatch_subscription:
-            self._undo_dispatch_subscription()
+        return f"{self._device_id}_open"
 
 
-class AugustDoorbellBinarySensor(BinarySensorDevice):
+class AugustDoorbellBinarySensor(AugustEntityMixin, BinarySensorDevice):
     """Representation of an August binary sensor."""
 
-    def __init__(self, data, sensor_type, doorbell):
+    def __init__(self, data, sensor_type, device):
         """Initialize the sensor."""
-        self._undo_dispatch_subscription = None
+        super().__init__(data, device)
         self._check_for_off_update_listener = None
         self._data = data
         self._sensor_type = sensor_type
-        self._doorbell = doorbell
+        self._device = device
         self._state = None
         self._available = False
 
@@ -234,8 +195,9 @@ class AugustDoorbellBinarySensor(BinarySensorDevice):
     @property
     def name(self):
         """Return the name of the binary sensor."""
-        return f"{self._doorbell.device_name} {SENSOR_TYPES_DOORBELL[self._sensor_type][SENSOR_NAME]}"
+        return f"{self._device.device_name} {SENSOR_TYPES_DOORBELL[self._sensor_type][SENSOR_NAME]}"
 
+    @callback
     def _update_from_data(self):
         """Get the latest state of the sensor."""
         self._cancel_any_pending_updates()
@@ -257,6 +219,8 @@ class AugustDoorbellBinarySensor(BinarySensorDevice):
             if self._state and self.device_class != DEVICE_CLASS_CONNECTIVITY:
                 self._schedule_update_to_recheck_turn_off_sensor()
 
+        self.async_write_ha_state()
+
     def _schedule_update_to_recheck_turn_off_sensor(self):
         """Schedule an update to recheck the sensor to see if it is ready to turn off."""
 
@@ -264,7 +228,7 @@ class AugustDoorbellBinarySensor(BinarySensorDevice):
         def _scheduled_update(now):
             """Timer callback for sensor update."""
             _LOGGER.debug("%s: executing scheduled update", self.entity_id)
-            self.async_schedule_update_ha_state(True)
+            self._update_from_data()
             self._check_for_off_update_listener = None
 
         self._check_for_off_update_listener = async_track_point_in_utc_time(
@@ -281,39 +245,6 @@ class AugustDoorbellBinarySensor(BinarySensorDevice):
     def unique_id(self) -> str:
         """Get the unique id of the doorbell sensor."""
         return (
-            f"{self._doorbell.device_id}_"
+            f"{self._device_id}_"
             f"{SENSOR_TYPES_DOORBELL[self._sensor_type][SENSOR_NAME].lower()}"
         )
-
-    @property
-    def device_info(self):
-        """Return the device_info of the device."""
-        return {
-            "identifiers": {(DOMAIN, self._doorbell.device_id)},
-            "name": self._doorbell.device_name,
-            "manufacturer": DEFAULT_NAME,
-            "sw_version": self._detail.firmware_version,
-            "model": self._detail.model,
-        }
-
-    @property
-    def should_poll(self):
-        """Return the devices should not poll for updates."""
-        return False
-
-    @property
-    def _detail(self):
-        self._data.get_device_detail(self._doorbell.device_id)
-
-    async def async_added_to_hass(self):
-        """Register callbacks."""
-        self._undo_dispatch_subscription = async_dispatcher_connect(
-            self.hass,
-            f"{AUGUST_DEVICE_UPDATE}-{self._doorbell.device_id}",
-            self._update_from_data,
-        )
-
-    async def async_will_remove_from_hass(self):
-        """Undo subscription."""
-        if self._undo_dispatch_subscription:
-            self._undo_dispatch_subscription()

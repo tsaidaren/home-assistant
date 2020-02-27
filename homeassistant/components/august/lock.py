@@ -7,15 +7,10 @@ from august.util import update_lock_detail_from_activity
 
 from homeassistant.components.lock import LockDevice
 from homeassistant.const import ATTR_BATTERY_LEVEL
-from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.core import callback
 
-from .const import (
-    AUGUST_DEVICE_UPDATE,
-    DATA_AUGUST,
-    DEFAULT_NAME,
-    DOMAIN,
-    MIN_TIME_BETWEEN_DETAIL_UPDATES,
-)
+from .const import DATA_AUGUST, DOMAIN, MIN_TIME_BETWEEN_DETAIL_UPDATES
+from .entity import AugustEntityMixin
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,14 +29,14 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     async_add_entities(devices, True)
 
 
-class AugustLock(LockDevice):
+class AugustLock(AugustEntityMixin, LockDevice):
     """Representation of an August lock."""
 
-    def __init__(self, data, lock):
+    def __init__(self, data, device):
         """Initialize the lock."""
-        self._undo_dispatch_subscription = None
+        super().__init__(data, device)
         self._data = data
-        self._lock = lock
+        self._device = device
         self._lock_status = None
         self._changed_by = None
         self._available = False
@@ -56,14 +51,14 @@ class AugustLock(LockDevice):
 
     async def _call_lock_operation(self, lock_operation):
         activities = await self.hass.async_add_executor_job(
-            lock_operation, self._lock.device_id
+            lock_operation, self._device_id
         )
         detail = self._detail
         for lock_activity in activities:
             update_lock_detail_from_activity(detail, lock_activity)
 
         if self._update_lock_status_from_detail():
-            await self._data.async_signal_device_id_update(self._lock.device_id)
+            await self._data.async_signal_device_id_update(self._device_id)
 
     def _update_lock_status_from_detail(self):
         detail = self._detail
@@ -79,11 +74,12 @@ class AugustLock(LockDevice):
             return True
         return False
 
+    @callback
     def _update_from_data(self):
         """Get the latest state of the sensor and update activity."""
         lock_detail = self._detail
         lock_activity = self._data.activity_stream.get_latest_device_activity(
-            self._lock.device_id, [ActivityType.LOCK_OPERATION]
+            self._device_id, [ActivityType.LOCK_OPERATION]
         )
 
         if lock_activity is not None:
@@ -97,7 +93,7 @@ class AugustLock(LockDevice):
     @property
     def name(self):
         """Return the name of this device."""
-        return self._lock.device_name
+        return self._device.device_name
 
     @property
     def available(self):
@@ -130,39 +126,6 @@ class AugustLock(LockDevice):
         return attributes
 
     @property
-    def device_info(self):
-        """Return the device_info of the device."""
-        return {
-            "identifiers": {(DOMAIN, self._lock.device_id)},
-            "name": self._lock.device_name,
-            "manufacturer": DEFAULT_NAME,
-            "sw_version": self._detail.firmware_version,
-            "model": self._detail.model,
-        }
-
-    @property
     def unique_id(self) -> str:
         """Get the unique id of the lock."""
-        return f"{self._lock.device_id:s}_lock"
-
-    @property
-    def should_poll(self):
-        """Return the device should not poll for updates."""
-        return False
-
-    @property
-    def _detail(self):
-        self._data.get_device_detail(self._lock.device_id)
-
-    async def async_added_to_hass(self):
-        """Register callbacks."""
-        self._undo_dispatch_subscription = async_dispatcher_connect(
-            self.hass,
-            f"{AUGUST_DEVICE_UPDATE}-{self._lock.device_id}",
-            self._update_from_data,
-        )
-
-    async def async_will_remove_from_hass(self):
-        """Undo subscription."""
-        if self._undo_dispatch_subscription:
-            self._undo_dispatch_subscription()
+        return f"{self._device_id:s}_lock"
