@@ -28,7 +28,7 @@ class AugustSubscriberMixin:
     @callback
     def async_unsubscribe_device_id(self, device_id, update_callback):
         """Remove a callback subscriber."""
-        self._subscriptions[device_id].pop(update_callback)
+        self._subscriptions[device_id].remove(update_callback)
         if not self._subscriptions[device_id]:
             del self._subscriptions[device_id]
         if not self._subscriptions:
