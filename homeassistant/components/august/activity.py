@@ -44,8 +44,7 @@ class ActivityStream:
             return
         self._abort_async_track_time_interval()
 
-    @callback
-    def async_get_latest_device_activity(self, device_id, activity_types):
+    def get_latest_device_activity(self, device_id, activity_types):
         """Return latest activity that is one of the acitivty_types."""
         if device_id not in self._latest_activities_by_id_type:
             return None

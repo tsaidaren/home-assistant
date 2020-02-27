@@ -5,18 +5,16 @@ import logging
 
 from august.api import AugustApiHTTPError
 from august.authenticator import ValidationResult
-from august.doorbell import Doorbell
-from august.lock import Lock
 from requests import RequestException
 import voluptuous as vol
 
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import CONF_PASSWORD, CONF_TIMEOUT, CONF_USERNAME
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.dispatcher import async_dispatcher_send
-from homeassistant.util import Throttle
+from homeassistant.helpers.event import async_track_time_interval
 
 from .activity import ActivityStream
 from .const import (
@@ -197,6 +195,17 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     return unload_ok
 
 
+class AugustDataSubscriberDevice:
+    """A subscription to detail data for a device."""
+
+    def __init__(self, subscriber_name):
+        self._subscriber_name = subscriber_name
+
+    @property
+    def subscriber_name(self):
+        return self._subscriber_name
+
+
 class AugustData:
     """August data object."""
 
@@ -205,123 +214,113 @@ class AugustData:
         self._hass = hass
         self._august_gateway = august_gateway
         self._api = august_gateway.api
+        self._unsub_interval = None
+        self._device_detail_by_id = {}
+        self._subscriptions = {}
 
-        self._doorbells = (
-            self._api.get_doorbells(self._august_gateway.access_token) or []
+        locks = self._api.get_operable_locks(self._august_gateway.access_token) or []
+        doorbells = self._api.get_doorbells(self._august_gateway.access_token) or []
+
+        self._doorbells_by_id = dict((device.device_id, device) for device in doorbells)
+        self._locks_by_id = dict((device.id, device) for device in locks)
+        self._house_ids = set(
+            device.device_id for device in itertools.chain(locks, doorbells)
         )
-        self._locks = (
-            self._api.get_operable_locks(self._august_gateway.access_token) or []
+
+        self._refresh_device_detail_by_ids(
+            [self._doorbells_by_id.keys(), self._locks_by_id.keys()]
         )
-        self._house_ids = set()
-        for device in itertools.chain(self._doorbells, self._locks):
-            self._house_ids.add(device.house_id)
-
-        self._doorbell_detail_by_id = {}
-        self._lock_detail_by_id = {}
-
-        # We check the locks right away so we can
-        # remove inoperative ones
-        self._update_locks_detail()
-        self._update_doorbells_detail()
-        self._filter_inoperative_locks()
+        self._remove_inoperative_locks()
+        self._remove_inoperative_doorbells()
 
         self.activity_stream = ActivityStream(
             hass, self._api, self._august_gateway, self._house_ids
         )
 
     @property
-    def house_ids(self):
-        """Return a list of house_ids."""
-        return self._house_ids
-
-    @property
     def doorbells(self):
-        """Return a list of doorbells."""
-        return self._doorbells
+        """Return a list of py-august Doorbell objects."""
+        return self._doorbells_by_id.values()
 
     @property
     def locks(self):
-        """Return a list of locks."""
-        return self._locks
+        """Return a list of py-august Lock objects."""
+        return self._locks_by_id.values()
 
-    async def async_get_device_detail(self, device):
-        """Return the detail for a device."""
-        if isinstance(device, Lock):
-            return await self.async_get_lock_detail(device.device_id)
-        if isinstance(device, Doorbell):
-            return await self.async_get_doorbell_detail(device.device_id)
-        raise ValueError
+    @callback
+    def async_subscribe_device_id(self, device_id, subscriber_name):
+        if not self._subscriptions:
+            self._unsub_interval = async_track_time_interval(
+                self.hass,
+                self._refresh_devices_with_subscribers,
+                MIN_TIME_BETWEEN_DETAIL_UPDATES,
+            )
 
-    async def async_get_doorbell_detail(self, device_id):
-        """Return doorbell detail."""
-        await self._async_update_doorbells_detail()
-        return self._doorbell_detail_by_id.get(device_id)
+        subscription = AugustDataSubscriberDevice(subscriber_name)
+        self._subscriptions.setdefault(device_id, []).append(subscription)
 
-    @Throttle(MIN_TIME_BETWEEN_DETAIL_UPDATES)
-    async def _async_update_doorbells_detail(self):
-        await self._hass.async_add_executor_job(self._update_doorbells_detail)
+        return subscription
 
-    def _update_doorbells_detail(self):
-        self._doorbell_detail_by_id = self._update_device_detail(
-            "doorbell", self._doorbells, self._api.get_doorbell_detail
-        )
+    @callback
+    def async_unsubscribe_device_id(self, device_id, subscription):
+        self._subscriptions[device_id].pop(subscription)
+        if not self._subscriptions[device_id]:
+            del self._subscriptions[device_id]
+        if not self._subscriptions:
+            self._unsub_interval()
+            self._unsub_interval = None
 
-    def lock_has_doorsense(self, device_id):
-        """Determine if a lock has doorsense installed and can tell when the door is open or closed."""
-        # We do not update here since this is not expected
-        # to change until restart
-        if self._lock_detail_by_id[device_id] is None:
-            return False
-        return self._lock_detail_by_id[device_id].doorsense
+    def get_device_detail(self, device_id):
+        """Return the py-august LockDetail or DoorbellDetail object for a device."""
+        return self._device_detail_by_id.get(device_id, None)
 
-    async def async_get_lock_detail(self, device_id):
-        """Return lock detail."""
-        await self._async_update_locks_detail()
-        return self._lock_detail_by_id[device_id]
-
-    def get_device_name(self, device_id):
-        """Return doorbell or lock name as August has it stored."""
-        for device in itertools.chain(self._locks, self._doorbells):
-            if device.device_id == device_id:
-                return device.device_name
-
-    @Throttle(MIN_TIME_BETWEEN_DETAIL_UPDATES)
-    async def _async_update_locks_detail(self):
-        await self._hass.async_add_executor_job(self._update_locks_detail)
-
-    def _update_locks_detail(self):
-        self._lock_detail_by_id = self._update_device_detail(
-            "lock", self._locks, self._api.get_lock_detail
-        )
-
-    def _update_device_detail(self, device_type, devices, api_call):
-        detail_by_id = {}
-
-        _LOGGER.debug("Start retrieving %s detail", device_type)
-        for device in devices:
-            device_id = device.device_id
-            detail_by_id[device_id] = None
-            try:
-                detail_by_id[device_id] = api_call(
-                    self._august_gateway.access_token, device_id
-                )
-            except RequestException as ex:
-                _LOGGER.error(
-                    "Request error trying to retrieve %s details for %s. %s",
-                    device_type,
-                    device.device_name,
-                    ex,
-                )
-
-        _LOGGER.debug("Completed retrieving %s detail", device_type)
-        return detail_by_id
-
-    async def async_signal_operation_changed_device_state(self, device_id):
-        """Signal a device update when an operation changes state."""
+    async def async_signal_device_id_update(self, device_id):
+        """Signal a device has an update."""
         _LOGGER.debug(
             "async_dispatcher_send (from operation): AUGUST_DEVICE_UPDATE-%s", device_id
         )
         async_dispatcher_send(self._hass, f"{AUGUST_DEVICE_UPDATE}-{device_id}")
+
+    def _refresh_devices_with_subscribers(self):
+        _refresh_device_detail_by_ids(self._subscriptions.keys())
+
+    def _refresh_device_detail_by_ids(self, device_ids_list):
+        for device_id in device_ids_list:
+            if device_id in self._locks_by_id:
+                _update_device_detail(
+                    self._locks_by_id[device_id], self._api.get_lock_detail
+                )
+            elif device_id in self._doorbells_by_id:
+                _update_device_detail(
+                    self._doorbells_by_id[device_id], self._api.get_doorbell_detail
+                )
+
+    def _update_device_detail(self, device, api_call):
+        _LOGGER.debug(
+            "Started retrieving %s detail for %", device.device_type, device.device_id
+        )
+
+        try:
+            self._device_detail_by_id[device.device_id] = api_call(
+                self._august_gateway.access_token, device.device_id
+            )
+        except RequestException as ex:
+            _LOGGER.error(
+                "Request error trying to retrieve %s details for %s. %s",
+                device.device_id,
+                device.device_name,
+                ex,
+            )
+        _LOGGER.debug(
+            "Completed retrieving %s detail for %", device.device_type, device.device_id
+        )
+
+    def _get_device_name(self, device_id):
+        """Return doorbell or lock name as August has it stored."""
+        if self._locks.get(device_id):
+            return self._locks[device_id].device_name
+        if self._doorbells.get(device_id):
+            return self._doorbells[device_id].device_name
 
     def lock(self, device_id):
         """Lock the device."""
@@ -354,13 +353,31 @@ class AugustData:
 
         return ret
 
-    def _filter_inoperative_locks(self):
+    def _remove_inoperative_doorbells(self):
+        for doorbell in self.doorbells:
+            device_id = doorbell.device_id
+            doorbell_is_operative = False
+            doorbell_detail = self.get_device_detail(device_id)
+            if doorbell_detail is None:
+                _LOGGER.info(
+                    "The doorbell %s could not be setup because the system could not fetch details about the doorbell.",
+                    doorbell.device_name,
+                )
+            else:
+                doorbell_is_operative = True
+
+        if not doorbell_is_operative:
+            del self._doorbells[device_id]
+            del self._device_detail_by_id[device_id]
+
+    def _remove_inoperative_locks(self):
         # Remove non-operative locks as there must
         # be a bridge (August Connect) for them to
         # be usable
-        operative_locks = []
-        for lock in self._locks:
-            lock_detail = self._lock_detail_by_id.get(lock.device_id)
+        for lock in self.locks:
+            device_id = lock.device_id
+            lock_is_operative = False
+            lock_detail = self.get_device_detail(device_id)
             if lock_detail is None:
                 _LOGGER.info(
                     "The lock %s could not be setup because the system could not fetch details about the lock.",
@@ -377,6 +394,8 @@ class AugustData:
                     lock.device_name,
                 )
             else:
-                operative_locks.append(lock)
+                lock_is_operative = True
 
-        self._locks = operative_locks
+            if not lock_is_operative:
+                del self._locks[device_id]
+                del self._device_detail_by_id[device_id]

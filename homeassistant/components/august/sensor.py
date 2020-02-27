@@ -73,7 +73,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     for sensor_type in SENSOR_TYPES_BATTERY:
         for device in batteries[sensor_type]:
             state_provider = SENSOR_TYPES_BATTERY[sensor_type]["state_provider"]
-            detail = await data.async_get_device_detail(device)
+            detail = data.get_device_detail(device.device_id)
             state = state_provider(detail)
             sensor_name = SENSOR_TYPES_BATTERY[sensor_type]["name"]
             if state is None:
@@ -101,8 +101,6 @@ class AugustBatterySensor(Entity):
         self._device = device
         self._state = None
         self._available = False
-        self._firmware_version = None
-        self._model = None
 
     @property
     def available(self):
@@ -131,15 +129,11 @@ class AugustBatterySensor(Entity):
         sensor_name = SENSOR_TYPES_BATTERY[self._sensor_type]["name"]
         return f"{device_name} {sensor_name}"
 
-    async def async_update(self):
+    def _update_from_data(self):
         """Get the latest state of the sensor."""
         state_provider = SENSOR_TYPES_BATTERY[self._sensor_type]["state_provider"]
-        detail = await self._data.async_get_device_detail(self._device)
-        self._state = state_provider(detail)
+        self._state = state_provider(self._detail)
         self._available = self._state is not None
-        if detail is not None:
-            self._firmware_version = detail.firmware_version
-            self._model = detail.model
 
     @property
     def unique_id(self) -> str:
@@ -153,6 +147,15 @@ class AugustBatterySensor(Entity):
             "identifiers": {(DOMAIN, self._device.device_id)},
             "name": self._device.device_name,
             "manufacturer": DEFAULT_NAME,
-            "sw_version": self._firmware_version,
-            "model": self._model,
+            "sw_version": self._detail.firmware_version,
+            "model": self._detail.model,
         }
+
+    #    @property
+    #    def should_poll(self):
+    #        """Return the devices should not poll for updates."""
+    #        return False
+
+    @property
+    def _detail(self):
+        self._data.get_device_detail(self._device.device_id)
