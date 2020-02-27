@@ -10,16 +10,13 @@ import voluptuous as vol
 
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import CONF_PASSWORD, CONF_TIMEOUT, CONF_USERNAME
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.dispatcher import async_dispatcher_send
-from homeassistant.helpers.event import async_track_time_interval
 
 from .activity import ActivityStream
 from .const import (
     AUGUST_COMPONENTS,
-    AUGUST_DEVICE_UPDATE,
     CONF_ACCESS_TOKEN_CACHE_FILE,
     CONF_INSTALL_ID,
     CONF_LOGIN_METHOD,
@@ -34,6 +31,7 @@ from .const import (
 )
 from .exceptions import InvalidAuth, RequireValidation
 from .gateway import AugustGateway
+from .subscriber import AugustSubscriberMixin
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -195,28 +193,16 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     return unload_ok
 
 
-class AugustDataSubscriberDevice:
-    """A subscription to detail data for a device."""
-
-    def __init__(self, subscriber_name):
-        self._subscriber_name = subscriber_name
-
-    @property
-    def subscriber_name(self):
-        return self._subscriber_name
-
-
-class AugustData:
+class AugustData(AugustSubscriberMixin):
     """August data object."""
 
     def __init__(self, hass, august_gateway):
         """Init August data object."""
+        super().__init__(hass, MIN_TIME_BETWEEN_DETAIL_UPDATES)
         self._hass = hass
         self._august_gateway = august_gateway
         self._api = august_gateway.api
-        self._unsub_interval = None
         self._device_detail_by_id = {}
-        self._subscriptions = {}
 
         locks = self._api.get_operable_locks(self._august_gateway.access_token) or []
         doorbells = self._api.get_doorbells(self._august_gateway.access_token) or []
@@ -247,53 +233,24 @@ class AugustData:
         """Return a list of py-august Lock objects."""
         return self._locks_by_id.values()
 
-    @callback
-    def async_subscribe_device_id(self, device_id, subscriber_name):
-        if not self._subscriptions:
-            self._unsub_interval = async_track_time_interval(
-                self.hass,
-                self._refresh_devices_with_subscribers,
-                MIN_TIME_BETWEEN_DETAIL_UPDATES,
-            )
-
-        subscription = AugustDataSubscriberDevice(subscriber_name)
-        self._subscriptions.setdefault(device_id, []).append(subscription)
-
-        return subscription
-
-    @callback
-    def async_unsubscribe_device_id(self, device_id, subscription):
-        self._subscriptions[device_id].pop(subscription)
-        if not self._subscriptions[device_id]:
-            del self._subscriptions[device_id]
-        if not self._subscriptions:
-            self._unsub_interval()
-            self._unsub_interval = None
-
     def get_device_detail(self, device_id):
         """Return the py-august LockDetail or DoorbellDetail object for a device."""
         return self._device_detail_by_id.get(device_id, None)
 
-    async def async_signal_device_id_update(self, device_id):
-        """Signal a device has an update."""
-        _LOGGER.debug(
-            "async_dispatcher_send (from operation): AUGUST_DEVICE_UPDATE-%s", device_id
-        )
-        async_dispatcher_send(self._hass, f"{AUGUST_DEVICE_UPDATE}-{device_id}")
-
-    def _refresh_devices_with_subscribers(self):
-        _refresh_device_detail_by_ids(self._subscriptions.keys())
+    def _refresh(self, time):
+        self._refresh_device_detail_by_ids(self._subscriptions.keys())
 
     def _refresh_device_detail_by_ids(self, device_ids_list):
         for device_id in device_ids_list:
             if device_id in self._locks_by_id:
-                _update_device_detail(
+                self._update_device_detail(
                     self._locks_by_id[device_id], self._api.get_lock_detail
                 )
             elif device_id in self._doorbells_by_id:
-                _update_device_detail(
+                self._update_device_detail(
                     self._doorbells_by_id[device_id], self._api.get_doorbell_detail
                 )
+            self.signal_device_id_update(device_id)
 
     def _update_device_detail(self, device, api_call):
         _LOGGER.debug(

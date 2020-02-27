@@ -1,7 +1,6 @@
 """Base class for August entity."""
-from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
-from . import AUGUST_DEVICE_UPDATE, DEFAULT_NAME, DOMAIN
+from . import DEFAULT_NAME, DOMAIN
 
 
 class AugustEntityMixin:
@@ -43,23 +42,16 @@ class AugustEntityMixin:
             "model": self._detail.model,
         }
 
-    #    async def async_added_to_hass(self):
-    #        """Register callbacks."""
-    #        self.ring_objects["device_data"].async_add_listener(self._update_callback)
-    #
-    #    async def async_will_remove_from_hass(self):
-    #        """Disconnect callbacks."""
-    #        self.ring_objects["device_data"].async_remove_listener(self._update_callback)
-
     async def async_added_to_hass(self):
-        """Register callbacks."""
-        self._undo_dispatch_subscription = async_dispatcher_connect(
-            self.hass,
-            f"{AUGUST_DEVICE_UPDATE}-{self._device_id}",
-            self._update_from_data,
+        """Subscribe to updates."""
+        self._data.async_subscribe_device_id(self._device_id, self._update_from_data)
+        self._data.activity_stream.async_subscribe_device_id(
+            self._device_id, self._update_from_data
         )
 
     async def async_will_remove_from_hass(self):
         """Undo subscription."""
-        if self._undo_dispatch_subscription:
-            self._undo_dispatch_subscription()
+        self._data.async_unsubscribe_device_id(self._device_id, self._update_from_data)
+        self._data.activity_stream.async_unsubscribe_device_id(
+            self._device_id, self._update_from_data
+        )
