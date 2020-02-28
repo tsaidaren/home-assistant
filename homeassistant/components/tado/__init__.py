@@ -1,5 +1,6 @@
 """Support for the (unofficial) Tado API."""
 from datetime import timedelta
+import inspect
 import logging
 import urllib
 
@@ -162,29 +163,71 @@ class TadoConnector:
         self.tado.resetZoneOverlay(zone_id)
         self.update_sensor("zone", zone_id)
 
+    def set_home(self):
+        """Put tado in home mode."""
+        try:
+            self.tado.setHome()
+        except urllib.error.HTTPError as exc:
+            _LOGGER.error("Could not set home: %s", exc.read())
+
+    def set_away(self):
+        """Put tado in away mode."""
+        try:
+            self.tado.setAway()
+        except urllib.error.HTTPError as exc:
+            _LOGGER.error("Could not set away: %s", exc.read())
+
     def set_zone_overlay(
         self,
-        zone_id,
-        overlay_mode,
+        zone_id=None,
+        overlay_mode=None,
         temperature=None,
         duration=None,
         device_type="HEATING",
         mode=None,
+        fan_speed=None,
     ):
         """Set a zone overlay."""
         _LOGGER.debug(
-            "Set overlay for zone %s: mode=%s, temp=%s, duration=%s, type=%s, mode=%s",
+            "Set overlay for zone %s: overlay_mode=%s, temp=%s, duration=%s, type=%s, mode=%s fan_speed=%s",
             zone_id,
             overlay_mode,
             temperature,
             duration,
             device_type,
             mode,
+            fan_speed,
         )
+
+        # TODO: remove inspect when done testing
+        set_zone_overlay_params = inspect.signature(self.tado.setZoneOverlay).parameters
+
         try:
-            self.tado.setZoneOverlay(
-                zone_id, overlay_mode, temperature, duration, device_type, "ON", mode
-            )
+            if "fanSpeed" in set_zone_overlay_params:
+                #
+                # fan_speed is not currently passed in python-tado as of 0.3.0
+                #
+                self.tado.setZoneOverlay(
+                    zone_id,
+                    overlay_mode,
+                    temperature,
+                    duration,
+                    device_type,
+                    "ON",
+                    mode,
+                    fan_speed,
+                )
+            else:
+                self.tado.setZoneOverlay(
+                    zone_id,
+                    overlay_mode,
+                    temperature,
+                    duration,
+                    device_type,
+                    "ON",
+                    mode,
+                )
+
         except urllib.error.HTTPError as exc:
             _LOGGER.error("Could not set zone overlay: %s", exc.read())
 
