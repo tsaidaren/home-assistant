@@ -408,13 +408,13 @@ class TadoClimate(ClimateDevice):
         """Return the maximum temperature."""
         if (
             self._current_tado_hvac_mode == CONST_MODE_HEAT
-            and self._heat_min_temp is not None
+            and self._heat_max_temp is not None
         ):
-            return self._heat_min_temp
-        if self._heat_min_temp is not None:
-            return self._heat_min_temp
+            return self._heat_max_temp
+        if self._heat_max_temp is not None:
+            return self._heat_max_temp
 
-        return self._heat_min_temp
+        return self._heat_max_temp
 
     def update(self):
         """Handle update callbacks."""
