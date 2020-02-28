@@ -66,6 +66,15 @@ ORDERED_KNOWN_TADO_MODES = [
     CONST_MODE_FAN,
 ]
 
+TADO_MODES_TO_HA_CURRENT_HVAC_ACTION = {
+    CONST_MODE_HEAT: CURRENT_HVAC_HEAT,
+    CONST_MODE_DRY: CURRENT_HVAC_DRY,
+    CONST_MODE_FAN: CURRENT_HVAC_FAN,
+    CONST_MODE_COOL: CURRENT_HVAC_COOL,
+}
+
+# These modes will not allow a temp to be set
+TADO_MODES_WITH_NO_TEMP_SETTING = [CONST_MODE_AUTO, CONST_MODE_DRY, CONST_MODE_FAN]
 #
 # HVAC_MODE_HEAT_COOL is mapped to CONST_MODE_AUTO
 #    This lets tado decide on a temp
@@ -467,17 +476,10 @@ class TadoClimate(ClimateDevice):
             activity_data = data["activityDataPoints"]
             if "acPower" in activity_data and activity_data["acPower"] is not None:
                 if not activity_data["acPower"]["value"] == "OFF":
-                    # acPower means the unit has power. It could
-                    # be a heat pump so if the mode is set to heat
-                    # we have to assume its heating
-                    if self._current_tado_hvac_mode == CONST_MODE_HEAT:
-                        self._current_hvac_action = CURRENT_HVAC_HEAT
-                    elif self._current_tado_hvac_mode == CONST_MODE_DRY:
-                        self._current_hvac_action = CURRENT_HVAC_DRY
-                    elif self._current_tado_hvac_mode == CONST_MODE_FAN:
-                        self._current_hvac_action = CURRENT_HVAC_FAN
-                    else:
-                        self._current_hvac_action = CURRENT_HVAC_COOL
+                    # acPower means the unit has power so we need to map the mode
+                    self._current_hvac_action = TADO_MODES_TO_HA_CURRENT_HVAC_ACTION.get(
+                        self._current_tado_hvac_mode, CURRENT_HVAC_COOL
+                    )
             if (
                 "heatingPower" in activity_data
                 and activity_data["heatingPower"] is not None
@@ -499,11 +501,7 @@ class TadoClimate(ClimateDevice):
         if fan_mode:
             self._current_tado_fan_speed = fan_mode
 
-        if (
-            self._current_tado_hvac_mode == CONST_MODE_AUTO
-            or self._current_tado_hvac_mode == CONST_MODE_FAN
-            or self._current_tado_hvac_mode == CONST_MODE_DRY
-        ):
+        if self._current_tado_hvac_mode in TADO_MODES_WITH_NO_TEMP_SETTING:
             # A temperature cannot be passed with these modes
             self._target_temp = None
         # Set a target temperature if we don't have any
