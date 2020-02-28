@@ -9,6 +9,11 @@ from homeassistant.components.climate.const import (
     CURRENT_HVAC_HEAT,
     CURRENT_HVAC_IDLE,
     CURRENT_HVAC_OFF,
+    FAN_AUTO,
+    FAN_HIGH,
+    FAN_LOW,
+    FAN_MEDIUM,
+    FAN_OFF,
     HVAC_MODE_AUTO,
     HVAC_MODE_COOL,
     HVAC_MODE_DRY,
@@ -29,6 +34,9 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from . import DOMAIN, SIGNAL_TADO_UPDATE_RECEIVED
 from .const import (
     CONST_FAN_AUTO,
+    CONST_FAN_HIGH,
+    CONST_FAN_LOW,
+    CONST_FAN_MIDDLE,
     CONST_FAN_OFF,
     CONST_MODE_AUTO,
     CONST_MODE_COOL,
@@ -75,9 +83,19 @@ HA_TO_TADO_HVAC_MODE_MAP = {
     HVAC_MODE_FAN_ONLY: CONST_MODE_FAN,
 }
 
+HA_TO_TADO_FAN_MODE_MAP = {
+    FAN_AUTO: CONST_FAN_AUTO,
+    FAN_OFF: CONST_FAN_OFF,
+    FAN_LOW: CONST_FAN_LOW,
+    FAN_MEDIUM: CONST_FAN_MIDDLE,
+    FAN_HIGH: CONST_FAN_HIGH,
+}
+
 TADO_TO_HA_HVAC_MODE_MAP = {
     value: key for key, value in HA_TO_TADO_HVAC_MODE_MAP.items()
 }
+
+TADO_TO_HA_FAN_MODE_MAP = {value: key for key, value in HA_TO_TADO_FAN_MODE_MAP.items()}
 
 SUPPORT_PRESET = [PRESET_AWAY, PRESET_HOME]
 
@@ -114,7 +132,7 @@ def create_climate_entity(tado, name: str, zone_id: int):
         TADO_TO_HA_HVAC_MODE_MAP[CONST_MODE_OFF],
         TADO_TO_HA_HVAC_MODE_MAP[CONST_MODE_SMART_SCHEDULE],
     ]
-    supported_fan_modes = []
+    supported_fan_modes = None
     heat_temperatures = None
     cool_temperatures = None
 
@@ -125,7 +143,12 @@ def create_climate_entity(tado, name: str, zone_id: int):
                 supported_hvac_modes.append(TADO_TO_HA_HVAC_MODE_MAP[mode])
             if capabilities[mode].get("fanSpeeds"):
                 support_flags |= SUPPORT_FAN_MODE
-                supported_fan_modes = capabilities["COOL"].get("fanSpeeds")
+                if supported_fan_modes is None:
+                    supported_fan_modes = [
+                        TADO_TO_HA_FAN_MODE_MAP[speed]
+                        for speed in capabilities[mode]["fanSpeeds"]
+                    ]
+
         cool_temperatures = capabilities[CONST_MODE_COOL]["temperatures"]
     else:
         supported_hvac_modes.append(HVAC_MODE_HEAT)
@@ -301,7 +324,7 @@ class TadoClimate(ClimateDevice):
     def fan_mode(self):
         """Return the fan setting."""
         if self._ac_device:
-            return self._current_tado_fan_speed
+            return TADO_TO_HA_FAN_MODE_MAP.get(self._current_tado_fan_speed, FAN_AUTO)
         return None
 
     @property
@@ -311,7 +334,7 @@ class TadoClimate(ClimateDevice):
 
     def set_fan_mode(self, fan_mode: str):
         """Turn fan on/off."""
-        self._control_hvac(fan_mode=fan_mode)
+        self._control_hvac(fan_mode=HA_TO_TADO_FAN_MODE_MAP[fan_mode])
 
     @property
     def preset_mode(self):
