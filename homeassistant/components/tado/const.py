@@ -10,11 +10,15 @@ TYPE_HEATING = "HEATING"
 TYPE_HOT_WATER = "HOT_WATER"
 
 # Base modes
+CONST_MODE_OFF = "OFF"
 CONST_MODE_SMART_SCHEDULE = "SMART_SCHEDULE"  # Use the schedule
-CONST_MODE_OFF = "OFF"  # Switch off heating in a zone
+CONST_MODE_AUTO = "AUTO"
 CONST_MODE_COOL = "COOL"
 CONST_MODE_HEAT = "HEAT"
-CONST_MODE_HEAT_COOL = "AUTO"
+CONST_MODE_DRY = "DRY"
+CONST_MODE_FAN = "FAN"
+
+COSNT_FAN_AUTO = "AUTO"
 
 # When we change the temperature setting, we need an overlay mode
 CONST_OVERLAY_TADO_MODE = "TADO_MODE"  # wait until tado changes the mode automatic
