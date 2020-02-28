@@ -133,8 +133,6 @@ def create_climate_entity(tado, name: str, zone_id: int):
     capabilities = tado.get_capabilities(zone_id)
     _LOGGER.debug("Capabilities for zone %s: %s", zone_id, capabilities)
 
-    # {'type': 'AIR_CONDITIONING', 'AUTO': {}, 'COOL': {'temperatures': {'celsius': {'min': 18, 'max': 31, 'step': 1.0}, 'fahrenheit': {'min': 64, 'max': 88, 'step': 1.0}}, 'fanSpeeds': ['AUTO', 'HIGH', 'MIDDLE', 'LOW']}, 'DRY': {}, 'FAN': {}, 'HEAT': {'temperatures': {'celsius': {'min': 16, 'max': 30, 'step': 1.0}, 'fahrenheit': {'min': 61, 'max': 86, 'step': 1.0}}, 'fanSpeeds': ['AUTO', 'HIGH', 'MIDDLE', 'LOW']}}
-
     zone_type = capabilities["type"]
     support_flags = SUPPORT_PRESET_MODE | SUPPORT_TARGET_TEMPERATURE
     supported_hvac_modes = [
@@ -475,7 +473,9 @@ class TadoClimate(ClimateDevice):
         if "activityDataPoints" in data:
             activity_data = data["activityDataPoints"]
             if "acPower" in activity_data and activity_data["acPower"] is not None:
-                if not activity_data["acPower"]["value"] == "OFF":
+                if activity_data["acPower"]["value"] == "OFF":
+                    self._current_hvac_action = CURRENT_HVAC_OFF
+                else:
                     # acPower means the unit has power so we need to map the mode
                     self._current_hvac_action = TADO_MODES_TO_HA_CURRENT_HVAC_ACTION.get(
                         self._current_tado_hvac_mode, CURRENT_HVAC_COOL
@@ -489,24 +489,10 @@ class TadoClimate(ClimateDevice):
 
         self._available = True
 
-    def _control_hvac(self, hvac_mode=None, target_temp=None, fan_mode=None):
-        """Send new target temperature to Tado."""
-
-        if hvac_mode:
-            self._current_tado_hvac_mode = hvac_mode
-
-        if target_temp:
-            self._target_temp = target_temp
-
-        if fan_mode:
-            self._current_tado_fan_speed = fan_mode
-
-        if self._current_tado_hvac_mode in TADO_MODES_WITH_NO_TEMP_SETTING:
-            # A temperature cannot be passed with these modes
-            self._target_temp = None
+    def _normalize_target_temp_for_hvac_mode(self):
         # Set a target temperature if we don't have any
         # This can happen when we switch from Off to On
-        elif self._target_temp is None:
+        if self._target_temp is None:
             if self._current_tado_hvac_mode == CONST_MODE_COOL:
                 self._target_temp = self._cool_max_temp
             else:
@@ -522,13 +508,34 @@ class TadoClimate(ClimateDevice):
             elif self._target_temp < self._heat_min_temp:
                 self._target_temp = self._heat_min_temp
 
+    def _control_hvac(self, hvac_mode=None, target_temp=None, fan_mode=None):
+        """Send new target temperature to Tado."""
+
+        if hvac_mode:
+            self._current_tado_hvac_mode = hvac_mode
+
+        if target_temp:
+            self._target_temp = target_temp
+
+        if fan_mode:
+            self._current_tado_fan_speed = fan_mode
+
+        self._normalize_target_temp_for_hvac_mode()
+
         # tado does not permit setting the fan speed to
         # off, you must turn off the device
-        if self._current_tado_fan_speed == CONST_FAN_OFF:
+        if (
+            self._current_tado_fan_speed == CONST_FAN_OFF
+            and self._current_tado_hvac_mode != CONST_MODE_OFF
+        ):
             self._current_tado_fan_speed = CONST_FAN_AUTO
 
-        # Set optimistically
-        self.schedule_update_ha_state()
+        if self._current_tado_hvac_mode == CONST_MODE_OFF:
+            _LOGGER.debug(
+                "Switching to OFF for zone %s (%d)", self.zone_name, self.zone_id
+            )
+            self._tado.set_zone_off(self.zone_id, CONST_OVERLAY_MANUAL, self.zone_type)
+            return
 
         if self._current_tado_hvac_mode == CONST_MODE_SMART_SCHEDULE:
             _LOGGER.debug(
@@ -537,13 +544,6 @@ class TadoClimate(ClimateDevice):
                 self.zone_id,
             )
             self._tado.reset_zone_overlay(self.zone_id)
-            return
-
-        if self._current_tado_hvac_mode == CONST_MODE_OFF:
-            _LOGGER.debug(
-                "Switching to OFF for zone %s (%d)", self.zone_name, self.zone_id
-            )
-            self._tado.set_zone_off(self.zone_id, CONST_OVERLAY_MANUAL, self.zone_type)
             return
 
         _LOGGER.debug(
@@ -559,10 +559,15 @@ class TadoClimate(ClimateDevice):
             CONST_OVERLAY_TADO_MODE if self._tado.fallback else CONST_OVERLAY_MANUAL
         )
 
+        temperature_to_send = self._target_temp
+        if self._current_tado_hvac_mode in TADO_MODES_WITH_NO_TEMP_SETTING:
+            # A temperature cannot be passed with these modes
+            temperature_to_send = None
+
         self._tado.set_zone_overlay(
             zone_id=self.zone_id,
             overlay_mode=overlay_mode,  # What to do when the period ends
-            temperature=self._target_temp,
+            temperature=temperature_to_send,
             duration=None,
             device_type=self.zone_type,
             mode=self._current_tado_hvac_mode,
