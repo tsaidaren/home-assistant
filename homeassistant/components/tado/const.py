@@ -18,6 +18,7 @@ CONST_MODE_HEAT = "HEAT"
 CONST_MODE_DRY = "DRY"
 CONST_MODE_FAN = "FAN"
 
+CONST_FAN_OFF = "OFF"
 CONST_FAN_AUTO = "AUTO"
 
 # When we change the temperature setting, we need an overlay mode
