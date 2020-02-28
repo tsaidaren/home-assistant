@@ -18,7 +18,7 @@ CONST_MODE_HEAT = "HEAT"
 CONST_MODE_DRY = "DRY"
 CONST_MODE_FAN = "FAN"
 
-COSNT_FAN_AUTO = "AUTO"
+CONST_FAN_AUTO = "AUTO"
 
 # When we change the temperature setting, we need an overlay mode
 CONST_OVERLAY_TADO_MODE = "TADO_MODE"  # wait until tado changes the mode automatic
