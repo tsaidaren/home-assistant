@@ -12,6 +12,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
 from . import DOMAIN, SIGNAL_TADO_UPDATE_RECEIVED
 from .const import (
+    CONST_MODE_HEAT,
     CONST_MODE_OFF,
     CONST_MODE_SMART_SCHEDULE,
     CONST_OVERLAY_MANUAL,
@@ -110,15 +111,7 @@ class TadoWaterHeater(WaterHeaterDevice):
         if self._supports_temperature_control:
             self._supported_features |= SUPPORT_TARGET_TEMPERATURE
 
-        if tado.fallback:
-            # Fallback to Smart Schedule at next Schedule switch
-            self._default_overlay = CONST_OVERLAY_TADO_MODE
-        else:
-            # Don't fallback to Smart Schedule, but keep in manual mode
-            self._default_overlay = CONST_OVERLAY_MANUAL
-
-        self._current_operation = CONST_MODE_SMART_SCHEDULE
-        self._overlay_mode = CONST_MODE_SMART_SCHEDULE
+        self._current_tado_heat_mode = CONST_MODE_SMART_SCHEDULE
 
     async def async_added_to_hass(self):
         """Register for sensor updates."""
@@ -157,7 +150,7 @@ class TadoWaterHeater(WaterHeaterDevice):
     @property
     def current_operation(self):
         """Return current readable operation mode."""
-        return WATER_HEATER_MAP_TADO.get(self._current_operation)
+        return WATER_HEATER_MAP_TADO.get(self._current_tado_heat_mode)
 
     @property
     def target_temperature(self):
@@ -198,16 +191,9 @@ class TadoWaterHeater(WaterHeaterDevice):
         elif operation_mode == MODE_AUTO:
             mode = CONST_MODE_SMART_SCHEDULE
         elif operation_mode == MODE_HEAT:
-            mode = self._default_overlay
+            mode = CONST_MODE_HEAT
 
-        self._current_operation = mode
-        self._overlay_mode = None
-
-        # Set a target temperature if we don't have any
-        if mode == CONST_OVERLAY_TADO_MODE and self._target_temp is None:
-            self._target_temp = self.min_temp
-
-        self._control_heater()
+        self._control_heater(heat_mode=mode)
 
     def set_temperature(self, **kwargs):
         """Set new target temperature."""
@@ -215,10 +201,7 @@ class TadoWaterHeater(WaterHeaterDevice):
         if not self._supports_temperature_control or temperature is None:
             return
 
-        self._current_operation = self._default_overlay
-        self._overlay_mode = None
-        self._target_temp = temperature
-        self._control_heater()
+        self._control_heater(target_temp=temperature)
 
     def update(self):
         """Handle update callbacks."""
@@ -232,71 +215,68 @@ class TadoWaterHeater(WaterHeaterDevice):
         if "setting" in data:
             power = data["setting"]["power"]
             if power == "OFF":
-                self._current_operation = CONST_MODE_OFF
-                # There is no overlay, the mode will always be
-                # "SMART_SCHEDULE"
-                self._overlay_mode = CONST_MODE_SMART_SCHEDULE
-                self._device_is_active = False
+                self._current_tado_heat_mode = CONST_MODE_OFF
             else:
-                self._device_is_active = True
+                self._current_tado_heat_mode = CONST_MODE_HEAT
 
         # temperature setting will not exist when device is off
         if (
             "temperature" in data["setting"]
             and data["setting"]["temperature"] is not None
         ):
-            setting = float(data["setting"]["temperature"]["celsius"])
-            self._target_temp = setting
+            self._target_temp = float(data["setting"]["temperature"]["celsius"])
 
-        overlay = False
-        overlay_data = None
-        termination = CONST_MODE_SMART_SCHEDULE
+        # If there is no overlay
+        # then we are running the smart schedule
+        if "overlay" in data and data["overlay"] is None:
+            self._current_tado_heat_mode = CONST_MODE_SMART_SCHEDULE
 
-        if "overlay" in data:
-            overlay_data = data["overlay"]
-            overlay = overlay_data is not None
-
-        if overlay:
-            termination = overlay_data["termination"]["type"]
-
-        if self._device_is_active:
-            # If you set mode manually to off, there will be an overlay
-            # and a termination, but we want to see the mode "OFF"
-            self._overlay_mode = termination
-            self._current_operation = termination
-
-    def _control_heater(self):
+    def _control_heater(self, heat_mode=None, target_temp=None):
         """Send new target temperature."""
-        if self._current_operation == CONST_MODE_SMART_SCHEDULE:
+
+        if heat_mode:
+            self._current_tado_heat_mode = heat_mode
+
+        if target_temp:
+            self._target_temp = target_temp
+
+        # Set a target temperature if we don't have any
+        if self._target_temp is None:
+            self._target_temp = self.min_temp
+
+        if self._current_tado_heat_mode == CONST_MODE_SMART_SCHEDULE:
             _LOGGER.debug(
                 "Switching to SMART_SCHEDULE for zone %s (%d)",
                 self.zone_name,
                 self.zone_id,
             )
             self._tado.reset_zone_overlay(self.zone_id)
-            self._overlay_mode = self._current_operation
             return
 
-        if self._current_operation == CONST_MODE_OFF:
+        if self._current_tado_heat_mode == CONST_MODE_OFF:
             _LOGGER.debug(
                 "Switching to OFF for zone %s (%d)", self.zone_name, self.zone_id
             )
             self._tado.set_zone_off(self.zone_id, CONST_OVERLAY_MANUAL, TYPE_HOT_WATER)
-            self._overlay_mode = self._current_operation
             return
+
+        # Fallback to Smart Schedule at next Schedule switch if we have fallback enabled
+        overlay_mode = (
+            CONST_OVERLAY_TADO_MODE if self._tado.fallback else CONST_OVERLAY_MANUAL
+        )
 
         _LOGGER.debug(
             "Switching to %s for zone %s (%d) with temperature %s",
-            self._current_operation,
+            self._current_tado_heat_mode,
             self.zone_name,
             self.zone_id,
             self._target_temp,
         )
         self._tado.set_zone_overlay(
-            self.zone_id,
-            self._current_operation,
-            self._target_temp,
-            None,
-            TYPE_HOT_WATER,
+            zone_id=self.zone_id,
+            overlay_mode=overlay_mode,
+            temperature=self._target_temp,
+            duration=None,
+            device_type=TYPE_HOT_WATER,
         )
-        self._overlay_mode = self._current_operation
+        self._overlay_mode = self._current_tado_heat_mode
