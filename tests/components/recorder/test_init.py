@@ -42,6 +42,9 @@ class TestRecorder(unittest.TestCase):
 
         self.hass.states.set(entity_id, state, attributes)
 
+        # We only commit on time change
+        fire_time_changed(self.hass, dt_util.utcnow())
+
         self.hass.block_till_done()
         self.hass.data[DATA_INSTANCE].block_till_done()
 
@@ -69,6 +72,8 @@ class TestRecorder(unittest.TestCase):
         self.hass.bus.listen(MATCH_ALL, event_listener)
 
         self.hass.bus.fire(event_type, event_data)
+        # We only commit on time change
+        fire_time_changed(self.hass, dt_util.utcnow())
 
         self.hass.block_till_done()
 

@@ -361,6 +361,7 @@ class Recorder(threading.Thread):
             try:
                 dbevent = Events.from_event(event)
                 self.event_session.add(dbevent)
+                self.event_session.flush()
             except (TypeError, ValueError):
                 _LOGGER.warning("Event is not JSON serializable: %s", event)
 
