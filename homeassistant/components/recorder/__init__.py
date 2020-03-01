@@ -214,7 +214,6 @@ class Recorder(threading.Thread):
         )
         self.exclude_t = exclude.get(CONF_EVENT_TYPES, [])
 
-        self._pending_events = []
         self.event_session = None
         self.get_session = None
 
@@ -347,8 +346,7 @@ class Recorder(threading.Thread):
                 continue
             if event.event_type == EVENT_TIME_CHANGED:
                 self.queue.task_done()
-                if self._pending_events:
-                    self._commit_event_session_or_retry()
+                self._commit_event_session_or_retry()
                 continue
             if event.event_type in self.exclude_t:
                 self.queue.task_done()
@@ -360,15 +358,9 @@ class Recorder(threading.Thread):
                     self.queue.task_done()
                     continue
 
-            #
-            # We store pending events in self._pending_events
-            # so that if our commit fails we call rollback
-            # and try again to add them all back to the session.
-            #
-
             try:
                 dbevent = Events.from_event(event)
-                self._pending_events.append(dbevent)
+                self.event_session.add(dbevent)
             except (TypeError, ValueError):
                 _LOGGER.warning("Event is not JSON serializable: %s", event)
 
@@ -376,8 +368,7 @@ class Recorder(threading.Thread):
                 try:
                     dbstate = States.from_event(event)
                     dbstate.event_id = dbevent.event_id
-                    # TODO: put this in pending_states slot -- can we get the insert id?
-                    self._pending_events.append(dbstate)
+                    self.event_session.add(dbstate)
                 except (TypeError, ValueError):
                     _LOGGER.warning(
                         "State is not JSON serializable: %s",
@@ -393,9 +384,7 @@ class Recorder(threading.Thread):
                 time.sleep(self.db_retry_wait)
 
             try:
-                self.event_session.add_all(self._pending_events)
                 self._commit_event_session()
-                self._pending_events = []
                 return
 
             except exc.OperationalError as err:
@@ -407,8 +396,7 @@ class Recorder(threading.Thread):
                 tries += 1
 
             except exc.SQLAlchemyError:
-                _LOGGER.exception("Error saving events: %s", self._pending_events)
-                self._pending_events = []
+                _LOGGER.exception("Error saving events")
                 return
 
         _LOGGER.error(
@@ -497,7 +485,7 @@ class Recorder(threading.Thread):
         """Save end time for current run."""
         if self.event_session is not None:
             self.run_info.end = dt_util.utcnow()
-            self._pending_events.append(self.run_info)
+            self.event_session.add(self.run_info)
             self._commit_event_session_or_retry()
             self.event_session.close()
 
