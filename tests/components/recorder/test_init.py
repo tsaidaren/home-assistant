@@ -12,8 +12,13 @@ from homeassistant.components.recorder.util import session_scope
 from homeassistant.const import MATCH_ALL
 from homeassistant.core import callback
 from homeassistant.setup import async_setup_component
+from homeassistant.util import dt as dt_util
 
-from tests.common import get_test_home_assistant, init_recorder_component
+from tests.common import (
+    fire_time_changed,
+    get_test_home_assistant,
+    init_recorder_component,
+)
 
 
 class TestRecorder(unittest.TestCase):
@@ -110,6 +115,8 @@ def _add_entities(hass, entity_ids):
     for idx, entity_id in enumerate(entity_ids):
         hass.states.set(entity_id, "state{}".format(idx), attributes)
         hass.block_till_done()
+    # We only write on time change
+    fire_time_changed(hass, dt_util.utcnow())
     hass.data[DATA_INSTANCE].block_till_done()
 
     with session_scope(hass=hass) as session:
@@ -122,6 +129,8 @@ def _add_events(hass, events):
     for event_type in events:
         hass.bus.fire(event_type)
         hass.block_till_done()
+    # We only write on time change
+    fire_time_changed(hass, dt_util.utcnow())
     hass.data[DATA_INSTANCE].block_till_done()
 
     with session_scope(hass=hass) as session:

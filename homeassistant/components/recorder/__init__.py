@@ -334,6 +334,7 @@ class Recorder(threading.Thread):
         # has changed.  This reduces the disk io.
         while True:
             event = self.queue.get()
+            _LOGGER.debug("EVENT: %s", event)
 
             if event is None:
                 self._close_run()
@@ -375,6 +376,7 @@ class Recorder(threading.Thread):
                 try:
                     dbstate = States.from_event(event)
                     dbstate.event_id = dbevent.event_id
+                    # TODO: put this in pending_states slot -- can we get the insert id?
                     self._pending_events.append(dbstate)
                 except (TypeError, ValueError):
                     _LOGGER.warning(
