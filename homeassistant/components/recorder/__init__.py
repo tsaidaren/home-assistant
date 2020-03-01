@@ -214,6 +214,8 @@ class Recorder(threading.Thread):
         )
         self.exclude_t = exclude.get(CONF_EVENT_TYPES, [])
 
+        self._pending_events = []
+        self.event_session = None
         self.get_session = None
 
     @callback
@@ -326,6 +328,10 @@ class Recorder(threading.Thread):
 
             self.hass.helpers.event.track_point_in_time(async_purge, run)
 
+        self.event_session = self.get_session()
+        # Use a session for the event read loop
+        # with a commit every time the event time
+        # has changed.  This reduces the disk io.
         while True:
             event = self.queue.get()
 
@@ -340,6 +346,8 @@ class Recorder(threading.Thread):
                 continue
             if event.event_type == EVENT_TIME_CHANGED:
                 self.queue.task_done()
+                if self._pending_events:
+                    self._commit_event_session_or_retry()
                 continue
             if event.event_type in self.exclude_t:
                 self.queue.task_done()
@@ -351,54 +359,74 @@ class Recorder(threading.Thread):
                     self.queue.task_done()
                     continue
 
-            tries = 1
-            updated = False
-            while not updated and tries <= self.db_max_retries:
-                if tries != 1:
-                    time.sleep(self.db_retry_wait)
+            #
+            # We store pending events in self._pending_events
+            # so that if our commit fails we call rollback
+            # and try again to add them all back to the session.
+            #
+
+            try:
+                dbevent = Events.from_event(event)
+                self._pending_events.append(dbevent)
+            except (TypeError, ValueError):
+                _LOGGER.warning("Event is not JSON serializable: %s", event)
+
+            if dbevent and event.event_type == EVENT_STATE_CHANGED:
                 try:
-                    with session_scope(session=self.get_session()) as session:
-                        try:
-                            dbevent = Events.from_event(event)
-                            session.add(dbevent)
-                            session.flush()
-                        except (TypeError, ValueError):
-                            _LOGGER.warning("Event is not JSON serializable: %s", event)
-
-                        if event.event_type == EVENT_STATE_CHANGED:
-                            try:
-                                dbstate = States.from_event(event)
-                                dbstate.event_id = dbevent.event_id
-                                session.add(dbstate)
-                            except (TypeError, ValueError):
-                                _LOGGER.warning(
-                                    "State is not JSON serializable: %s",
-                                    event.data.get("new_state"),
-                                )
-
-                    updated = True
-
-                except exc.OperationalError as err:
-                    _LOGGER.error(
-                        "Error in database connectivity: %s. "
-                        "(retrying in %s seconds)",
-                        err,
-                        self.db_retry_wait,
+                    dbstate = States.from_event(event)
+                    dbstate.event_id = dbevent.event_id
+                    self._pending_events.append(dbstate)
+                except (TypeError, ValueError):
+                    _LOGGER.warning(
+                        "State is not JSON serializable: %s",
+                        event.data.get("new_state"),
                     )
-                    tries += 1
-
-                except exc.SQLAlchemyError:
-                    updated = True
-                    _LOGGER.exception("Error saving event: %s", event)
-
-            if not updated:
-                _LOGGER.error(
-                    "Error in database update. Could not save "
-                    "after %d tries. Giving up",
-                    tries,
-                )
 
             self.queue.task_done()
+
+    def _commit_event_session_or_retry(self):
+        tries = 1
+        while tries <= self.db_max_retries:
+            if tries != 1:
+                time.sleep(self.db_retry_wait)
+
+            try:
+                self.event_session.add_all(self._pending_events)
+                self._commit_event_session()
+                self._pending_events = []
+                return
+
+            except exc.OperationalError as err:
+                _LOGGER.error(
+                    "Error in database connectivity: %s. " "(retrying in %s seconds)",
+                    err,
+                    self.db_retry_wait,
+                )
+                tries += 1
+
+            except exc.SQLAlchemyError:
+                _LOGGER.exception("Error saving events: %s", self._pending_events)
+                self._pending_events = []
+                return
+
+        _LOGGER.error(
+            "Error in database update. Could not save " "after %d tries. Giving up",
+            tries,
+        )
+        try:
+            self.event_session.close()
+        except exc.SQLAlchemyError:
+            _LOGGER.exception("Failed to close event session.")
+
+        self.event_session = self.get_session()
+
+    def _commit_event_session(self):
+        try:
+            self.event_session.commit()
+        except Exception as err:
+            _LOGGER.error("Error executing query: %s", err)
+            self.event_session.rollback()
+            raise
 
     @callback
     def event_listener(self, event):
@@ -465,7 +493,10 @@ class Recorder(threading.Thread):
 
     def _close_run(self):
         """Save end time for current run."""
-        with session_scope(session=self.get_session()) as session:
+        if self.event_session is not None:
             self.run_info.end = dt_util.utcnow()
-            session.add(self.run_info)
+            self._pending_events.append(self.run_info)
+            self._commit_event_session_or_retry()
+            self.event_session.close()
+
         self.run_info = None
