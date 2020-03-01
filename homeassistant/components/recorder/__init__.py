@@ -214,7 +214,7 @@ class Recorder(threading.Thread):
         )
         self.exclude_t = exclude.get(CONF_EVENT_TYPES, [])
 
-        self._event_commit_interval = 60
+        self._event_commit_interval = 50
         self._timechanges_seen = 0
         self.event_session = None
         self.get_session = None
