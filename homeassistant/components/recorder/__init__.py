@@ -214,6 +214,8 @@ class Recorder(threading.Thread):
         )
         self.exclude_t = exclude.get(CONF_EVENT_TYPES, [])
 
+        self._event_commit_interval = 60
+        self._timechanges_seen = 0
         self.event_session = None
         self.get_session = None
 
@@ -346,7 +348,10 @@ class Recorder(threading.Thread):
                 continue
             if event.event_type == EVENT_TIME_CHANGED:
                 self.queue.task_done()
-                self._commit_event_session_or_retry()
+                self._timechanges_seen += 1
+                if self._event_commit_interval >= self._timechanges_seen:
+                    self._timechanges_seen = 0
+                    self._commit_event_session_or_retry()
                 continue
             if event.event_type in self.exclude_t:
                 self.queue.task_done()

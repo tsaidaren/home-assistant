@@ -21,6 +21,12 @@ from tests.common import (
 )
 
 
+def _trigger_db_commit(hass):
+    for _ in range(60):
+        # We only commit on time change
+        fire_time_changed(hass, dt_util.utcnow())
+
+
 class TestRecorder(unittest.TestCase):
     """Test the recorder module."""
 
@@ -42,8 +48,7 @@ class TestRecorder(unittest.TestCase):
 
         self.hass.states.set(entity_id, state, attributes)
 
-        # We only commit on time change
-        fire_time_changed(self.hass, dt_util.utcnow())
+        _trigger_db_commit(self.hass)
 
         self.hass.block_till_done()
         self.hass.data[DATA_INSTANCE].block_till_done()
@@ -72,8 +77,8 @@ class TestRecorder(unittest.TestCase):
         self.hass.bus.listen(MATCH_ALL, event_listener)
 
         self.hass.bus.fire(event_type, event_data)
-        # We only commit on time change
-        fire_time_changed(self.hass, dt_util.utcnow())
+
+        _trigger_db_commit(self.hass)
 
         self.hass.block_till_done()
 
@@ -119,9 +124,8 @@ def _add_entities(hass, entity_ids):
     attributes = {"test_attr": 5, "test_attr_10": "nice"}
     for idx, entity_id in enumerate(entity_ids):
         hass.states.set(entity_id, "state{}".format(idx), attributes)
-        hass.block_till_done()
-    # We only write on time change
-    fire_time_changed(hass, dt_util.utcnow())
+    _trigger_db_commit(hass)
+    hass.block_till_done()
     hass.data[DATA_INSTANCE].block_till_done()
 
     with session_scope(hass=hass) as session:
@@ -133,9 +137,8 @@ def _add_events(hass, events):
         session.query(Events).delete(synchronize_session=False)
     for event_type in events:
         hass.bus.fire(event_type)
-        hass.block_till_done()
-    # We only write on time change
-    fire_time_changed(hass, dt_util.utcnow())
+    _trigger_db_commit(hass)
+    hass.block_till_done()
     hass.data[DATA_INSTANCE].block_till_done()
 
     with session_scope(hass=hass) as session:
