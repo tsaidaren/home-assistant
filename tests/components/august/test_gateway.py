@@ -14,10 +14,12 @@ async def test_refresh_access_token(hass):
     await _patched_refresh_access_token(hass, "new_token", 5678)
 
 
-@mock.patch("homeassistant.components.august.gateway.AuthenticatorAsync.authenticate")
+@mock.patch(
+    "homeassistant.components.august.gateway.AuthenticatorAsync.async_authenticate"
+)
 @mock.patch("homeassistant.components.august.gateway.AuthenticatorAsync.should_refresh")
 @mock.patch(
-    "homeassistant.components.august.gateway.AuthenticatorAsync.refresh_access_token"
+    "homeassistant.components.august.gateway.AuthenticatorAsync.async_refresh_access_token"
 )
 async def _patched_refresh_access_token(
     hass,
