@@ -124,7 +124,7 @@ async def test_set_up_from_yaml(hass):
     with patch(
         "homeassistant.components.august.async_setup_august", return_value=True,
     ) as mock_setup_august, patch(
-        "homeassistant.components.august.config_flow.AugustGateway.authenticate",
+        "homeassistant.components.august.config_flow.AugustGateway.async_authenticate",
         return_value=True,
     ):
         mocked_config = _mock_get_config()

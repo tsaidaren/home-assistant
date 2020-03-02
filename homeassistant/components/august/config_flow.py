@@ -50,7 +50,7 @@ async def async_validate_input(
             raise RequireValidation
 
     try:
-        august_gateway.authenticate()
+        await august_gateway.async_authenticate()
     except RequireValidation:
         _LOGGER.debug(
             "Requesting new verification code for %s via %s",

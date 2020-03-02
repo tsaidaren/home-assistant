@@ -45,7 +45,7 @@ def _mock_get_config():
 
 @mock.patch("homeassistant.components.august.gateway.ApiAsync")
 @mock.patch(
-    "homeassistant.components.august.gateway.AuthenticatorAsync.async.authenticate"
+    "homeassistant.components.august.gateway.AuthenticatorAsync.async_authenticate"
 )
 async def _mock_setup_august(hass, api_instance, authenticate_mock, api_mock):
     """Set up august integration."""
