@@ -43,8 +43,10 @@ def _mock_get_config():
     }
 
 
-@mock.patch("homeassistant.components.august.gateway.Api")
-@mock.patch("homeassistant.components.august.gateway.Authenticator.authenticate")
+@mock.patch("homeassistant.components.august.gateway.ApiAsync")
+@mock.patch(
+    "homeassistant.components.august.gateway.AuthenticatorAsync.async.authenticate"
+)
 async def _mock_setup_august(hass, api_instance, authenticate_mock, api_mock):
     """Set up august integration."""
     authenticate_mock.side_effect = MagicMock(
@@ -147,35 +149,37 @@ async def _mock_setup_august_with_api_side_effects(hass, api_call_side_effects):
     api_instance = MagicMock(name="Api")
 
     if api_call_side_effects["get_lock_detail"]:
-        api_instance.get_lock_detail.side_effect = api_call_side_effects[
+        api_instance.async_get_lock_detail.side_effect = api_call_side_effects[
             "get_lock_detail"
         ]
 
     if api_call_side_effects["get_operable_locks"]:
-        api_instance.get_operable_locks.side_effect = api_call_side_effects[
+        api_instance.async_get_operable_locks.side_effect = api_call_side_effects[
             "get_operable_locks"
         ]
 
     if api_call_side_effects["get_doorbells"]:
-        api_instance.get_doorbells.side_effect = api_call_side_effects["get_doorbells"]
+        api_instance.async_get_doorbells.side_effect = api_call_side_effects[
+            "get_doorbells"
+        ]
 
     if api_call_side_effects["get_doorbell_detail"]:
-        api_instance.get_doorbell_detail.side_effect = api_call_side_effects[
+        api_instance.async_get_doorbell_detail.side_effect = api_call_side_effects[
             "get_doorbell_detail"
         ]
 
     if api_call_side_effects["get_house_activities"]:
-        api_instance.get_house_activities.side_effect = api_call_side_effects[
+        api_instance.async_get_house_activities.side_effect = api_call_side_effects[
             "get_house_activities"
         ]
 
     if api_call_side_effects["lock_return_activities"]:
-        api_instance.lock_return_activities.side_effect = api_call_side_effects[
+        api_instance.async_lock_return_activities.side_effect = api_call_side_effects[
             "lock_return_activities"
         ]
 
     if api_call_side_effects["unlock_return_activities"]:
-        api_instance.unlock_return_activities.side_effect = api_call_side_effects[
+        api_instance.async_unlock_return_activities.side_effect = api_call_side_effects[
             "unlock_return_activities"
         ]
     return await _mock_setup_august(hass, api_instance)

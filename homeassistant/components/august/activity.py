@@ -1,7 +1,7 @@
 """Consume the august activity stream."""
 import logging
 
-from requests import ClientError
+from aiohttp import ClientError
 
 from homeassistant.util.dt import utcnow
 

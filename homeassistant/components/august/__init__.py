@@ -3,9 +3,9 @@ import asyncio
 import itertools
 import logging
 
-from august.api import AugustApiAIOHTTPError
+from aiohttp import ClientError
 from august.authenticator import ValidationResult
-from requests import ClientError
+from august.exceptions import AugustApiAIOHTTPError
 import voluptuous as vol
 
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
