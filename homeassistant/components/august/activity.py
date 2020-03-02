@@ -30,7 +30,7 @@ class ActivityStream(AugustSubscriberMixin):
 
     async def async_setup(self):
         """Token refresh check and catch up the activity stream."""
-        await self._refresh(utcnow)
+        await self._async_refresh(utcnow)
 
     def get_latest_device_activity(self, device_id, activity_types):
         """Return latest activity that is one of the acitivty_types."""

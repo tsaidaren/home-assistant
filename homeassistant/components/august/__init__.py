@@ -194,7 +194,7 @@ class AugustData(AugustSubscriberMixin):
         super().__init__(hass, MIN_TIME_BETWEEN_DETAIL_UPDATES)
         self._hass = hass
         self._august_gateway = august_gateway
-        self._activity_stream = None
+        self.activity_stream = None
         self._api = august_gateway.api
         self._device_detail_by_id = {}
 
@@ -225,10 +225,10 @@ class AugustData(AugustSubscriberMixin):
         self._remove_inoperative_locks()
         self._remove_inoperative_doorbells()
 
-        self._activity_stream = ActivityStream(
+        self.activity_stream = ActivityStream(
             self._hass, self._api, self._august_gateway, self._house_ids
         )
-        await self._activity_stream.async_setup()
+        await self.activity_stream.async_setup()
 
     @property
     def doorbells(self):
@@ -261,7 +261,7 @@ class AugustData(AugustSubscriberMixin):
             _LOGGER.debug(
                 "async_signal_device_id_update (from detail updates): %s", device_id,
             )
-            await self.async_signal_device_id_update(device_id)
+            self.async_signal_device_id_update(device_id)
 
     async def _async_update_device_detail(self, device, api_call):
         _LOGGER.debug(
@@ -296,7 +296,7 @@ class AugustData(AugustSubscriberMixin):
 
     async def async_lock(self, device_id):
         """Lock the device."""
-        return self._async_call_api_op_requires_bridge(
+        return await self._async_call_api_op_requires_bridge(
             device_id,
             self._api.async_lock_return_activities,
             self._august_gateway.access_token,
@@ -305,7 +305,7 @@ class AugustData(AugustSubscriberMixin):
 
     async def async_unlock(self, device_id):
         """Unlock the device."""
-        return self._async_call_api_op_requires_bridge(
+        return await self._async_call_api_op_requires_bridge(
             device_id,
             self._api.async_unlock_return_activities,
             self._august_gateway.access_token,
