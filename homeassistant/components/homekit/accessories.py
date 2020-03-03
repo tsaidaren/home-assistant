@@ -267,7 +267,7 @@ class HomeDriver(AccessoryDriver):
         show_setup_message(self.hass, self.state.pincode)
 
     def set_characteristics(self, chars_query, client_addr):
-        """Override super function in order to prevent process ON before Brightness events."""
+        """Override super function in order to prevent process CHAR_ON before CHAR_BRIGHTNESS events."""
         self._suppress_on_events_before_brightness(chars_query[HAP_REPR_CHARS])
         return super().set_characteristics(chars_query, client_addr)
 
@@ -278,7 +278,7 @@ class HomeDriver(AccessoryDriver):
         ).display_name
 
     def _suppress_on_events_before_brightness(self, char_query_list):
-        """Suppress the On value if it precedes a Brightness event in a single update.
+        """Suppress the CHAR_ON value if it precedes a CHAR_BRIGHTNESS event in a single update.
 
         This prevents FULL ON to 100% and then DIM to the correct level
         as its not so much fun to be blinded at night when you try to
@@ -297,7 +297,7 @@ class HomeDriver(AccessoryDriver):
                 and HAP_REPR_VALUE in prev_char_query
             ):
                 _LOGGER.debug(
-                    "Suppressed a TYPE_ON (set to 100%) that preceded a TYPE_BRIGHTNESS."
+                    "Suppressed a CHAR_ON (set to 100%) that preceded a CHAR_BRIGHTNESS."
                 )
                 del prev_char_query[HAP_REPR_VALUE]
                 return
