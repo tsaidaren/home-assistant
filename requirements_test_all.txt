@@ -146,6 +146,9 @@ colorlog==4.1.0
 # homeassistant.components.xiaomi_miio
 construct==2.9.45
 
+# homeassistant.components.coronavirus
+coronavirus==1.0.1
+
 # homeassistant.scripts.credstash
 # credstash==1.15.0
 
@@ -391,7 +394,7 @@ pure-python-adb==0.2.2.dev0
 pushbullet.py==0.11.0
 
 # homeassistant.components.august
-py-august==0.21.0
+py-august==0.22.0
 
 # homeassistant.components.canary
 py-canary==0.5.0
@@ -738,7 +741,7 @@ yahooweather==0.10
 zeroconf==0.24.4
 
 # homeassistant.components.zha
-zha-quirks==0.0.33
+zha-quirks==0.0.34
 
 # homeassistant.components.zha
 zigpy-cc==0.1.0
