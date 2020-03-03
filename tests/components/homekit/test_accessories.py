@@ -3,8 +3,9 @@
 This includes tests for all mock object types.
 """
 from datetime import datetime, timedelta
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, PropertyMock, patch
 
+from pyhap.const import HAP_REPR_AID, HAP_REPR_CHARS, HAP_REPR_IID, HAP_REPR_VALUE
 import pytest
 
 from homeassistant.components.homekit.accessories import (
@@ -19,10 +20,12 @@ from homeassistant.components.homekit.const import (
     BRIDGE_MODEL,
     BRIDGE_NAME,
     BRIDGE_SERIAL_NUMBER,
+    CHAR_BRIGHTNESS,
     CHAR_FIRMWARE_REVISION,
     CHAR_MANUFACTURER,
     CHAR_MODEL,
     CHAR_NAME,
+    CHAR_ON,
     CHAR_SERIAL_NUMBER,
     CONF_LINKED_BATTERY_SENSOR,
     CONF_LOW_BATTERY_THRESHOLD,
@@ -335,6 +338,70 @@ def test_home_driver():
     path = ".homekit.state"
     pin = b"123-45-678"
 
+    homekit_test_device_id = 1234
+    homekit_on_attribute = 9
+    homekit_on_value = 1
+    homekit_brightness_attribute = 10
+    homekit_brightness_value = 52
+
+    mocked_on_brightness_set = {
+        HAP_REPR_CHARS: [
+            {
+                HAP_REPR_AID: homekit_test_device_id,
+                HAP_REPR_IID: homekit_on_attribute,
+                HAP_REPR_VALUE: homekit_on_value,
+            },
+            {
+                HAP_REPR_AID: homekit_test_device_id,
+                HAP_REPR_IID: homekit_brightness_attribute,
+                HAP_REPR_VALUE: homekit_brightness_value,
+            },
+        ]
+    }
+    mocked_on_brightness_set_with_on_value_removed = {
+        HAP_REPR_CHARS: [
+            {HAP_REPR_AID: homekit_test_device_id, HAP_REPR_IID: homekit_on_attribute},
+            {
+                HAP_REPR_AID: homekit_test_device_id,
+                HAP_REPR_IID: homekit_brightness_attribute,
+                HAP_REPR_VALUE: homekit_brightness_value,
+            },
+        ]
+    }
+
+    mocked_rightness_on_set = {
+        HAP_REPR_CHARS: [
+            {
+                HAP_REPR_AID: homekit_test_device_id,
+                HAP_REPR_IID: homekit_brightness_attribute,
+                HAP_REPR_VALUE: homekit_brightness_value,
+            },
+            {
+                HAP_REPR_AID: homekit_test_device_id,
+                HAP_REPR_IID: homekit_on_attribute,
+                HAP_REPR_VALUE: homekit_on_value,
+            },
+        ]
+    }
+    mocked_on_set = {
+        HAP_REPR_CHARS: [
+            {
+                HAP_REPR_AID: homekit_test_device_id,
+                HAP_REPR_IID: homekit_on_attribute,
+                HAP_REPR_VALUE: homekit_on_value,
+            }
+        ]
+    }
+    mocked_brightness_set = {
+        HAP_REPR_CHARS: [
+            {
+                HAP_REPR_AID: homekit_test_device_id,
+                HAP_REPR_IID: homekit_brightness_attribute,
+                HAP_REPR_VALUE: homekit_brightness_value,
+            }
+        ]
+    }
+
     with patch("pyhap.accessory_driver.AccessoryDriver.__init__") as mock_driver:
         driver = HomeDriver("hass", address=ip_address, port=port, persist_file=path)
 
@@ -358,3 +425,50 @@ def test_home_driver():
 
     mock_unpair.assert_called_with("client_uuid")
     mock_show_msg.assert_called_with("hass", pin)
+
+    # set_characteristics suppresses CHAR_ON value followed by a CHAR_BRIGHTNESS event
+    # to avoid lights flashing to 100% then to the desired CHAR_BRIGHTNESS
+    with patch(
+        "pyhap.accessory_driver.AccessoryDriver.set_characteristics"
+    ) as mock_set_characteristics:
+
+        def mock_get_characteristic_side_effect(hap_aid, hap_iid):
+            characteristic_mock = Mock(name="pyhap.characteristic.Characteristic")
+
+            if hap_aid == homekit_test_device_id and hap_iid == homekit_on_attribute:
+                type(characteristic_mock).display_name = PropertyMock(
+                    return_value=CHAR_ON
+                )
+                return characteristic_mock
+            if (
+                hap_aid == homekit_test_device_id
+                and hap_iid == homekit_brightness_attribute
+            ):
+                type(characteristic_mock).display_name = PropertyMock(
+                    return_value=CHAR_BRIGHTNESS
+                )
+                return characteristic_mock
+            raise "Unmocked AID and IID"
+
+        driver.accessory = Mock()
+        driver.accessory.get_characteristic.side_effect = (
+            mock_get_characteristic_side_effect
+        )
+
+        # Suppress the CHAR_ON value when there is a CHAR_BRIGHTNESS preceding it
+        driver.set_characteristics(mocked_on_brightness_set, ip_address)
+        mock_set_characteristics.assert_called_with(
+            mocked_on_brightness_set_with_on_value_removed, ip_address
+        )
+
+        # If CHAR_BRIGHTNESS is before CHAR_ON pass everything along
+        driver.set_characteristics(mocked_rightness_on_set, ip_address)
+        mock_set_characteristics.assert_called_with(mocked_rightness_on_set, ip_address)
+
+        # Make sure nothing is modified for single characteristics (CHAR_ON)
+        driver.set_characteristics(mocked_on_set, ip_address)
+        mock_set_characteristics.assert_called_with(mocked_on_set, ip_address)
+
+        # Make sure nothing is modified for single characteristics (CHAR_BRIGHTNESS)
+        driver.set_characteristics(mocked_brightness_set, ip_address)
+        mock_set_characteristics.assert_called_with(mocked_brightness_set, ip_address)
