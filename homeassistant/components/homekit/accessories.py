@@ -287,11 +287,8 @@ class HomeDriver(AccessoryDriver):
         if len(char_query_list) == 1:
             return
 
-        import pprint
-
         prev_char_query = char_query_list[0]
         prev_name = self._get_char_query_name(prev_char_query)
-        pprint.pprint([char_query_list, prev_name])
         for char_query in char_query_list[1:]:
             this_name = self._get_char_query_name(char_query)
             if (
