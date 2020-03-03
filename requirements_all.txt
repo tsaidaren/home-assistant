@@ -279,7 +279,7 @@ avea==1.4
 # avion==0.10
 
 # homeassistant.components.avri
-avri-api==0.1.6
+avri-api==0.1.7
 
 # homeassistant.components.axis
 axis==25
@@ -344,7 +344,7 @@ bomradarloop==0.1.3
 boto3==1.9.252
 
 # homeassistant.components.braviatv
-bravia-tv==1.0
+bravia-tv==1.0.1
 
 # homeassistant.components.broadlink
 broadlink==0.12.0
@@ -463,7 +463,7 @@ dsmr_parser==0.18
 dweepy==0.3.0
 
 # homeassistant.components.dynalite
-dynalite_devices==0.1.26
+dynalite_devices==0.1.30
 
 # homeassistant.components.rainforest_eagle
 eagle200_reader==0.2.1
@@ -1113,7 +1113,7 @@ pyRFXtrx==0.25
 # pySwitchmate==0.4.6
 
 # homeassistant.components.tibber
-pyTibber==0.12.2
+pyTibber==0.13.0
 
 # homeassistant.components.dlink
 pyW215==0.6.0
@@ -1227,7 +1227,7 @@ pyeconet==0.0.11
 pyedimax==0.2.1
 
 # homeassistant.components.eight_sleep
-pyeight==0.1.3
+pyeight==0.1.4
 
 # homeassistant.components.emby
 pyemby==1.6
@@ -1546,6 +1546,9 @@ pysupla==0.0.3
 
 # homeassistant.components.syncthru
 pysyncthru==0.5.0
+
+# homeassistant.components.tankerkoenig
+pytankerkoenig==0.0.6
 
 # homeassistant.components.tautulli
 pytautulli==0.5.0
@@ -2128,7 +2131,7 @@ yeelight==0.5.0
 yeelightsunflower==0.0.10
 
 # homeassistant.components.media_extractor
-youtube_dl==2020.02.16
+youtube_dl==2020.03.01
 
 # homeassistant.components.zengge
 zengge==0.2
