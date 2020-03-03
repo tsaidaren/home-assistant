@@ -369,7 +369,7 @@ def test_home_driver():
         ]
     }
 
-    mocked_rightness_on_set = {
+    mocked_brightness_on_set = {
         HAP_REPR_CHARS: [
             {
                 HAP_REPR_AID: homekit_test_device_id,
@@ -462,8 +462,10 @@ def test_home_driver():
         )
 
         # If CHAR_BRIGHTNESS is before CHAR_ON pass everything along
-        driver.set_characteristics(mocked_rightness_on_set, ip_address)
-        mock_set_characteristics.assert_called_with(mocked_rightness_on_set, ip_address)
+        driver.set_characteristics(mocked_brightness_on_set, ip_address)
+        mock_set_characteristics.assert_called_with(
+            mocked_brightness_on_set, ip_address
+        )
 
         # Make sure nothing is modified for single characteristics (CHAR_ON)
         driver.set_characteristics(mocked_on_set, ip_address)
