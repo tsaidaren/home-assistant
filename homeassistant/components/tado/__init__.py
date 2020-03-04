@@ -1,6 +1,5 @@
 """Support for the (unofficial) Tado API."""
 from datetime import timedelta
-import inspect
 import logging
 import urllib
 
@@ -199,34 +198,17 @@ class TadoConnector:
             fan_speed,
         )
 
-        # TODO: remove inspect when done testing
-        set_zone_overlay_params = inspect.signature(self.tado.setZoneOverlay).parameters
-
         try:
-            if "fanSpeed" in set_zone_overlay_params:
-                #
-                # fan_speed is not currently passed in python-tado as of 0.3.0
-                #
-                self.tado.setZoneOverlay(
-                    zone_id,
-                    overlay_mode,
-                    temperature,
-                    duration,
-                    device_type,
-                    "ON",
-                    mode,
-                    fan_speed,
-                )
-            else:
-                self.tado.setZoneOverlay(
-                    zone_id,
-                    overlay_mode,
-                    temperature,
-                    duration,
-                    device_type,
-                    "ON",
-                    mode,
-                )
+            self.tado.setZoneOverlay(
+                zone_id,
+                overlay_mode,
+                temperature,
+                duration,
+                device_type,
+                "ON",
+                mode,
+                fan_speed,
+            )
 
         except urllib.error.HTTPError as exc:
             _LOGGER.error("Could not set zone overlay: %s", exc.read())
