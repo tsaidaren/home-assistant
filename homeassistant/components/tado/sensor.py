@@ -8,6 +8,7 @@ from homeassistant.helpers.entity import Entity
 
 from . import DATA, DOMAIN, SIGNAL_TADO_UPDATE_RECEIVED
 from .const import TYPE_AIR_CONDITIONING, TYPE_HEATING, TYPE_HOT_WATER
+from .tado_adapter import TadoZoneData
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -93,6 +94,7 @@ class TadoSensor(Entity):
 
         self._state = None
         self._state_attributes = None
+        self._tado_zone_data = None
 
     async def async_added_to_hass(self):
         """Register for sensor updates."""
@@ -160,6 +162,7 @@ class TadoSensor(Entity):
         except KeyError:
             return
 
+        self._tado_zone_data = TadoZoneData(self._tado.data["zone"][self.zone_id])
         unit = TEMP_CELSIUS
 
         if self.zone_variable == "temperature":
