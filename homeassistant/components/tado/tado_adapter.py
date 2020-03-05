@@ -10,6 +10,7 @@ from homeassistant.components.climate.const import (
 from .const import (
     CONST_FAN_AUTO,
     CONST_FAN_OFF,
+    CONST_LINK_OFFLINE,
     CONST_MODE_SMART_SCHEDULE,
     TADO_MODES_TO_HA_CURRENT_HVAC_ACTION,
 )
@@ -43,6 +44,7 @@ class TadoZoneData:
         self._overlay_termination_type = None
         self._preparation = None
         self._open_window = None
+        self._open_window_attr = None
         self.update_data(data)
 
     @property
@@ -51,6 +53,9 @@ class TadoZoneData:
 
     def open_window(self):
         return self._open_window
+
+    def open_window_attr(self):
+        return self._open_window_attr
 
     @property
     def current_temp(self):
@@ -72,6 +77,7 @@ class TadoZoneData:
     def overlay_active(self):
         return self._current_tado_hvac_mode != CONST_MODE_SMART_SCHEDULE
 
+    @property
     def overlay_termination_type(self):
         return self._overlay_termination_type
 
@@ -153,11 +159,13 @@ class TadoZoneData:
                 self._current_humidity = humidity
                 self._current_humidity_timestamp = sensor_data["humidity"]["timestamp"]
 
+        self._is_away = None
+        self._tado_mode = None
         if "tadoMode" in data:
-            mode = data["tadoMode"]
-            self._is_away = mode == "AWAY"
+            self._is_away = data["tadoMode"] == "AWAY"
             self._tado_mode = data["tadoMode"]
 
+        self._link = None
         if "link" in data:
             self._link = data["link"]["state"]
 
@@ -196,8 +204,9 @@ class TadoZoneData:
         else:
             self._current_tado_hvac_mode = CONST_MODE_SMART_SCHEDULE
 
-        self._preparation = data["preparation"] is not None
-        self._open_window = "openWindow" in data and data["openWindow"]
+        self._preparation = "preparation" in data and data["preparation"] is not None
+        self._open_window = "openWindow" in data and data["openWindow"] is not None
+        self._open_window_attr = data["openWindow"] if self._open_window else {}
 
         if "activityDataPoints" in data:
             activity_data = data["activityDataPoints"]
@@ -226,7 +235,7 @@ class TadoZoneData:
                 if self._heating_power_percentage > 0.0:
                     self._current_hvac_action = CURRENT_HVAC_HEAT
 
-        if "connectionState" in data:
-            self._connection = data["connectionState"]["value"]
-
-        self._available = True
+        self._connection = (
+            data["connectionState"]["value"] if "connectionState" in data else None
+        )
+        self._available = self._link != CONST_LINK_OFFLINE

@@ -1,7 +1,7 @@
 """Support for Tado sensors for each zone."""
 import logging
 
-from homeassistant.const import TEMP_CELSIUS, UNIT_PERCENTAGE
+from homeassistant.const import TEMP_CELSIUS
 from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity
@@ -136,9 +136,9 @@ class TadoSensor(Entity):
         if self.zone_variable == "temperature":
             return self.hass.config.units.temperature_unit
         if self.zone_variable == "humidity":
-            return UNIT_PERCENTAGE
+            return "%"
         if self.zone_variable == "heating":
-            return UNIT_PERCENTAGE
+            return "%"
         if self.zone_variable == "ac":
             return ""
 
@@ -205,7 +205,7 @@ class TadoSensor(Entity):
             self._state = self._tado_zone_data.overlay_active
             self._state_attributes = (
                 {"termination": self._tado_zone_data.overlay_termination_type}
-                if self._state
+                if self._tado_zone_data.overlay_active
                 else {}
             )
 
@@ -214,6 +214,4 @@ class TadoSensor(Entity):
 
         elif self.zone_variable == "open window":
             self._state = self._tado_zone_data.open_window is not None
-            self._state_attributes = (
-                self._tado_zone_data.open_window if self._state else {}
-            )
+            self._state_attributes = self._tado_zone_data.open_window_attr
