@@ -51,9 +51,11 @@ class TadoZoneData:
     def preparation(self):
         return self._preparation
 
+    @property
     def open_window(self):
         return self._open_window
 
+    @property
     def open_window_attr(self):
         return self._open_window_attr
 
