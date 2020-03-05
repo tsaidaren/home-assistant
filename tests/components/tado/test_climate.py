@@ -64,3 +64,37 @@ async def test_smartac3_cool_mode(hass):
     assert smartac3_cool_mode.current_tado_hvac_mode == "COOL"
     assert smartac3_cool_mode.target_temp == 17.78
     assert smartac3_cool_mode.available is True
+
+
+async def test_ac_issue_32294_heat_mode(hass):
+    """Test smart ac cool mode."""
+    ac_issue_32294_heat_mode = await _mock_tado_climate_zone_from_fixture(
+        hass, "ac_issue_32294.heat_mode.json"
+    )
+    assert ac_issue_32294_heat_mode.preparation is False
+    assert ac_issue_32294_heat_mode.open_window is False
+    assert ac_issue_32294_heat_mode.open_window_attr == {}
+    assert ac_issue_32294_heat_mode.current_temp == 21.82
+    assert ac_issue_32294_heat_mode.current_temp_timestamp == "2020-02-29T22:51:05.016Z"
+    assert ac_issue_32294_heat_mode.connection is None
+    assert ac_issue_32294_heat_mode.tado_mode == "HOME"
+    assert ac_issue_32294_heat_mode.overlay_active is False
+    assert ac_issue_32294_heat_mode.overlay_termination_type is None
+    assert ac_issue_32294_heat_mode.current_humidity == 40.4
+    assert (
+        ac_issue_32294_heat_mode.current_humidity_timestamp
+        == "2020-02-29T22:51:05.016Z"
+    )
+    assert ac_issue_32294_heat_mode.ac_power_timestamp == "2020-02-29T22:50:34.850Z"
+    assert ac_issue_32294_heat_mode.heating_power_timestamp is None
+    assert ac_issue_32294_heat_mode.ac_power == "ON"
+    assert ac_issue_32294_heat_mode.heating_power is None
+    assert ac_issue_32294_heat_mode.heating_power_percentage is None
+    assert ac_issue_32294_heat_mode.is_away is False
+    assert ac_issue_32294_heat_mode.power == "ON"
+    assert ac_issue_32294_heat_mode.current_hvac_action == "cooling"
+    assert ac_issue_32294_heat_mode.current_tado_fan_speed == "AUTO"
+    assert ac_issue_32294_heat_mode.link == "ONLINE"
+    assert ac_issue_32294_heat_mode.current_tado_hvac_mode == "SMART_SCHEDULE"
+    assert ac_issue_32294_heat_mode.target_temp == 25.0
+    assert ac_issue_32294_heat_mode.available is True
