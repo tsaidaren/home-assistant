@@ -21,7 +21,7 @@ class TadoZoneData:
     def __init__(self, data):
         self._data = data
         self._cur_temp = None
-        self._connection_state = None
+        self._connection = None
         self._cur_temp_timestamp = None
         self._cur_humidity = None
         self._is_away = False
@@ -34,9 +34,10 @@ class TadoZoneData:
         self._link = None
         self._ac_power_timestamp = None
         self._heating_power_timestamp = None
-        self._ac_power_state = None
-        self._heating_power_state = None
-        self._tado_mode_state = None
+        self._ac_power = None
+        self._heating_power = None
+        self._heating_power_percentage = None
+        self._tado_mode = None
         self._overlay_active = None
         self._overlay_termination_type = None
         self._preparation = None
@@ -59,12 +60,12 @@ class TadoZoneData:
         return self._cur_temp_timestamp
 
     @property
-    def connection_state(self):
-        return self._connection_state
+    def connection(self):
+        return self._connection
 
     @property
-    def tado_mode_state(self):
-        return self._tado_mode_state
+    def tado_mode(self):
+        return self._tado_mode
 
     @property
     def overlay_active(self):
@@ -90,12 +91,16 @@ class TadoZoneData:
         return self._heating_power_timestamp
 
     @property
-    def ac_power_state(self):
-        return self._ac_power_state
+    def ac_power(self):
+        return self._ac_power
 
     @property
-    def heating_power_state(self):
-        return self._heating_power_state
+    def heating_power(self):
+        return self._heating_power
+
+    @property
+    def heating_power_percentage(self):
+        return self._heating_power_percentage
 
     @property
     def is_away(self):
@@ -148,7 +153,7 @@ class TadoZoneData:
         if "tadoMode" in data:
             mode = data["tadoMode"]
             self._is_away = mode == "AWAY"
-            self._tado_mode_state = data["tadoMode"]
+            self._tado_mode = data["tadoMode"]
 
         if "link" in data:
             self._link = data["link"]["state"]
@@ -189,7 +194,7 @@ class TadoZoneData:
         if "activityDataPoints" in data:
             activity_data = data["activityDataPoints"]
             if "acPower" in activity_data and activity_data["acPower"] is not None:
-                self._ac_power_state = activity_data["acPower"]["value"]
+                self._ac_power = activity_data["acPower"]["value"]
                 self._ac_power_timestamp = activity_data["acPower"]["timestamp"]
                 if activity_data["acPower"]["value"] == "OFF":
                     self._current_hvac_action = CURRENT_HVAC_OFF
@@ -202,15 +207,18 @@ class TadoZoneData:
                 "heatingPower" in activity_data
                 and activity_data["heatingPower"] is not None
             ):
-                self._heating_power_state = activity_data["heatingPower"]["value"]
+                self._heating_power = activity_data["heatingPower"]["value"]
                 self._heating_power_timestamp = activity_data["heatingPower"][
                     "timestamp"
                 ]
+                self._heating_power_percentage = float(
+                    activity_data["heatingPower"]["percentage"]
+                )
 
-                if float(activity_data["heatingPower"]["percentage"]) > 0.0:
+                if self._heating_power_percentage > 0.0:
                     self._current_hvac_action = CURRENT_HVAC_HEAT
 
         if "connectionState" in data:
-            self._connection_state = data["connectionState"]["value"]
+            self._connection = data["connectionState"]["value"]
 
         self._available = True
