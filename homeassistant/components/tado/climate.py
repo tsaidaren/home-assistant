@@ -234,7 +234,7 @@ class TadoClimate(ClimateDevice):
     @property
     def current_temperature(self):
         """Return the sensor temperature."""
-        return self._tado_zone_data.cur_temp
+        return self._tado_zone_data.current_temp
 
     @property
     def hvac_mode(self):
@@ -252,7 +252,7 @@ class TadoClimate(ClimateDevice):
 
         Need to be a subset of HVAC_MODES.
         """
-        return self._tado_zone_data.supported_hvac_modes
+        return self._supported_hvac_modes
 
     @property
     def hvac_action(self):
@@ -272,7 +272,7 @@ class TadoClimate(ClimateDevice):
     @property
     def fan_modes(self):
         """List of available fan modes."""
-        return self._tado_zone_data.supported_fan_modes
+        return self._supported_fan_modes
 
     def set_fan_mode(self, fan_mode: str):
         """Turn fan on/off."""
@@ -361,7 +361,9 @@ class TadoClimate(ClimateDevice):
     def update(self):
         """Handle update callbacks."""
         _LOGGER.debug("Updating climate platform for zone %d", self.zone_id)
-        self._tado_zone_data = TadoZoneData(self._tado.data["zone"][self.zone_id])
+        self._tado_zone_data = TadoZoneData(
+            self._tado.data["zone"][self.zone_id], self.zone_id
+        )
 
     def _normalize_target_temp_for_hvac_mode(self):
         # Set a target temperature if we don't have any

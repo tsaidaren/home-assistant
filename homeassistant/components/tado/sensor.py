@@ -162,12 +162,11 @@ class TadoSensor(Entity):
         except KeyError:
             return
 
-        self._tado_zone_data = TadoZoneData(data)
-        unit = TEMP_CELSIUS
+        self._tado_zone_data = TadoZoneData(data, self.zone_id)
 
         if self.zone_variable == "temperature":
             self._state = self.hass.config.units.temperature(
-                self._tado_zone_data.current_temp, unit
+                self._tado_zone_data.current_temp, TEMP_CELSIUS
             )
             self._state_attributes = {
                 "time": self._tado_zone_data.current_temp_timestamp,

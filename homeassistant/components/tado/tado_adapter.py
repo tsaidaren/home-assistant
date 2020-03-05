@@ -18,12 +18,13 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class TadoZoneData:
-    def __init__(self, data):
+    def __init__(self, data, zone_id):
         self._data = data
-        self._cur_temp = None
+        self._zone_id = zone_id
+        self._current_temp = None
         self._connection = None
-        self._cur_temp_timestamp = None
-        self._cur_humidity = None
+        self._current_temp_timestamp = None
+        self._current_humidity = None
         self._is_away = False
         self._current_hvac_action = None
         self._current_tado_fan_speed = None
@@ -53,11 +54,11 @@ class TadoZoneData:
 
     @property
     def current_temp(self):
-        return self._cur_temp
+        return self._current_temp
 
     @property
     def current_temp_timestamp(self):
-        return self._cur_temp_timestamp
+        return self._current_temp_timestamp
 
     @property
     def connection(self):
@@ -72,15 +73,15 @@ class TadoZoneData:
         return self._current_tado_hvac_mode != CONST_MODE_SMART_SCHEDULE
 
     def overlay_termination_type(self):
-        return self._overlay_termination
+        return self._overlay_termination_type
 
     @property
     def current_humidity(self):
-        return self._cur_humidity
+        return self._current_humidity
 
     @property
     def current_humidity_timestamp(self):
-        return self._cur_humidity_timestamp
+        return self._current_humidity_timestamp
 
     @property
     def ac_power_timestamp(self):
@@ -136,19 +137,21 @@ class TadoZoneData:
 
     def update_data(self, data):
         """Handle update callbacks."""
-        _LOGGER.debug("Updating climate platform for zone %d", self.zone_id)
+        _LOGGER.debug("Updating climate platform for zone %d", self._zone_id)
         if "sensorDataPoints" in data:
             sensor_data = data["sensorDataPoints"]
 
             if "insideTemperature" in sensor_data:
                 temperature = float(sensor_data["insideTemperature"]["celsius"])
-                self._cur_temp = temperature
-                self._cur_temp_timestamp = sensor_data["insideTemperature"]["timestamp"]
+                self._current_temp = temperature
+                self._current_temp_timestamp = sensor_data["insideTemperature"][
+                    "timestamp"
+                ]
 
             if "humidity" in sensor_data:
                 humidity = float(sensor_data["humidity"]["percentage"])
-                self._cur_humidity = humidity
-                self._cur_humidity_timestamp = sensor_data["humidity"]["timestamp"]
+                self._current_humidity = humidity
+                self._current_humidity_timestamp = sensor_data["humidity"]["timestamp"]
 
         if "tadoMode" in data:
             mode = data["tadoMode"]
@@ -183,10 +186,15 @@ class TadoZoneData:
 
         # If there is no overlay
         # then we are running the smart schedule
-        self._overlay_termination_time = None
-        if "overlay" in data and data["overlay"] is None:
+        self._overlay_termination_type = None
+        if "overlay" in data and data["overlay"] is not None:
+            if (
+                "termination" in data["overlay"]
+                and "type" in data["overlay"]["termination"]
+            ):
+                self._overlay_termination_type = data["overlay"]["termination"]["type"]
+        else:
             self._current_tado_hvac_mode = CONST_MODE_SMART_SCHEDULE
-            self._overlay_termination_time = data["overlay"]["termination"]["type"]
 
         self._preparation = data["preparation"] is not None
         self._open_window = "openWindow" in data and data["openWindow"]
