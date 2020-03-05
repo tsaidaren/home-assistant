@@ -136,7 +136,12 @@ class TadoConnector:
             if sensor_type == "zone":
                 data = self.tado.getState(sensor)
             elif sensor_type == "device":
-                data = self.tado.getDevices()[0]
+                devices_data = self.tado.getDevices()
+                if not devices_data:
+                    _LOGGER.info("There are no devices to setup on this tado account.")
+                    return
+
+                data = devices_data[0]
             else:
                 _LOGGER.debug("Unknown sensor: %s", sensor_type)
                 return
