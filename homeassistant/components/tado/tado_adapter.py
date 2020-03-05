@@ -1,3 +1,4 @@
+"""Adapter to represent a tado zones and state."""
 import logging
 
 from homeassistant.components.climate.const import (
@@ -19,7 +20,10 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class TadoZoneData:
+    """Represent a tado zone."""
+
     def __init__(self, data, zone_id):
+        """Create a tado zone."""
         self._data = data
         self._zone_id = zone_id
         self._current_temp = None
@@ -49,98 +53,122 @@ class TadoZoneData:
 
     @property
     def preparation(self):
+        """Zone is preparing to heat."""
         return self._preparation
 
     @property
     def open_window(self):
+        """Window is open."""
         return self._open_window
 
     @property
     def open_window_attr(self):
+        """Window open attributes."""
         return self._open_window_attr
 
     @property
     def current_temp(self):
+        """Temperature of the zone."""
         return self._current_temp
 
     @property
     def current_temp_timestamp(self):
+        """Temperature of the zone timestamp."""
         return self._current_temp_timestamp
 
     @property
     def connection(self):
+        """Up or down internet connection."""
         return self._connection
 
     @property
     def tado_mode(self):
+        """Tado mode."""
         return self._tado_mode
 
     @property
     def overlay_active(self):
+        """Overlay acitive."""
         return self._current_tado_hvac_mode != CONST_MODE_SMART_SCHEDULE
 
     @property
     def overlay_termination_type(self):
+        """Overlay termination type (what happens when period ends)."""
         return self._overlay_termination_type
 
     @property
     def current_humidity(self):
+        """Humidity of the zone."""
         return self._current_humidity
 
     @property
     def current_humidity_timestamp(self):
+        """Humidity of the zone timestamp."""
         return self._current_humidity_timestamp
 
     @property
     def ac_power_timestamp(self):
+        """AC power timestamp."""
         return self._ac_power_timestamp
 
     @property
     def heating_power_timestamp(self):
+        """Heating power timestamp."""
         return self._heating_power_timestamp
 
     @property
     def ac_power(self):
+        """AC power."""
         return self._ac_power
 
     @property
     def heating_power(self):
+        """Heating power."""
         return self._heating_power
 
     @property
     def heating_power_percentage(self):
+        """Heating power percentage."""
         return self._heating_power_percentage
 
     @property
     def is_away(self):
+        """Is Away (not home)."""
         return self._is_away
 
     @property
     def power(self):
+        """Power is on."""
         return self._power
 
     @property
     def current_hvac_action(self):
+        """HVAC Action (home assistant const)."""
         return self._current_hvac_action
 
     @property
     def current_tado_fan_speed(self):
+        """TADO Fan speed (tado const)."""
         return self._current_tado_fan_speed
 
     @property
     def link(self):
+        """Link (internet connection state)."""
         return self._link
 
     @property
     def current_tado_hvac_mode(self):
+        """TADO HVAC Mode (tado const)."""
         return self._current_tado_hvac_mode
 
     @property
     def target_temp(self):
+        """Target temperature (C)."""
         return self._target_temp
 
     @property
     def available(self):
+        """Device is available and link is up."""
         return self._available
 
     def update_data(self, data):
