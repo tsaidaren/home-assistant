@@ -3,6 +3,7 @@
 
 from tests.components.tado.mocks import _mock_tado_climate_zone_from_fixture
 
+
 async def test_ac_issue_32294_heat_mode(hass):
     """Test smart ac cool mode."""
     ac_issue_32294_heat_mode = await _mock_tado_climate_zone_from_fixture(
@@ -35,6 +36,7 @@ async def test_ac_issue_32294_heat_mode(hass):
     assert ac_issue_32294_heat_mode.current_tado_hvac_mode == "SMART_SCHEDULE"
     assert ac_issue_32294_heat_mode.target_temp == 25.0
     assert ac_issue_32294_heat_mode.available is True
+
 
 async def test_smartac3_smart_mode(hass):
     """Test smart ac smart mode."""
@@ -137,25 +139,25 @@ async def test_smartac3_dry_mode(hass):
     assert smartac3_dry_mode.preparation is False
     assert smartac3_dry_mode.open_window is False
     assert smartac3_dry_mode.open_window_attr == {}
-    assert smartac3_dry_mode.current_temp == 24.8
-    assert smartac3_dry_mode.current_temp_timestamp == "2020-03-05T03:55:38.160Z"
+    assert smartac3_dry_mode.current_temp == 25.01
+    assert smartac3_dry_mode.current_temp_timestamp == "2020-03-05T04:02:07.396Z"
     assert smartac3_dry_mode.connection is None
     assert smartac3_dry_mode.tado_mode == "HOME"
     assert smartac3_dry_mode.overlay_active is True
     assert smartac3_dry_mode.overlay_termination_type == "TADO_MODE"
-    assert smartac3_dry_mode.current_humidity == 62.5
-    assert smartac3_dry_mode.current_humidity_timestamp == "2020-03-05T03:55:38.160Z"
-    assert smartac3_dry_mode.ac_power_timestamp == "2020-03-05T03:56:38.627Z"
+    assert smartac3_dry_mode.current_humidity == 62.0
+    assert smartac3_dry_mode.current_humidity_timestamp == "2020-03-05T04:02:07.396Z"
+    assert smartac3_dry_mode.ac_power_timestamp == "2020-03-05T04:02:40.867Z"
     assert smartac3_dry_mode.heating_power_timestamp is None
     assert smartac3_dry_mode.ac_power == "ON"
     assert smartac3_dry_mode.heating_power is None
     assert smartac3_dry_mode.heating_power_percentage is None
     assert smartac3_dry_mode.is_away is False
     assert smartac3_dry_mode.power == "ON"
-    assert smartac3_dry_mode.current_hvac_action == "cooling"
+    assert smartac3_dry_mode.current_hvac_action == "drying"
     assert smartac3_dry_mode.current_tado_fan_speed == "AUTO"
     assert smartac3_dry_mode.link == "ONLINE"
-    assert smartac3_dry_mode.current_tado_hvac_mode == "AUTO"
+    assert smartac3_dry_mode.current_tado_hvac_mode == "DRY"
     assert smartac3_dry_mode.target_temp is None
     assert smartac3_dry_mode.available is True
 
@@ -169,26 +171,27 @@ async def test_smartac3_fan_mode(hass):
     assert smartac3_fan_mode.open_window is False
     assert smartac3_fan_mode.open_window_attr == {}
     assert smartac3_fan_mode.current_temp == 25.01
-    assert smartac3_fan_mode.current_temp_timestamp == "2020-03-05T03:55:38.160Z"
+    assert smartac3_fan_mode.current_temp_timestamp == "2020-03-05T04:02:07.396Z"
     assert smartac3_fan_mode.connection is None
     assert smartac3_fan_mode.tado_mode == "HOME"
     assert smartac3_fan_mode.overlay_active is True
     assert smartac3_fan_mode.overlay_termination_type == "TADO_MODE"
-    assert smartac3_fan_mode.current_humidity == 62.5
-    assert smartac3_fan_mode.current_humidity_timestamp == "2020-03-05T03:55:38.160Z"
-    assert smartac3_fan_mode.ac_power_timestamp == "2020-03-05T03:56:38.627Z"
+    assert smartac3_fan_mode.current_humidity == 62.0
+    assert smartac3_fan_mode.current_humidity_timestamp == "2020-03-05T04:02:07.396Z"
+    assert smartac3_fan_mode.ac_power_timestamp == "2020-03-05T04:03:44.328Z"
     assert smartac3_fan_mode.heating_power_timestamp is None
     assert smartac3_fan_mode.ac_power == "ON"
     assert smartac3_fan_mode.heating_power is None
     assert smartac3_fan_mode.heating_power_percentage is None
     assert smartac3_fan_mode.is_away is False
     assert smartac3_fan_mode.power == "ON"
-    assert smartac3_fan_mode.current_hvac_action == "cooling"
+    assert smartac3_fan_mode.current_hvac_action == "fan"
     assert smartac3_fan_mode.current_tado_fan_speed == "AUTO"
     assert smartac3_fan_mode.link == "ONLINE"
-    assert smartac3_fan_mode.current_tado_hvac_mode == "AUTO"
+    assert smartac3_fan_mode.current_tado_hvac_mode == "FAN"
     assert smartac3_fan_mode.target_temp is None
     assert smartac3_fan_mode.available is True
+
 
 async def test_smartac3_heat_mode(hass):
     """Test smart ac cool mode."""
@@ -199,25 +202,25 @@ async def test_smartac3_heat_mode(hass):
     assert smartac3_heat_mode.open_window is False
     assert smartac3_heat_mode.open_window_attr == {}
     assert smartac3_heat_mode.current_temp == 24.76
-    assert smartac3_heat_mode.current_temp_timestamp == '2020-03-05T03:57:38.850Z' 
+    assert smartac3_heat_mode.current_temp_timestamp == "2020-03-05T03:57:38.850Z"
     assert smartac3_heat_mode.connection is None
     assert smartac3_heat_mode.tado_mode == "HOME"
     assert smartac3_heat_mode.overlay_active is True
     assert smartac3_heat_mode.overlay_termination_type == "TADO_MODE"
-    assert smartac3_heat_mode.current_humidity == 62.5
-    assert smartac3_heat_mode.current_humidity_timestamp == "2020-03-05T03:55:38.160Z"
-    assert smartac3_heat_mode.ac_power_timestamp == "2020-03-05T03:56:38.627Z"
+    assert smartac3_heat_mode.current_humidity == 60.9
+    assert smartac3_heat_mode.current_humidity_timestamp == "2020-03-05T03:57:38.850Z"
+    assert smartac3_heat_mode.ac_power_timestamp == "2020-03-05T03:59:36.390Z"
     assert smartac3_heat_mode.heating_power_timestamp is None
     assert smartac3_heat_mode.ac_power == "ON"
     assert smartac3_heat_mode.heating_power is None
     assert smartac3_heat_mode.heating_power_percentage is None
     assert smartac3_heat_mode.is_away is False
     assert smartac3_heat_mode.power == "ON"
-    assert smartac3_heat_mode.current_hvac_action == "cooling"
-    assert smartac3_heat_mode.current_tado_heat_speed == "AUTO"
+    assert smartac3_heat_mode.current_hvac_action == "heating"
+    assert smartac3_heat_mode.current_tado_fan_speed == "AUTO"
     assert smartac3_heat_mode.link == "ONLINE"
-    assert smartac3_heat_mode.current_tado_hvac_mode == "AUTO"
-    assert smartac3_heat_mode.target_temp is None
+    assert smartac3_heat_mode.current_tado_hvac_mode == "HEAT"
+    assert smartac3_heat_mode.target_temp == 16.11
     assert smartac3_heat_mode.available is True
 
 
@@ -230,14 +233,14 @@ async def test_smartac3_hvac_off(hass):
     assert smartac3_hvac_off.open_window is False
     assert smartac3_hvac_off.open_window_attr == {}
     assert smartac3_hvac_off.current_temp == 21.44
-    assert smartac3_hvac_off.current_temp_timestamp == '2020-03-05T01:21:44.089Z' 
+    assert smartac3_hvac_off.current_temp_timestamp == "2020-03-05T01:21:44.089Z"
     assert smartac3_hvac_off.connection is None
     assert smartac3_hvac_off.tado_mode == "AWAY"
     assert smartac3_hvac_off.overlay_active is True
     assert smartac3_hvac_off.overlay_termination_type == "MANUAL"
     assert smartac3_hvac_off.current_humidity == 48.2
-    assert smartac3_hvac_off.current_humidity_timestamp == '2020-03-05T01:21:44.089Z'
-    assert smartac3_hvac_off.ac_power_timestamp == '2020-02-29T05:34:10.318Z'
+    assert smartac3_hvac_off.current_humidity_timestamp == "2020-03-05T01:21:44.089Z"
+    assert smartac3_hvac_off.ac_power_timestamp == "2020-02-29T05:34:10.318Z"
     assert smartac3_hvac_off.heating_power_timestamp is None
     assert smartac3_hvac_off.ac_power == "OFF"
     assert smartac3_hvac_off.heating_power is None
@@ -261,14 +264,14 @@ async def test_smartac3_manual_off(hass):
     assert smartac3_manual_off.open_window is False
     assert smartac3_manual_off.open_window_attr == {}
     assert smartac3_manual_off.current_temp == 25.01
-    assert smartac3_manual_off.current_temp_timestamp == '2020-03-05T04:02:07.396Z'
+    assert smartac3_manual_off.current_temp_timestamp == "2020-03-05T04:02:07.396Z"
     assert smartac3_manual_off.connection is None
     assert smartac3_manual_off.tado_mode == "HOME"
     assert smartac3_manual_off.overlay_active is True
     assert smartac3_manual_off.overlay_termination_type == "MANUAL"
     assert smartac3_manual_off.current_humidity == 62.0
-    assert smartac3_manual_off.current_humidity_timestamp == '2020-03-05T04:02:07.396Z'
-    assert smartac3_manual_off.ac_power_timestamp == '2020-03-05T04:05:08.804Z'
+    assert smartac3_manual_off.current_humidity_timestamp == "2020-03-05T04:02:07.396Z"
+    assert smartac3_manual_off.ac_power_timestamp == "2020-03-05T04:05:08.804Z"
     assert smartac3_manual_off.heating_power_timestamp is None
     assert smartac3_manual_off.ac_power == "OFF"
     assert smartac3_manual_off.heating_power is None
@@ -292,14 +295,14 @@ async def test_smartac3_offline(hass):
     assert smartac3_offline.open_window is False
     assert smartac3_offline.open_window_attr == {}
     assert smartac3_offline.current_temp == 25.05
-    assert smartac3_offline.current_temp_timestamp == '2020-03-03T21:23:57.846Z'
+    assert smartac3_offline.current_temp_timestamp == "2020-03-03T21:23:57.846Z"
     assert smartac3_offline.connection is None
     assert smartac3_offline.tado_mode == "HOME"
     assert smartac3_offline.overlay_active is True
     assert smartac3_offline.overlay_termination_type == "TADO_MODE"
     assert smartac3_offline.current_humidity == 61.6
-    assert smartac3_offline.current_humidity_timestamp == '2020-03-03T21:23:57.846Z'
-    assert smartac3_offline.ac_power_timestamp == '2020-02-29T18:42:26.683Z'
+    assert smartac3_offline.current_humidity_timestamp == "2020-03-03T21:23:57.846Z"
+    assert smartac3_offline.ac_power_timestamp == "2020-02-29T18:42:26.683Z"
     assert smartac3_offline.heating_power_timestamp is None
     assert smartac3_offline.ac_power == "OFF"
     assert smartac3_offline.heating_power is None
@@ -312,5 +315,3 @@ async def test_smartac3_offline(hass):
     assert smartac3_offline.current_tado_hvac_mode == "COOL"
     assert smartac3_offline.target_temp == 17.78
     assert smartac3_offline.available is False
-
-
