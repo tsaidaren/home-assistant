@@ -194,18 +194,6 @@ class TadoZoneData:
                 self._current_tado_fan_speed = setting.get("fanSpeed", CONST_FAN_AUTO)
                 self._current_hvac_action = CURRENT_HVAC_IDLE
 
-        # If there is no overlay
-        # then we are running the smart schedule
-        self._overlay_termination_type = None
-        if "overlay" in data and data["overlay"] is not None:
-            if (
-                "termination" in data["overlay"]
-                and "type" in data["overlay"]["termination"]
-            ):
-                self._overlay_termination_type = data["overlay"]["termination"]["type"]
-        else:
-            self._current_tado_hvac_mode = CONST_MODE_SMART_SCHEDULE
-
         self._preparation = "preparation" in data and data["preparation"] is not None
         self._open_window = "openWindow" in data and data["openWindow"] is not None
         self._open_window_attr = data["openWindow"] if self._open_window else {}
@@ -236,6 +224,18 @@ class TadoZoneData:
 
                 if self._heating_power_percentage > 0.0:
                     self._current_hvac_action = CURRENT_HVAC_HEAT
+
+        # If there is no overlay
+        # then we are running the smart schedule
+        self._overlay_termination_type = None
+        if "overlay" in data and data["overlay"] is not None:
+            if (
+                "termination" in data["overlay"]
+                and "type" in data["overlay"]["termination"]
+            ):
+                self._overlay_termination_type = data["overlay"]["termination"]["type"]
+        else:
+            self._current_tado_hvac_mode = CONST_MODE_SMART_SCHEDULE
 
         self._connection = (
             data["connectionState"]["value"] if "connectionState" in data else None
