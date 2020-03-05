@@ -9,7 +9,6 @@ from homeassistant.components.media_player.const import (
     MEDIA_TYPE_MOVIE,
     SUPPORT_NEXT_TRACK,
     SUPPORT_PLAY,
-    SUPPORT_PLAY_MEDIA,
     SUPPORT_PREVIOUS_TRACK,
     SUPPORT_SELECT_SOURCE,
     SUPPORT_TURN_OFF,
@@ -25,14 +24,13 @@ from homeassistant.const import (
     STATE_STANDBY,
 )
 
-DEFAULT_PORT = 8060
+from .const import DEFAULT_PORT
 
 _LOGGER = logging.getLogger(__name__)
 
 SUPPORT_ROKU = (
     SUPPORT_PREVIOUS_TRACK
     | SUPPORT_NEXT_TRACK
-    | SUPPORT_PLAY_MEDIA
     | SUPPORT_VOLUME_SET
     | SUPPORT_VOLUME_MUTE
     | SUPPORT_SELECT_SOURCE
