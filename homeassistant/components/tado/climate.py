@@ -240,7 +240,6 @@ class TadoClimate(ClimateDevice):
 
         Need to be one of HVAC_MODE_*.
         """
-        _LOGGER.info("hvac_mode: [%s]", self._tado_zone_data.current_tado_hvac_mode)
         return TADO_TO_HA_HVAC_MODE_MAP.get(
             self._tado_zone_data.current_tado_hvac_mode, CURRENT_HVAC_OFF
         )
@@ -259,7 +258,6 @@ class TadoClimate(ClimateDevice):
 
         Need to be one of CURRENT_HVAC_*.
         """
-        _LOGGER.info("hvac_action: [%s]", self._tado_zone_data.current_hvac_action)
         return self._tado_zone_data.current_hvac_action
 
     @property
