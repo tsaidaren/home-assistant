@@ -51,7 +51,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         for zone in tado.zones:
             entities.extend(
                 [
-                    create_zone_sensor(tado, zone["name"], zone["id"], variable)
+                    create_zone_sensor(hass, tado, zone["name"], zone["id"], variable)
                     for variable in ZONE_SENSORS.get(zone["type"])
                 ]
             )
@@ -60,7 +60,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         for home in tado.devices:
             entities.extend(
                 [
-                    create_device_sensor(tado, home["name"], home["id"], variable)
+                    create_device_sensor(hass, tado, home["name"], home["id"], variable)
                     for variable in DEVICE_SENSORS
                 ]
             )
@@ -68,21 +68,22 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     add_entities(entities, True)
 
 
-def create_zone_sensor(tado, name, zone_id, variable):
+def create_zone_sensor(hass, tado, name, zone_id, variable):
     """Create a zone sensor."""
-    return TadoSensor(tado, name, "zone", zone_id, variable)
+    return TadoSensor(hass, tado, name, "zone", zone_id, variable)
 
 
-def create_device_sensor(tado, name, device_id, variable):
+def create_device_sensor(hass, tado, name, device_id, variable):
     """Create a device sensor."""
-    return TadoSensor(tado, name, "device", device_id, variable)
+    return TadoSensor(hass, tado, name, "device", device_id, variable)
 
 
 class TadoSensor(Entity):
     """Representation of a tado Sensor."""
 
-    def __init__(self, tado, zone_name, sensor_type, zone_id, zone_variable):
+    def __init__(self, hass, tado, zone_name, sensor_type, zone_id, zone_variable):
         """Initialize of the Tado Sensor."""
+        self.hass = hass
         self._tado = tado
 
         self.zone_name = zone_name
@@ -95,19 +96,15 @@ class TadoSensor(Entity):
         self._state = None
         self._state_attributes = None
         self._tado_zone_data = None
+        self._async_update_zone_data()
 
     async def async_added_to_hass(self):
         """Register for sensor updates."""
 
-        @callback
-        def async_update_callback():
-            """Schedule an entity update."""
-            self.async_schedule_update_ha_state(True)
-
         async_dispatcher_connect(
             self.hass,
             SIGNAL_TADO_UPDATE_RECEIVED.format(self.sensor_type, self.zone_id),
-            async_update_callback,
+            self._async_update_callback,
         )
 
     @property
@@ -151,11 +148,18 @@ class TadoSensor(Entity):
             return "mdi:water-percent"
 
     @property
-    def should_poll(self) -> bool:
+    def should_poll(self):
         """Do not poll."""
         return False
 
-    def update(self):
+    @callback
+    def _async_update_callback(self):
+        """Update and write state."""
+        self._async_update_zone_data()
+        self.async_write_ha_state()
+
+    @callback
+    def _async_update_zone_data(self):
         """Handle update callbacks."""
         try:
             data = self._tado.data[self.sensor_type][self.zone_id]

@@ -53,7 +53,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     for tado in api_list:
         for zone in tado.zones:
             if zone["type"] in [TYPE_HEATING, TYPE_AIR_CONDITIONING]:
-                entity = create_climate_entity(tado, zone["name"], zone["id"])
+                entity = create_climate_entity(hass, tado, zone["name"], zone["id"])
                 if entity:
                     entities.append(entity)
 
@@ -61,7 +61,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         add_entities(entities, True)
 
 
-def create_climate_entity(tado, name: str, zone_id: int):
+def create_climate_entity(hass, tado, name: str, zone_id: int):
     """Create a Tado climate entity."""
     capabilities = tado.get_capabilities(zone_id)
     _LOGGER.debug("Capabilities for zone %s: %s", zone_id, capabilities)
@@ -121,6 +121,7 @@ def create_climate_entity(tado, name: str, zone_id: int):
         cool_step = cool_temperatures["celsius"].get("step", PRECISION_TENTHS)
 
     entity = TadoClimate(
+        hass,
         tado,
         name,
         zone_id,
@@ -143,6 +144,7 @@ class TadoClimate(ClimateDevice):
 
     def __init__(
         self,
+        hass,
         tado,
         zone_name,
         zone_id,
@@ -158,6 +160,7 @@ class TadoClimate(ClimateDevice):
         support_flags,
     ):
         """Initialize of Tado climate entity."""
+        self.hass = hass
         self._tado = tado
 
         self.zone_name = zone_name
@@ -190,19 +193,15 @@ class TadoClimate(ClimateDevice):
         self._current_hvac_action = CURRENT_HVAC_OFF
 
         self._tado_zone_data = None
+        self._async_update_zone_data()
 
     async def async_added_to_hass(self):
         """Register for sensor updates."""
 
-        @callback
-        def async_update_callback():
-            """Schedule an entity update."""
-            self.async_schedule_update_ha_state(True)
-
         async_dispatcher_connect(
             self.hass,
             SIGNAL_TADO_UPDATE_RECEIVED.format("zone", self.zone_id),
-            async_update_callback,
+            self._async_update_callback,
         )
 
     @property
@@ -241,6 +240,7 @@ class TadoClimate(ClimateDevice):
 
         Need to be one of HVAC_MODE_*.
         """
+        _LOGGER.info("hvac_mode: [%s]", self._tado_zone_data.current_tado_hvac_mode)
         return TADO_TO_HA_HVAC_MODE_MAP.get(
             self._tado_zone_data.current_tado_hvac_mode, CURRENT_HVAC_OFF
         )
@@ -259,6 +259,7 @@ class TadoClimate(ClimateDevice):
 
         Need to be one of CURRENT_HVAC_*.
         """
+        _LOGGER.info("hvac_action: [%s]", self._tado_zone_data.current_hvac_action)
         return self._tado_zone_data.current_hvac_action
 
     @property
@@ -357,12 +358,18 @@ class TadoClimate(ClimateDevice):
 
         return self._heat_max_temp
 
-    def update(self):
-        """Handle update callbacks."""
-        _LOGGER.debug("Updating climate platform for zone %d", self.zone_id)
+    @callback
+    def _async_update_zone_data(self):
+        """Load tado data into zone."""
         self._tado_zone_data = TadoZoneData(
             self._tado.data["zone"][self.zone_id], self.zone_id
         )
+
+    @callback
+    def _async_update_callback(self):
+        """Load tado data and update state."""
+        self._async_update_zone_data()
+        self.async_write_ha_state()
 
     def _normalize_target_temp_for_hvac_mode(self):
         # Set a target temperature if we don't have any
