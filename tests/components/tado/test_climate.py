@@ -62,7 +62,7 @@ async def test_smartac3_smart_mode(hass):
     assert smartac3_smart_mode.heating_power_percentage is None
     assert smartac3_smart_mode.is_away is False
     assert smartac3_smart_mode.power == "ON"
-    assert smartac3_smart_mode.current_hvac_action == "off"
+    assert smartac3_smart_mode.current_hvac_action == "idle"
     assert smartac3_smart_mode.current_tado_fan_speed == "MIDDLE"
     assert smartac3_smart_mode.link == "ONLINE"
     assert smartac3_smart_mode.current_tado_hvac_mode == "SMART_SCHEDULE"
@@ -318,7 +318,7 @@ async def test_smartac3_offline(hass):
     assert smartac3_offline.heating_power_percentage is None
     assert smartac3_offline.is_away is False
     assert smartac3_offline.power == "ON"
-    assert smartac3_offline.current_hvac_action == "off"
+    assert smartac3_offline.current_hvac_action == "idle"
     assert smartac3_offline.current_tado_fan_speed == "AUTO"
     assert smartac3_offline.link == "OFFLINE"
     assert smartac3_offline.current_tado_hvac_mode == "COOL"
@@ -350,7 +350,7 @@ async def test_hvac_action_heat(hass):
     assert hvac_action_heat.heating_power_percentage is None
     assert hvac_action_heat.is_away is False
     assert hvac_action_heat.power == "ON"
-    assert hvac_action_heat.current_hvac_action == "off"
+    assert hvac_action_heat.current_hvac_action == "idle"
     assert hvac_action_heat.current_tado_fan_speed == "AUTO"
     assert hvac_action_heat.link == "ONLINE"
     assert hvac_action_heat.current_tado_hvac_mode == "HEAT"
