@@ -62,7 +62,7 @@ aiobotocore==0.11.1
 aioesphomeapi==2.6.1
 
 # homeassistant.components.homekit_controller
-aiohomekit[IP]==0.2.15
+aiohomekit[IP]==0.2.21
 
 # homeassistant.components.emulated_hue
 # homeassistant.components.http
@@ -174,7 +174,7 @@ distro==1.4.0
 dsmr_parser==0.18
 
 # homeassistant.components.dynalite
-dynalite_devices==0.1.30
+dynalite_devices==0.1.32
 
 # homeassistant.components.ee_brightbox
 eebrightbox==0.0.4
@@ -242,7 +242,7 @@ ha-ffmpeg==2.0
 hangups==0.4.9
 
 # homeassistant.components.cloud
-hass-nabucasa==0.31
+hass-nabucasa==0.32
 
 # homeassistant.components.mqtt
 hbmqtt==0.9.5
@@ -602,7 +602,7 @@ pyvera==0.3.7
 pyvesync==1.1.0
 
 # homeassistant.components.vizio
-pyvizio==0.1.26
+pyvizio==0.1.35
 
 # homeassistant.components.html5
 pywebpush==1.9.2

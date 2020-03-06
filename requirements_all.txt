@@ -163,7 +163,7 @@ aioftp==0.12.0
 aioharmony==0.1.13
 
 # homeassistant.components.homekit_controller
-aiohomekit[IP]==0.2.15
+aiohomekit[IP]==0.2.21
 
 # homeassistant.components.emulated_hue
 # homeassistant.components.http
@@ -466,7 +466,7 @@ dsmr_parser==0.18
 dweepy==0.3.0
 
 # homeassistant.components.dynalite
-dynalite_devices==0.1.30
+dynalite_devices==0.1.32
 
 # homeassistant.components.rainforest_eagle
 eagle200_reader==0.2.1
@@ -663,7 +663,7 @@ habitipy==0.2.0
 hangups==0.4.9
 
 # homeassistant.components.cloud
-hass-nabucasa==0.31
+hass-nabucasa==0.32
 
 # homeassistant.components.mqtt
 hbmqtt==0.9.5
@@ -1717,7 +1717,7 @@ pyversasense==0.0.6
 pyvesync==1.1.0
 
 # homeassistant.components.vizio
-pyvizio==0.1.26
+pyvizio==0.1.35
 
 # homeassistant.components.velux
 pyvlx==0.2.12
@@ -2140,7 +2140,7 @@ yeelight==0.5.0
 yeelightsunflower==0.0.10
 
 # homeassistant.components.media_extractor
-youtube_dl==2020.03.01
+youtube_dl==2020.03.06
 
 # homeassistant.components.zengge
 zengge==0.2
