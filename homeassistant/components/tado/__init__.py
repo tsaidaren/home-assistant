@@ -1,12 +1,13 @@
 """Support for the (unofficial) Tado API."""
 from datetime import timedelta
 import logging
-import urllib
 
 from PyTado.interface import Tado
+from requests import RequestException
 import voluptuous as vol
 
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.discovery import load_platform
 from homeassistant.helpers.dispatcher import dispatcher_send
@@ -109,7 +110,7 @@ class TadoConnector:
         """Connect to Tado and fetch the zones."""
         try:
             self.tado = Tado(self._username, self._password)
-        except (RuntimeError, urllib.error.HTTPError) as exc:
+        except (RuntimeError, RequestException) as exc:
             _LOGGER.error("Unable to connect: %s", exc)
             return False
 
@@ -169,17 +170,23 @@ class TadoConnector:
 
     def set_home(self):
         """Put tado in home mode."""
+        response_json = None
         try:
-            self.tado.setHome()
-        except urllib.error.HTTPError as exc:
-            _LOGGER.error("Could not set home: %s", exc.read())
+            response_json = self.tado.setHome()
+        except RequestException as exc:
+            _LOGGER.error("Could not set home: %s", exc)
+
+        _raise_home_away_errors(response_json)
 
     def set_away(self):
         """Put tado in away mode."""
+        response_json = None
         try:
-            self.tado.setAway()
-        except urllib.error.HTTPError as exc:
-            _LOGGER.error("Could not set away: %s", exc.read())
+            response_json = self.tado.setAway()
+        except RequestException as exc:
+            _LOGGER.error("Could not set away: %s", exc)
+
+        _raise_home_away_errors(response_json)
 
     def set_zone_overlay(
         self,
@@ -215,8 +222,8 @@ class TadoConnector:
                 fan_speed,
             )
 
-        except urllib.error.HTTPError as exc:
-            _LOGGER.error("Could not set zone overlay: %s", exc.read())
+        except RequestException as exc:
+            _LOGGER.error("Could not set zone overlay: %s", exc)
 
         self.update_sensor("zone", zone_id)
 
@@ -226,7 +233,18 @@ class TadoConnector:
             self.tado.setZoneOverlay(
                 zone_id, overlay_mode, None, None, device_type, "OFF"
             )
-        except urllib.error.HTTPError as exc:
-            _LOGGER.error("Could not set zone overlay: %s", exc.read())
+        except RequestException as exc:
+            _LOGGER.error("Could not set zone overlay: %s", exc)
 
         self.update_sensor("zone", zone_id)
+
+
+def _raise_home_away_errors(response_json):
+    if response_json is None:
+        return
+
+    # Likely we are displaying to the user:
+    # Tried to update to HOME though all mobile devices are detected outside the home fence
+    if "errors" in response_json and len(response_json["errors"]):
+        error_list = response_json["errors"]
+        raise HomeAssistantError(error_list[0]["title"])
