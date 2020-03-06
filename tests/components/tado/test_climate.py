@@ -325,3 +325,35 @@ async def test_smartac3_offline(hass):
     assert smartac3_offline.target_temp == 17.78
     assert smartac3_offline.available is False
     assert smartac3_offline.precision == 0.1
+
+
+async def test_hvac_action_heat(hass):
+    """Test smart ac cool mode."""
+    hvac_action_heat = await _mock_tado_climate_zone_from_fixture(
+        hass, "hvac_action_heat.json"
+    )
+    assert hvac_action_heat.preparation is False
+    assert hvac_action_heat.open_window is False
+    assert hvac_action_heat.open_window_attr == {}
+    assert hvac_action_heat.current_temp == 25.05
+    assert hvac_action_heat.current_temp_timestamp == "2020-03-03T21:23:57.846Z"
+    assert hvac_action_heat.connection is None
+    assert hvac_action_heat.tado_mode == "HOME"
+    assert hvac_action_heat.overlay_active is True
+    assert hvac_action_heat.overlay_termination_type == "TADO_MODE"
+    assert hvac_action_heat.current_humidity == 61.6
+    assert hvac_action_heat.current_humidity_timestamp == "2020-03-03T21:23:57.846Z"
+    assert hvac_action_heat.ac_power_timestamp == "2020-02-29T18:42:26.683Z"
+    assert hvac_action_heat.heating_power_timestamp is None
+    assert hvac_action_heat.ac_power == "OFF"
+    assert hvac_action_heat.heating_power is None
+    assert hvac_action_heat.heating_power_percentage is None
+    assert hvac_action_heat.is_away is False
+    assert hvac_action_heat.power == "ON"
+    assert hvac_action_heat.current_hvac_action == "off"
+    assert hvac_action_heat.current_tado_fan_speed == "AUTO"
+    assert hvac_action_heat.link == "OFFLINE"
+    assert hvac_action_heat.current_tado_hvac_mode == "COOL"
+    assert hvac_action_heat.target_temp == 17.78
+    assert hvac_action_heat.available is False
+    assert hvac_action_heat.precision == 0.1
