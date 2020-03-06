@@ -259,6 +259,9 @@ def get_accessory(hass, driver, state, aid, config):
     elif state.domain == "water_heater":
         a_type = "WaterHeater"
 
+    elif state.domain == "camera":
+        a_type = "Camera"
+
     if a_type is None:
         return None
 
@@ -365,6 +368,7 @@ class HomeKit:
         self.status = STATUS_WAIT
 
         from . import (  # noqa: F401 pylint: disable=unused-import, import-outside-toplevel
+            type_cameras,
             type_covers,
             type_fans,
             type_lights,
