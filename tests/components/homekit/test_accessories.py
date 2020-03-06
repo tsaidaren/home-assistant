@@ -335,15 +335,7 @@ def test_home_driver():
     path = ".homekit.state"
     pin = b"123-45-678"
 
-    mock_driver = Mock()
-
-    def mock_driver_init(self, **kwargs):
-        self.http_server = Mock()
-        mock_driver(**kwargs)
-
-    with patch(
-        "pyhap.accessory_driver.AccessoryDriver.__init__", new=mock_driver_init,
-    ):
+    with patch("pyhap.accessory_driver.AccessoryDriver.__init__") as mock_driver:
         driver = HomeDriver("hass", address=ip_address, port=port, persist_file=path)
 
     mock_driver.assert_called_with(address=ip_address, port=port, persist_file=path)
