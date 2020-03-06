@@ -13,6 +13,7 @@ from .const import (
     CONST_FAN_OFF,
     CONST_LINK_OFFLINE,
     CONST_MODE_SMART_SCHEDULE,
+    DEFAULT_TADO_PRECISION,
     TADO_MODES_TO_HA_CURRENT_HVAC_ACTION,
 )
 
@@ -157,6 +158,11 @@ class TadoZoneData:
         return self._link
 
     @property
+    def precision(self):
+        """Precision of temp units."""
+        return self._precision
+
+    @property
     def current_tado_hvac_mode(self):
         """TADO HVAC Mode (tado const)."""
         return self._current_tado_hvac_mode
@@ -174,6 +180,7 @@ class TadoZoneData:
     def update_data(self, data):
         """Handle update callbacks."""
         _LOGGER.debug("Updating climate platform for zone %d", self._zone_id)
+        self._precision = DEFAULT_TADO_PRECISION
         if "sensorDataPoints" in data:
             sensor_data = data["sensorDataPoints"]
 
@@ -183,6 +190,10 @@ class TadoZoneData:
                 self._current_temp_timestamp = sensor_data["insideTemperature"][
                     "timestamp"
                 ]
+                if "precision" in sensor_data["insideTemperature"]:
+                    self._precision = sensor_data["insideTemperature"]["precision"][
+                        "celsius"
+                    ]
 
             if "humidity" in sensor_data:
                 humidity = float(sensor_data["humidity"]["percentage"])

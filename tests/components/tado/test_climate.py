@@ -36,6 +36,7 @@ async def test_ac_issue_32294_heat_mode(hass):
     assert ac_issue_32294_heat_mode.current_tado_hvac_mode == "SMART_SCHEDULE"
     assert ac_issue_32294_heat_mode.target_temp == 25.0
     assert ac_issue_32294_heat_mode.available is True
+    assert ac_issue_32294_heat_mode.precision == 0.1
 
 
 async def test_smartac3_smart_mode(hass):
@@ -67,6 +68,7 @@ async def test_smartac3_smart_mode(hass):
     assert smartac3_smart_mode.current_tado_hvac_mode == "SMART_SCHEDULE"
     assert smartac3_smart_mode.target_temp == 20.0
     assert smartac3_smart_mode.available is True
+    assert smartac3_smart_mode.precision == 0.1
 
 
 async def test_smartac3_cool_mode(hass):
@@ -98,6 +100,7 @@ async def test_smartac3_cool_mode(hass):
     assert smartac3_cool_mode.current_tado_hvac_mode == "COOL"
     assert smartac3_cool_mode.target_temp == 17.78
     assert smartac3_cool_mode.available is True
+    assert smartac3_cool_mode.precision == 0.1
 
 
 async def test_smartac3_auto_mode(hass):
@@ -129,6 +132,7 @@ async def test_smartac3_auto_mode(hass):
     assert smartac3_auto_mode.current_tado_hvac_mode == "AUTO"
     assert smartac3_auto_mode.target_temp is None
     assert smartac3_auto_mode.available is True
+    assert smartac3_auto_mode.precision == 0.1
 
 
 async def test_smartac3_dry_mode(hass):
@@ -160,6 +164,7 @@ async def test_smartac3_dry_mode(hass):
     assert smartac3_dry_mode.current_tado_hvac_mode == "DRY"
     assert smartac3_dry_mode.target_temp is None
     assert smartac3_dry_mode.available is True
+    assert smartac3_dry_mode.precision == 0.1
 
 
 async def test_smartac3_fan_mode(hass):
@@ -191,6 +196,7 @@ async def test_smartac3_fan_mode(hass):
     assert smartac3_fan_mode.current_tado_hvac_mode == "FAN"
     assert smartac3_fan_mode.target_temp is None
     assert smartac3_fan_mode.available is True
+    assert smartac3_fan_mode.precision == 0.1
 
 
 async def test_smartac3_heat_mode(hass):
@@ -222,6 +228,7 @@ async def test_smartac3_heat_mode(hass):
     assert smartac3_heat_mode.current_tado_hvac_mode == "HEAT"
     assert smartac3_heat_mode.target_temp == 16.11
     assert smartac3_heat_mode.available is True
+    assert smartac3_heat_mode.precision == 0.1
 
 
 async def test_smartac3_hvac_off(hass):
@@ -253,6 +260,7 @@ async def test_smartac3_hvac_off(hass):
     assert smartac3_hvac_off.current_tado_hvac_mode is None
     assert smartac3_hvac_off.target_temp is None
     assert smartac3_hvac_off.available is True
+    assert smartac3_hvac_off.precision == 0.1
 
 
 async def test_smartac3_manual_off(hass):
@@ -284,6 +292,7 @@ async def test_smartac3_manual_off(hass):
     assert smartac3_manual_off.current_tado_hvac_mode is None
     assert smartac3_manual_off.target_temp is None
     assert smartac3_manual_off.available is True
+    assert smartac3_manual_off.precision == 0.1
 
 
 async def test_smartac3_offline(hass):
@@ -315,3 +324,4 @@ async def test_smartac3_offline(hass):
     assert smartac3_offline.current_tado_hvac_mode == "COOL"
     assert smartac3_offline.target_temp == 17.78
     assert smartac3_offline.available is False
+    assert smartac3_offline.precision == 0.1

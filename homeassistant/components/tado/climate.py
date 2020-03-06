@@ -222,6 +222,11 @@ class TadoClimate(ClimateDevice):
         return self._unique_id
 
     @property
+    def precision(self):
+        """Return the precision of the system."""
+        return self._tado_zone_data.precision
+
+    @property
     def should_poll(self) -> bool:
         """Do not poll."""
         return False
