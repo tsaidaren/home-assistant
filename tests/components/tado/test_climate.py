@@ -257,7 +257,7 @@ async def test_smartac3_hvac_off(hass):
     assert smartac3_hvac_off.current_hvac_action == "off"
     assert smartac3_hvac_off.current_tado_fan_speed == "OFF"
     assert smartac3_hvac_off.link == "ONLINE"
-    assert smartac3_hvac_off.current_tado_hvac_mode is None
+    assert smartac3_hvac_off.current_tado_hvac_mode == "OFF"
     assert smartac3_hvac_off.target_temp is None
     assert smartac3_hvac_off.available is True
     assert smartac3_hvac_off.precision == 0.1
@@ -289,7 +289,7 @@ async def test_smartac3_manual_off(hass):
     assert smartac3_manual_off.current_hvac_action == "off"
     assert smartac3_manual_off.current_tado_fan_speed == "OFF"
     assert smartac3_manual_off.link == "ONLINE"
-    assert smartac3_manual_off.current_tado_hvac_mode is None
+    assert smartac3_manual_off.current_tado_hvac_mode == "OFF"
     assert smartac3_manual_off.target_temp is None
     assert smartac3_manual_off.available is True
     assert smartac3_manual_off.precision == 0.1
@@ -357,3 +357,35 @@ async def test_hvac_action_heat(hass):
     assert hvac_action_heat.target_temp == 16.11
     assert hvac_action_heat.available is True
     assert hvac_action_heat.precision == 0.1
+
+
+async def test_smartac3_turning_off(hass):
+    """Test smart ac cool mode."""
+    smartac3_turning_off = await _mock_tado_climate_zone_from_fixture(
+        hass, "smartac3.turning_off.json"
+    )
+    assert smartac3_turning_off.preparation is False
+    assert smartac3_turning_off.open_window is False
+    assert smartac3_turning_off.open_window_attr == {}
+    assert smartac3_turning_off.current_temp == 21.4
+    assert smartac3_turning_off.current_temp_timestamp == "2020-03-06T19:06:13.185Z"
+    assert smartac3_turning_off.connection is None
+    assert smartac3_turning_off.tado_mode == "HOME"
+    assert smartac3_turning_off.overlay_active is True
+    assert smartac3_turning_off.overlay_termination_type == "MANUAL"
+    assert smartac3_turning_off.current_humidity == 49.2
+    assert smartac3_turning_off.current_humidity_timestamp == "2020-03-06T19:06:13.185Z"
+    assert smartac3_turning_off.ac_power_timestamp == "2020-03-06T19:05:21.835Z"
+    assert smartac3_turning_off.heating_power_timestamp is None
+    assert smartac3_turning_off.ac_power == "ON"
+    assert smartac3_turning_off.heating_power is None
+    assert smartac3_turning_off.heating_power_percentage is None
+    assert smartac3_turning_off.is_away is False
+    assert smartac3_turning_off.power == "OFF"
+    assert smartac3_turning_off.current_hvac_action == "off"
+    assert smartac3_turning_off.current_tado_fan_speed == "OFF"
+    assert smartac3_turning_off.link == "ONLINE"
+    assert smartac3_turning_off.current_tado_hvac_mode == "OFF"
+    assert smartac3_turning_off.target_temp is None
+    assert smartac3_turning_off.available is True
+    assert smartac3_turning_off.precision == 0.1
