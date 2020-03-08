@@ -121,7 +121,7 @@ class AsyncGriddy:
         self._settlement_point = settlement_point
         self._timeout = timeout
 
-    async def async_getnow(self, member_id, meter_id, settlement_point):
+    async def async_getnow(self):
         response = await self._websession.request(
             "post",
             GETNOW_API_URL,

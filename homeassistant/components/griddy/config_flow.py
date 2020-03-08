@@ -4,27 +4,48 @@ import logging
 import voluptuous as vol
 
 from homeassistant import config_entries, core, exceptions
+from homeassistant.helpers import aiohttp_client
+import homeassistant.helpers.config_validation as cv
 
-from .const import DOMAIN  # pylint:disable=unused-import
+from . import AsyncGriddy
+from .const import CONF_MEMBER_ID, CONF_METER_ID, CONF_SETTLEMENT_POINT, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-# TODO adjust the data schema to the data that you need
-DATA_SCHEMA = vol.Schema({"host": str, "username": str, "password": str})
+DATA_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_MEMBER_ID): cv.positive_int,
+        vol.Required(CONF_METER_ID): cv.positive_int,
+        vol.Required(CONF_SETTLEMENT_POINT): cv.string,
+    }
+)
 
 
-class PlaceholderHub:
+class GriddyGateway:
     """Placeholder class to make tests pass.
 
     TODO Remove this placeholder class and replace with things from your PyPI package.
     """
 
-    def __init__(self, host):
+    def __init__(self, hass, member_id, meter_id, settlement_point):
         """Initialize."""
-        self.host = host
+        self._member_id = member_id
+        self._meter_id = meter_id
+        self._settlement_point = settlement_point
+        self._websession = aiohttp_client.async_get_clientsession(hass)
 
-    async def authenticate(self, username, password) -> bool:
+    async def authenticate(self) -> bool:
         """Test if we can authenticate with the host."""
+        data = await AsyncGriddy(
+            self._websession,
+            member_id=self._member_id,
+            meter_id=self._meter_id,
+            settlement_point=self._settlement_point,
+        ).async_getnow()
+        import pprint
+
+        _LOGGER.debug("authenticate: %s", pprint.pformat(data))
+
         return True
 
 
@@ -41,9 +62,11 @@ async def validate_input(hass: core.HomeAssistant, data):
     #     your_validate_func, data["username"], data["password"]
     # )
 
-    hub = PlaceholderHub(data["host"])
+    gateway = GriddyGateway(
+        hass, data[CONF_MEMBER_ID], data[CONF_METER_ID], data[CONF_SETTLEMENT_POINT]
+    )
 
-    if not await hub.authenticate(data["username"], data["password"]):
+    if not await gateway.authenticate():
         raise InvalidAuth
 
     # If you cannot connect:
@@ -52,7 +75,7 @@ async def validate_input(hass: core.HomeAssistant, data):
     # InvalidAuth
 
     # Return info that you want to store in the config entry.
-    return {"title": "Name of the device"}
+    return {"title": f"Meter {data[CONF_METER_ID]}"}
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
