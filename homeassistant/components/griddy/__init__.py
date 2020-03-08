@@ -12,23 +12,14 @@ from homeassistant.helpers import aiohttp_client
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from .const import CONF_MEMBER_ID, CONF_METER_ID, CONF_SETTLEMENT_POINT, DOMAIN
+from .const import CONF_LOADZONE, DOMAIN
+
+LOAD_ZONES = ["LZ_HOUSTON", "LZ_WEST", "LZ_NORTH", "LZ_SOUTH"]
 
 _LOGGER = logging.getLogger(__name__)
 
-# , UpdateFailed
-
-
 CONFIG_SCHEMA = vol.Schema(
-    {
-        DOMAIN: vol.Schema(
-            {
-                vol.Required(CONF_MEMBER_ID): cv.positive_int,
-                vol.Required(CONF_METER_ID): cv.positive_int,
-                vol.Required(CONF_SETTLEMENT_POINT): cv.string,
-            }
-        )
-    },
+    {DOMAIN: vol.Schema({vol.Required(CONF_LOADZONE): cv.string})},
     extra=vol.ALLOW_EXTRA,
 )
 
@@ -45,22 +36,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     entry_data = entry.data
 
-    member_id = entry_data[CONF_MEMBER_ID]
-    meter_id = entry_data[CONF_METER_ID]
-    settlement_point = entry_data[CONF_SETTLEMENT_POINT]
     async_griddy = AsyncGriddy(
         aiohttp_client.async_get_clientsession(hass),
-        member_id=member_id,
-        meter_id=meter_id,
-        settlement_point=settlement_point,
+        settlement_point=entry_data[CONF_LOADZONE],
     )
 
     async def async_update_data():
-        """Fetch data from API endpoint.
-
-        This is the place to pre-process the data to lookup tables
-        so entities can quickly look up their data.
-        """
+        """Fetch data from API endpoint."""
         return await async_griddy.async_getnow()
 
     coordinator = DataUpdateCoordinator(
@@ -109,29 +91,22 @@ DEFAULT_REQUEST_TIMEOUT = 15
 
 
 class AsyncGriddy:
+    """Async griddy api."""
+
     def __init__(
-        self,
-        websession,
-        timeout=DEFAULT_REQUEST_TIMEOUT,
-        member_id=None,
-        meter_id=None,
-        settlement_point=None,
+        self, websession, timeout=DEFAULT_REQUEST_TIMEOUT, settlement_point=None,
     ):
+        """Create griddy async api object."""
         self._websession = websession
-        self._member_id = member_id
-        self._meter_id = meter_id
         self._settlement_point = settlement_point
         self._timeout = timeout
 
     async def async_getnow(self):
+        """Call api to get the current price."""
         response = await self._websession.request(
             "post",
             GETNOW_API_URL,
             timeout=self._timeout,
-            json={
-                "meterID": self._meter_id,
-                "memberID": self._member_id,
-                "settlement_point": self._settlement_point,
-            },
+            json={"settlement_point": self._settlement_point},
         )
         return await response.json()

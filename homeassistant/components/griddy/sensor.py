@@ -4,7 +4,7 @@ import logging
 from homeassistant.components.sensor import DEVICE_CLASS_POWER
 from homeassistant.helpers.entity import Entity
 
-from .const import CONF_MEMBER_ID, CONF_METER_ID, CONF_SETTLEMENT_POINT, DOMAIN
+from .const import CONF_LOADZONE, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -13,32 +13,18 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the August sensors."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
-    meter_id = config_entry.data[CONF_METER_ID]
-    member_id = config_entry.data[CONF_MEMBER_ID]
-    settlement_point = config_entry.data[CONF_SETTLEMENT_POINT]
+    settlement_point = config_entry.data[CONF_LOADZONE]
 
-    import pprint
-
-    _LOGGER.debug("GIRDDY: %s", pprint.pformat(coordinator.data))
-    #    coordinator.data
-    devices = []
-    devices.append(
-        GriddyPriceSensor(meter_id, member_id, settlement_point, coordinator)
-    )
-
-    async_add_entities(devices, True)
+    async_add_entities([GriddyPriceSensor(settlement_point, coordinator)], True)
 
 
 class GriddyPriceSensor(Entity):
     """Representation of an August sensor."""
 
-    def __init__(self, meter_id, member_id, settlement_point, coordinator):
+    def __init__(self, settlement_point, coordinator):
         """Initialize the sensor."""
         self._coordinator = coordinator
-        self._member_id = member_id
-        self._meter_id = meter_id
         self._settlement_point = settlement_point
-        self._update_from_data()
 
     @property
     def unit_of_measurement(self):
@@ -50,18 +36,15 @@ class GriddyPriceSensor(Entity):
         """Return the class of this device, from component DEVICE_CLASSES."""
         return DEVICE_CLASS_POWER
 
+    @property
     def name(self):
         """Device Name."""
-        return f"{self._meter_id} Price Now"
-
-    def unique_id(self):
-        """Device Uniqueid."""
-        return f"{self._meter_id} price now"
+        return f"{self._settlement_point} Price Now"
 
     @property
-    def device_state_attributes(self):
-        """Return the state attributes of the device."""
-        return {"load zone": self._settlement_point}
+    def unique_id(self):
+        """Device Uniqueid."""
+        return f"{self._settlement_point} price now"
 
     @property
     def available(self):
@@ -77,9 +60,6 @@ class GriddyPriceSensor(Entity):
     def should_poll(self):
         """Return False, updates are controlled via coordinator."""
         return False
-
-    async def async_update(self):
-        await self._coordinator.async_request_refresh()
 
     async def async_added_to_hass(self):
         """Subscribe to updates."""

@@ -1,51 +1,18 @@
 """Config flow for Griddy Power integration."""
 import logging
 
+from aiohttp import ClientError
 import voluptuous as vol
 
 from homeassistant import config_entries, core, exceptions
 from homeassistant.helpers import aiohttp_client
 
-from . import AsyncGriddy
-from .const import CONF_MEMBER_ID, CONF_METER_ID, CONF_SETTLEMENT_POINT, DOMAIN
+from . import LOAD_ZONES, AsyncGriddy
+from .const import CONF_LOADZONE, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-DATA_SCHEMA = vol.Schema(
-    {
-        vol.Required(CONF_MEMBER_ID): int,
-        vol.Required(CONF_METER_ID): str,
-        vol.Required(CONF_SETTLEMENT_POINT): str,
-    }
-)
-
-
-class GriddyGateway:
-    """Placeholder class to make tests pass.
-
-    TODO Remove this placeholder class and replace with things from your PyPI package.
-    """
-
-    def __init__(self, hass, member_id, meter_id, settlement_point):
-        """Initialize."""
-        self._member_id = member_id
-        self._meter_id = meter_id
-        self._settlement_point = settlement_point
-        self._websession = aiohttp_client.async_get_clientsession(hass)
-
-    async def authenticate(self) -> bool:
-        """Test if we can authenticate with the host."""
-        data = await AsyncGriddy(
-            self._websession,
-            member_id=self._member_id,
-            meter_id=self._meter_id,
-            settlement_point=self._settlement_point,
-        ).async_getnow()
-        import pprint
-
-        _LOGGER.debug("authenticate: %s", pprint.pformat(data))
-
-        return True
+DATA_SCHEMA = vol.Schema({vol.Required(CONF_LOADZONE): vol.In(LOAD_ZONES)})
 
 
 async def validate_input(hass: core.HomeAssistant, data):
@@ -53,36 +20,23 @@ async def validate_input(hass: core.HomeAssistant, data):
 
     Data has the keys from DATA_SCHEMA with values provided by the user.
     """
-    # TODO validate the data can be used to set up a connection.
-
-    # If your PyPI package is not built with async, pass your methods
-    # to the executor:
-    # await hass.async_add_executor_job(
-    #     your_validate_func, data["username"], data["password"]
-    # )
-
-    gateway = GriddyGateway(
-        hass, data[CONF_MEMBER_ID], data[CONF_METER_ID], data[CONF_SETTLEMENT_POINT]
-    )
-
-    if not await gateway.authenticate():
-        raise InvalidAuth
-
-    # If you cannot connect:
-    # throw CannotConnect
-    # If the authentication is wrong:
-    # InvalidAuth
+    try:
+        await AsyncGriddy(
+            aiohttp_client.async_get_clientsession(hass),
+            settlement_point=data[CONF_LOADZONE],
+        ).async_getnow()
+    except ClientError:
+        raise CannotConnect
 
     # Return info that you want to store in the config entry.
-    return {"title": f"Meter {data[CONF_METER_ID]}"}
+    return {"title": f"Loadzone {data[CONF_LOADZONE]}"}
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Griddy Power."""
 
     VERSION = 1
-    # TODO pick one of the available connection classes in homeassistant/config_entries.py
-    CONNECTION_CLASS = config_entries.CONN_CLASS_UNKNOWN
+    CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_POLL
 
     async def async_step_user(self, user_input=None):
         """Handle the initial step."""
@@ -90,12 +44,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 info = await validate_input(self.hass, user_input)
-
+                await self.async_set_unique_id(user_input[CONF_LOADZONE])
                 return self.async_create_entry(title=info["title"], data=user_input)
             except CannotConnect:
                 errors["base"] = "cannot_connect"
-            except InvalidAuth:
-                errors["base"] = "invalid_auth"
             except Exception:  # pylint: disable=broad-except
                 _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
@@ -107,7 +59,3 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 class CannotConnect(exceptions.HomeAssistantError):
     """Error to indicate we cannot connect."""
-
-
-class InvalidAuth(exceptions.HomeAssistantError):
-    """Error to indicate there is invalid auth."""
