@@ -3,7 +3,7 @@
   "name": "Griddy Power",
   "config_flow": true,
   "documentation": "https://www.home-assistant.io/integrations/griddy",
-  "requirements": [],
+  "requirements": ["griddypower==0.1.0"],
   "ssdp": [],
   "zeroconf": [],
   "homekit": {},

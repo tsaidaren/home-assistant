@@ -3,23 +3,21 @@ import asyncio
 from datetime import timedelta
 import logging
 
+from griddypower.async_api import LOAD_ZONES, AsyncGriddy
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import PlatformNotReady
 from homeassistant.helpers import aiohttp_client
-import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import CONF_LOADZONE, DOMAIN, UPDATE_INTERVAL
 
-LOAD_ZONES = ["LZ_HOUSTON", "LZ_WEST", "LZ_NORTH", "LZ_SOUTH"]
-
 _LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = vol.Schema(
-    {DOMAIN: vol.Schema({vol.Required(CONF_LOADZONE): cv.string})},
+    {DOMAIN: vol.Schema({vol.Required(CONF_LOADZONE): vol.In(LOAD_ZONES)})},
     extra=vol.ALLOW_EXTRA,
 )
 
@@ -84,29 +82,3 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
         hass.data[DOMAIN].pop(entry.entry_id)
 
     return unload_ok
-
-
-GETNOW_API_URL = "https://app.gogriddy.com/api/v1/insights/getnow"
-DEFAULT_REQUEST_TIMEOUT = 15
-
-
-class AsyncGriddy:
-    """Async griddy api."""
-
-    def __init__(
-        self, websession, timeout=DEFAULT_REQUEST_TIMEOUT, settlement_point=None,
-    ):
-        """Create griddy async api object."""
-        self._websession = websession
-        self._settlement_point = settlement_point
-        self._timeout = timeout
-
-    async def async_getnow(self):
-        """Call api to get the current price."""
-        response = await self._websession.request(
-            "post",
-            GETNOW_API_URL,
-            timeout=self._timeout,
-            json={"settlement_point": self._settlement_point},
-        )
-        return await response.json()

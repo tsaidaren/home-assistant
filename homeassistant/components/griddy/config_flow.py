@@ -2,12 +2,12 @@
 import logging
 
 from aiohttp import ClientError
+from griddypower.async_api import LOAD_ZONES, AsyncGriddy
 import voluptuous as vol
 
 from homeassistant import config_entries, core, exceptions
 from homeassistant.helpers import aiohttp_client
 
-from . import LOAD_ZONES, AsyncGriddy
 from .const import CONF_LOADZONE, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
