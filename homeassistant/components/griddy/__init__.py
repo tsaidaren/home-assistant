@@ -12,7 +12,7 @@ from homeassistant.helpers import aiohttp_client
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from .const import CONF_LOADZONE, DOMAIN
+from .const import CONF_LOADZONE, DOMAIN, UPDATE_INTERVAL
 
 LOAD_ZONES = ["LZ_HOUSTON", "LZ_WEST", "LZ_NORTH", "LZ_SOUTH"]
 
@@ -50,7 +50,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         _LOGGER,
         name="getnow",
         update_method=async_update_data,
-        update_interval=timedelta(seconds=60),
+        update_interval=timedelta(seconds=UPDATE_INTERVAL),
     )
 
     await coordinator.async_refresh()

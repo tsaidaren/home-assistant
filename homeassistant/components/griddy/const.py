@@ -2,4 +2,6 @@
 
 DOMAIN = "griddy"
 
+UPDATE_INTERVAL = 90
+
 CONF_LOADZONE = "settlement_point"
