@@ -1116,7 +1116,7 @@ pyRFXtrx==0.25
 # pySwitchmate==0.4.6
 
 # homeassistant.components.tibber
-pyTibber==0.13.2
+pyTibber==0.13.3
 
 # homeassistant.components.dlink
 pyW215==0.6.0
@@ -1659,7 +1659,7 @@ python-telnet-vlc==1.0.4
 python-twitch-client==0.6.0
 
 # homeassistant.components.velbus
-python-velbus==2.0.41
+python-velbus==2.0.42
 
 # homeassistant.components.vlc
 python-vlc==1.1.2
