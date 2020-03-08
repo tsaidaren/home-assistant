@@ -2,8 +2,8 @@
 import json
 import os
 
-from asynctest import mock
-from griddypower.api import GriddyPriceData
+from asynctest import patch
+from griddypower.async_api import GriddyPriceData
 
 from homeassistant.components.griddy import CONF_LOADZONE, DOMAIN
 from homeassistant.setup import async_setup_component
@@ -23,16 +23,17 @@ def _mock_get_config():
     return {DOMAIN: {CONF_LOADZONE: "LZ_HOUSTON"}}
 
 
-@mock.patch("homeassistant.components.griddy.AsyncApi.async_getnow")
-async def test_houston_loadzone(hass, getnow_mock):
+async def test_houston_loadzone(hass):
     """Test creation of the houston load zone."""
 
-    getnow_json = await _load_json_fixture("getnow.json")
+    getnow_json = await _load_json_fixture(hass, "getnow.json")
     griddy_price_data = GriddyPriceData(getnow_json)
-    getnow_mock.return_value = griddy_price_data
+    with patch(
+        "homeassistant.components.griddy.AsyncGriddy.async_getnow",
+        return_value=griddy_price_data,
+    ):
+        assert await async_setup_component(hass, DOMAIN, _mock_get_config())
+        await hass.async_block_till_done()
 
-    assert await async_setup_component(hass, DOMAIN, _mock_get_config())
-    await hass.async_block_till_done()
-
-    sensor_lz_houston = hass.states.get("sensor.lz_houston")
-    assert sensor_lz_houston.state == "96"
+    sensor_lz_houston_price_now = hass.states.get("sensor.lz_houston_price_now")
+    assert sensor_lz_houston_price_now.state == "1.269"
