@@ -1,0 +1,14 @@
+{
+  "domain": "griddy",
+  "name": "Griddy Power",
+  "config_flow": true,
+  "documentation": "https://www.home-assistant.io/integrations/griddy",
+  "requirements": [],
+  "ssdp": [],
+  "zeroconf": [],
+  "homekit": {},
+  "dependencies": [],
+  "codeowners": [
+    "@bdraco"
+  ]
+}
