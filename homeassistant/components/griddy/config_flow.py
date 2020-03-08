@@ -29,7 +29,7 @@ async def validate_input(hass: core.HomeAssistant, data):
         raise CannotConnect
 
     # Return info that you want to store in the config entry.
-    return {"title": f"Loadzone {data[CONF_LOADZONE]}"}
+    return {"title": f"Load Zone {data[CONF_LOADZONE]}"}
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -55,6 +55,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="user", data_schema=DATA_SCHEMA, errors=errors
         )
+
+    async def async_step_import(self, user_input):
+        """Handle import."""
+        await self.async_set_unique_id(user_input[CONF_LOADZONE])
+        self._abort_if_unique_id_configured()
+
+        return await self.async_step_user(user_input)
 
 
 class CannotConnect(exceptions.HomeAssistantError):

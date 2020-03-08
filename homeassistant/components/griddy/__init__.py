@@ -6,7 +6,7 @@ import logging
 from griddypower.async_api import LOAD_ZONES, AsyncGriddy
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import PlatformNotReady
 from homeassistant.helpers import aiohttp_client
@@ -26,6 +26,20 @@ PLATFORMS = ["sensor"]
 
 async def async_setup(hass: HomeAssistant, config: dict):
     """Set up the Griddy Power component."""
+
+    hass.data.setdefault(DOMAIN, {})
+    conf = config.get(DOMAIN)
+
+    if not conf:
+        return True
+
+    hass.async_create_task(
+        hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": SOURCE_IMPORT},
+            data={CONF_LOADZONE: conf.get(CONF_LOADZONE)},
+        )
+    )
     return True
 
 
@@ -56,7 +70,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     if not coordinator.last_update_success:
         raise PlatformNotReady
 
-    hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN].setdefault(entry.entry_id, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator
 

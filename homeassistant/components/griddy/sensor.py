@@ -54,7 +54,7 @@ class GriddyPriceSensor(Entity):
     @property
     def state(self):
         """Get the current price."""
-        return round(float(self._coordinator.now.price_cents_kwh), 4)
+        return round(float(self._coordinator.data.now.price_cents_kwh), 4)
 
     @property
     def should_poll(self):
