@@ -42,6 +42,11 @@ class GriddyPriceSensor(Entity):
         return f"{self._settlement_point} Price Now"
 
     @property
+    def icon(self):
+        """Device Ice."""
+        return "mdi:currency-usd"
+
+    @property
     def unique_id(self):
         """Device Uniqueid."""
         return f"{self._settlement_point} price now"
