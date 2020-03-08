@@ -5,7 +5,6 @@ import voluptuous as vol
 
 from homeassistant import config_entries, core, exceptions
 from homeassistant.helpers import aiohttp_client
-import homeassistant.helpers.config_validation as cv
 
 from . import AsyncGriddy
 from .const import CONF_MEMBER_ID, CONF_METER_ID, CONF_SETTLEMENT_POINT, DOMAIN
@@ -14,9 +13,9 @@ _LOGGER = logging.getLogger(__name__)
 
 DATA_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_MEMBER_ID): cv.positive_int,
-        vol.Required(CONF_METER_ID): cv.positive_int,
-        vol.Required(CONF_SETTLEMENT_POINT): cv.string,
+        vol.Required(CONF_MEMBER_ID): int,
+        vol.Required(CONF_METER_ID): str,
+        vol.Required(CONF_SETTLEMENT_POINT): str,
     }
 )
 
