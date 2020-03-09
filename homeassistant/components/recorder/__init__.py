@@ -68,6 +68,7 @@ CONF_DB_RETRY_WAIT = "db_retry_wait"
 CONF_PURGE_KEEP_DAYS = "purge_keep_days"
 CONF_PURGE_INTERVAL = "purge_interval"
 CONF_EVENT_TYPES = "event_types"
+CONF_COMMIT_INTERVAL = "commit_interval"
 
 FILTER_SCHEMA = vol.Schema(
     {
@@ -98,6 +99,9 @@ CONFIG_SCHEMA = vol.Schema(
                     vol.Coerce(int), vol.Range(min=0)
                 ),
                 vol.Optional(CONF_DB_URL): cv.string,
+                vol.Optional(CONF_COMMIT_INTERVAL, default=1): vol.All(
+                    vol.Coerce(int), vol.Range(min=0)
+                ),
                 vol.Optional(
                     CONF_DB_MAX_RETRIES, default=DEFAULT_DB_MAX_RETRIES
                 ): cv.positive_int,
@@ -141,6 +145,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     conf = config[DOMAIN]
     keep_days = conf.get(CONF_PURGE_KEEP_DAYS)
     purge_interval = conf.get(CONF_PURGE_INTERVAL)
+    commit_interval = conf[CONF_COMMIT_INTERVAL]
     db_max_retries = conf[CONF_DB_MAX_RETRIES]
     db_retry_wait = conf[CONF_DB_RETRY_WAIT]
 
@@ -154,6 +159,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         hass=hass,
         keep_days=keep_days,
         purge_interval=purge_interval,
+        commit_interval=commit_interval,
         uri=db_url,
         db_max_retries=db_max_retries,
         db_retry_wait=db_retry_wait,
@@ -185,6 +191,7 @@ class Recorder(threading.Thread):
         hass: HomeAssistant,
         keep_days: int,
         purge_interval: int,
+        commit_interval: int,
         uri: str,
         db_max_retries: int,
         db_retry_wait: int,
@@ -197,6 +204,7 @@ class Recorder(threading.Thread):
         self.hass = hass
         self.keep_days = keep_days
         self.purge_interval = purge_interval
+        self.commit_interval = commit_interval
         self.queue: Any = queue.Queue()
         self.recording_start = dt_util.utcnow()
         self.db_url = uri
@@ -214,7 +222,6 @@ class Recorder(threading.Thread):
         )
         self.exclude_t = exclude.get(CONF_EVENT_TYPES, [])
 
-        self._event_commit_interval = 50
         self._timechanges_seen = 0
         self.event_session = None
         self.get_session = None
@@ -348,10 +355,11 @@ class Recorder(threading.Thread):
                 continue
             if event.event_type == EVENT_TIME_CHANGED:
                 self.queue.task_done()
-                self._timechanges_seen += 1
-                if self._event_commit_interval >= self._timechanges_seen:
-                    self._timechanges_seen = 0
-                    self._commit_event_session_or_retry()
+                if self.commit_interval:
+                    self._timechanges_seen += 1
+                    if self.commit_interval >= self._timechanges_seen:
+                        self._timechanges_seen = 0
+                        self._commit_event_session_or_retry()
                 continue
             if event.event_type in self.exclude_t:
                 self.queue.task_done()
@@ -380,6 +388,11 @@ class Recorder(threading.Thread):
                         "State is not JSON serializable: %s",
                         event.data.get("new_state"),
                     )
+
+            # If they do not have a commit interval
+            # than we commit right away
+            if not self.commit_interval:
+                self._commit_event_session_or_retry()
 
             self.queue.task_done()
 
