@@ -6,27 +6,24 @@ from homeassistant.components.binary_sensor import BinarySensorDevice
 from homeassistant.helpers.dispatcher import dispatcher_connect
 
 from . import (
-    DOMAIN as DOMAIN_RACHIO,
-    KEY_DEVICE_ID,
-    KEY_STATUS,
-    KEY_SUBTYPE,
     SIGNAL_RACHIO_CONTROLLER_UPDATE,
     STATUS_OFFLINE,
     STATUS_ONLINE,
     SUBTYPE_OFFLINE,
     SUBTYPE_ONLINE,
 )
+from .const import DOMAIN as DOMAIN_RACHIO, KEY_DEVICE_ID, KEY_STATUS, KEY_SUBTYPE
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
+async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the Rachio binary sensors."""
     devices = []
-    for controller in hass.data[DOMAIN_RACHIO].controllers:
+    for controller in hass.data[DOMAIN_RACHIO][config_entry.entry_id].controllers:
         devices.append(RachioControllerOnlineBinarySensor(hass, controller))
 
-    add_entities(devices)
+    async_add_entities(devices)
     _LOGGER.info("%d Rachio binary sensor(s) added", len(devices))
 
 

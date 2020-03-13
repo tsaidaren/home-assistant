@@ -7,6 +7,15 @@ from homeassistant.components.switch import SwitchDevice
 from homeassistant.helpers.dispatcher import dispatcher_connect
 
 from . import (
+    SIGNAL_RACHIO_CONTROLLER_UPDATE,
+    SIGNAL_RACHIO_ZONE_UPDATE,
+    SUBTYPE_SLEEP_MODE_OFF,
+    SUBTYPE_SLEEP_MODE_ON,
+    SUBTYPE_ZONE_COMPLETED,
+    SUBTYPE_ZONE_STARTED,
+    SUBTYPE_ZONE_STOPPED,
+)
+from .const import (
     CONF_MANUAL_RUN_MINS,
     DOMAIN as DOMAIN_RACHIO,
     KEY_DEVICE_ID,
@@ -18,13 +27,6 @@ from . import (
     KEY_SUMMARY,
     KEY_ZONE_ID,
     KEY_ZONE_NUMBER,
-    SIGNAL_RACHIO_CONTROLLER_UPDATE,
-    SIGNAL_RACHIO_ZONE_UPDATE,
-    SUBTYPE_SLEEP_MODE_OFF,
-    SUBTYPE_SLEEP_MODE_ON,
-    SUBTYPE_ZONE_COMPLETED,
-    SUBTYPE_ZONE_STARTED,
-    SUBTYPE_ZONE_STOPPED,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -33,22 +35,24 @@ ATTR_ZONE_SUMMARY = "Summary"
 ATTR_ZONE_NUMBER = "Zone number"
 
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
+async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the Rachio switches."""
     manual_run_time = timedelta(
-        minutes=hass.data[DOMAIN_RACHIO].config.get(CONF_MANUAL_RUN_MINS)
+        minutes=hass.data[DOMAIN_RACHIO][config_entry.entry_id].config.get(
+            CONF_MANUAL_RUN_MINS
+        )
     )
     _LOGGER.info("Rachio run time is %s", str(manual_run_time))
 
     # Add all zones from all controllers as switches
     devices = []
-    for controller in hass.data[DOMAIN_RACHIO].controllers:
+    for controller in hass.data[DOMAIN_RACHIO][config_entry.entry_id].controllers:
         devices.append(RachioStandbySwitch(hass, controller))
 
         for zone in controller.list_zones():
             devices.append(RachioZone(hass, controller, zone, manual_run_time))
 
-    add_entities(devices)
+    async_add_entities(devices)
     _LOGGER.info("%d Rachio switch(es) added", len(devices))
 
 
