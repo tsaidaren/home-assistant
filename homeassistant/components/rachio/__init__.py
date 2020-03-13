@@ -1,7 +1,9 @@
 """Integration with the Rachio Iro sprinkler system controller."""
 import asyncio
+import http.client
 import logging
 import secrets
+import ssl
 from typing import Optional
 
 from aiohttp import web
@@ -138,9 +140,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     config = entry.data
 
-    # Listen for incoming webhook connections
-    hass.http.register_view(RachioWebhookView(entry.entry_id))
-
     # Configure API
     api_key = config.get(CONF_API_KEY)
     rachio = Rachio(api_key)
@@ -154,7 +153,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # Get the API user
     try:
         person = await hass.async_add_executor_job(RachioPerson, hass, rachio, config)
-    except AssertionError as error:
+    # Yes we really do get all these exceptions (hopefully rachiopy switches to requests)
+    except (http.client.HTTPException, ssl.SSLError, OSError, AssertionError) as error:
         _LOGGER.error("Could not reach the Rachio API: %s", error)
         raise ConfigEntryNotReady
 
@@ -166,6 +166,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     # Enable component
     hass.data[DOMAIN][entry.entry_id] = person
+
+    # Listen for incoming webhook connections after the data is there
+    hass.http.register_view(RachioWebhookView(entry.entry_id))
 
     for component in SUPPORTED_DOMAINS:
         hass.async_create_task(

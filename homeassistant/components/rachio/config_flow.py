@@ -1,5 +1,7 @@
 """Config flow for Rachio integration."""
+import http.client
 import logging
+import ssl
 
 from rachiopy import Rachio
 import voluptuous as vol
@@ -48,7 +50,9 @@ async def validate_input(hass: core.HomeAssistant, data):
             raise CannotConnect
 
         username = data[1][KEY_USERNAME]
-    except AssertionError:
+    # Yes we really do get all these exceptions (hopefully rachiopy switches to requests)
+    except (http.client.HTTPException, ssl.SSLError, OSError, AssertionError) as error:
+        _LOGGER.error("Could not reach the Rachio API: %s", error)
         raise CannotConnect
 
     # Return info that you want to store in the config entry.
