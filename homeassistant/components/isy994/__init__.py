@@ -654,16 +654,13 @@ class ISYDevice(Entity):
     def device_info(self):
         """Return the device_info of the device."""
 
-        identifiers = DOMAIN
-        if hasattr(self._node, "address") and self._node.address is not None:
-            identifiers.append(self._node.address)
-        device_info = {"identifiers": {identifiers}, "name": self.name}
+        device_info = {"name": self.name}
+        if hasattr(self._node, "address"):
+            device_address = self._node.address[:-2]  # remove trailing .[0-9AF]
+            device_info["identifiers"] = {(DOMAIN, device_address)}
         # PyISY does not expose the software version
         # if this is added we can add the sw_version and model keys
-        if hasattr(self._node, "parent_node") and self._node.parent_node is not None:
-            device_info["via_device"] = self._node.parent_node
-        if hasattr(self._node, "type") and self._node.type is not None:
-            device_info["model"] = self._node.type
+        _LOGGER.debug("device info: %s %s", self._node, device_info)
         return device_info
 
     @property
