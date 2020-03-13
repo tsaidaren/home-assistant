@@ -651,6 +651,22 @@ class ISYDevice(Entity):
         self.hass.bus.fire("isy994_control", event_data)
 
     @property
+    def device_info(self):
+        """Return the device_info of the device."""
+
+        identifiers = DOMAIN
+        if hasattr(self._node, "address") and self._node.address is not None:
+            identifiers.append(self._node.address)
+        device_info = {"identifiers": {identifiers}, "name": self.name}
+        # PyISY does not expose the software version
+        # if this is added we can add the sw_version and model keys
+        if hasattr(self._node, "parent_node") and self._node.parent_node is not None:
+            device_info["via_device"] = self._node.parent_node
+        if hasattr(self._node, "type") and self._node.type is not None:
+            device_info["model"] = self._node.type
+        return device_info
+
+    @property
     def unique_id(self) -> str:
         """Get the unique identifier of the device."""
         if hasattr(self._node, "address"):
