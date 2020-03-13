@@ -17,6 +17,7 @@ from . import (
 )
 from .const import (
     CONF_MANUAL_RUN_MINS,
+    DEFAULT_NAME,
     DOMAIN as DOMAIN_RACHIO,
     KEY_DEVICE_ID,
     KEY_ENABLED,
@@ -47,10 +48,17 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     # Add all zones from all controllers as switches
     devices = []
     for controller in hass.data[DOMAIN_RACHIO][config_entry.entry_id].controllers:
-        devices.append(RachioStandbySwitch(hass, controller))
-
-        for zone in controller.list_zones():
-            devices.append(RachioZone(hass, controller, zone, manual_run_time))
+        devices.append(
+            await hass.async_add_executor_job(RachioStandbySwitch, hass, controller)
+        )
+        zones = await hass.async_add_executor_job(controller.list_zones)
+        _LOGGER.debug("Rachio setting up zones: %s", zones)
+        for zone in zones:
+            _LOGGER.debug("Rachio setting up zone: %s", zone)
+            zone = await hass.async_add_executor_job(
+                RachioZone, hass, controller, zone, manual_run_time
+            )
+            devices.append(zone)
 
     async_add_entities(devices)
     _LOGGER.info("%d Rachio switch(es) added", len(devices))
@@ -96,6 +104,22 @@ class RachioSwitch(SwitchDevice):
 
         # For this device
         self._handle_update(args, kwargs)
+
+    @property
+    def device_info(self):
+        """Return the device_info of the device."""
+        return {
+            "identifiers": {
+                (
+                    DOMAIN_RACHIO,
+                    self._controller.controller_id,
+                    self._controller.serial_number,
+                    self._controller.mac_address,
+                )
+            },
+            "name": self._controller.name,
+            "manufacturer": DEFAULT_NAME,
+        }
 
     @abstractmethod
     def _handle_update(self, *args, **kwargs) -> None:

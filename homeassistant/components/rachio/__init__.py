@@ -25,7 +25,9 @@ from .const import (
     KEY_ENABLED,
     KEY_EXTERNAL_ID,
     KEY_ID,
+    KEY_MAC_ADDRESS,
     KEY_NAME,
+    KEY_SERIAL_NUMBER,
     KEY_STATUS,
     KEY_TYPE,
     KEY_USERNAME,
@@ -140,20 +142,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.http.register_view(RachioWebhookView(entry.entry_id))
 
     # Configure API
-    api_key = config[DOMAIN].get(CONF_API_KEY)
+    api_key = config.get(CONF_API_KEY)
     rachio = Rachio(api_key)
 
     # Get the URL of this server
-    custom_url = config[DOMAIN].get(CONF_CUSTOM_URL)
+    custom_url = config.get(CONF_CUSTOM_URL)
     hass_url = hass.config.api.base_url if custom_url is None else custom_url
     rachio.webhook_auth = secrets.token_hex()
     rachio.webhook_url = hass_url + WEBHOOK_PATH
 
     # Get the API user
     try:
-        person = await hass.async_add_executor_job(
-            RachioPerson, hass, rachio, config[DOMAIN]
-        )
+        person = await hass.async_add_executor_job(RachioPerson, hass, rachio, config)
     except AssertionError as error:
         _LOGGER.error("Could not reach the Rachio API: %s", error)
         raise ConfigEntryNotReady
@@ -234,6 +234,8 @@ class RachioIro:
         self.rachio = rachio
         self._id = data[KEY_ID]
         self._name = data[KEY_NAME]
+        self._serial_number = data[KEY_SERIAL_NUMBER]
+        self._mac_address = data[KEY_MAC_ADDRESS]
         self._zones = data[KEY_ZONES]
         self._init_data = data
         self._webhooks = webhooks
@@ -289,6 +291,16 @@ class RachioIro:
     def controller_id(self) -> str:
         """Return the Rachio API controller ID."""
         return self._id
+
+    @property
+    def serial_number(self) -> str:
+        """Return the Rachio API controller serial number."""
+        return self._serial_number
+
+    @property
+    def mac_address(self) -> str:
+        """Return the Rachio API controller mac address."""
+        return self._mac_address
 
     @property
     def name(self) -> str:

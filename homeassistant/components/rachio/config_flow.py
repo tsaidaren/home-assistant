@@ -37,13 +37,15 @@ async def validate_input(hass: core.HomeAssistant, data):
     username = None
     try:
         data = await hass.async_add_executor_job(rachio.person.getInfo)
-        if data[0][KEY_STATUS] != 200:
+        _LOGGER.debug("rachio.person.getInfo: %s", data)
+        if int(data[0][KEY_STATUS]) != 200:
             raise InvalidAuth
 
         rachio_id = data[1][KEY_ID]
         data = await hass.async_add_executor_job(rachio.person.get, rachio_id)
-        if data[0][KEY_STATUS] != 200:
-            raise InvalidAuth
+        _LOGGER.debug("rachio.person.get: %s", data)
+        if int(data[0][KEY_STATUS]) != 200:
+            raise CannotConnect
 
         username = data[1][KEY_USERNAME]
     except AssertionError:
@@ -62,6 +64,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input=None):
         """Handle the initial step."""
         errors = {}
+        _LOGGER.debug("async_step_user: %s", user_input)
         if user_input is not None:
             try:
                 info = await validate_input(self.hass, user_input)
@@ -86,9 +89,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_import(self, user_input):
         """Handle import."""
-        await self.async_set_unique_id(user_input[CONF_API_KEY])
-        self._abort_if_unique_id_configured()
-
         return await self.async_step_user(user_input)
 
 

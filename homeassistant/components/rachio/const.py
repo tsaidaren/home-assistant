@@ -1,5 +1,7 @@
 """Constants for rachio."""
 
+DEFAULT_NAME = "Rachio"
+
 DOMAIN = "rachio"
 
 CONF_CUSTOM_URL = "hass_url_override"
@@ -18,6 +20,8 @@ KEY_ON = "on"
 KEY_STATUS = "status"
 KEY_SUBTYPE = "subType"
 KEY_SUMMARY = "summary"
+KEY_SERIAL_NUMBER = "serialNumber"
+KEY_MAC_ADDRESS = "macAddress"
 KEY_TYPE = "type"
 KEY_URL = "url"
 KEY_USERNAME = "username"
