@@ -50,7 +50,7 @@ PyEssent==0.13
 PyGithub==1.43.8
 
 # homeassistant.components.isy994
-PyISY==1.1.2
+PyISY_beta==2.0.0.dev127
 
 # homeassistant.components.mvglive
 PyMVGLive==1.1.4
