@@ -1,14 +1,23 @@
 """Test the Rachio config flow."""
 from asynctest import patch
+from asynctest.mock import MagicMock
 
 from homeassistant import config_entries, setup
-from homeassistant.components.rachio.config_flow import CannotConnect, InvalidAuth
 from homeassistant.components.rachio.const import (
     CONF_CUSTOM_URL,
     CONF_MANUAL_RUN_MINS,
     DOMAIN,
 )
 from homeassistant.const import CONF_API_KEY
+
+
+def _mock_rachio_return_value(get=None, getInfo=None):
+    rachio_mock = MagicMock()
+    person_mock = MagicMock()
+    type(person_mock).get = MagicMock(return_value=get)
+    type(person_mock).getInfo = MagicMock(return_value=getInfo)
+    type(rachio_mock).person = person_mock
+    return rachio_mock
 
 
 async def test_form(hass):
@@ -20,12 +29,13 @@ async def test_form(hass):
     assert result["type"] == "form"
     assert result["errors"] == {}
 
+    rachio_mock = _mock_rachio_return_value(
+        get=({"status": 200}, {"username": "myusername"}),
+        getInfo=({"status": 200}, {"id": "myid"}),
+    )
+
     with patch(
-        "homeassistant.components.rachio.config_flow.Rachio.person.getInfo",
-        return_value=({"status": 200}, {"id": "myid"}),
-    ), patch(
-        "homeassistant.components.rachio.config_flow.Rachio.person.get",
-        return_value=({"status": 200}, {"username": "myusername"}),
+        "homeassistant.components.rachio.config_flow.Rachio", return_value=rachio_mock
     ), patch(
         "homeassistant.components.rachio.async_setup", return_value=True
     ) as mock_setup, patch(
@@ -41,7 +51,7 @@ async def test_form(hass):
         )
 
     assert result2["type"] == "create_entry"
-    assert result2["title"] == "Name of the device"
+    assert result2["title"] == "myusername"
     assert result2["data"] == {
         CONF_API_KEY: "api_key",
         CONF_CUSTOM_URL: "http://custom.url",
@@ -58,9 +68,12 @@ async def test_form_invalid_auth(hass):
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
 
+    rachio_mock = _mock_rachio_return_value(
+        get=({"status": 200}, {"username": "myusername"}),
+        getInfo=({"status": 412}, {"error": "auth fail"}),
+    )
     with patch(
-        "homeassistant.components.rachio.config_flow.Rachio.person.getInfo",
-        side_effect=InvalidAuth,
+        "homeassistant.components.rachio.config_flow.Rachio", return_value=rachio_mock
     ):
         result2 = await hass.config_entries.flow.async_configure(
             result["flow_id"],
@@ -81,9 +94,12 @@ async def test_form_cannot_connect(hass):
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
 
+    rachio_mock = _mock_rachio_return_value(
+        get=({"status": 599}, {"username": "myusername"}),
+        getInfo=({"status": 200}, {"id": "myid"}),
+    )
     with patch(
-        "homeassistant.components.rachio.config_flow.Rachio.person.getInfo",
-        side_effect=CannotConnect,
+        "homeassistant.components.rachio.config_flow.Rachio", return_value=rachio_mock
     ):
         result2 = await hass.config_entries.flow.async_configure(
             result["flow_id"],
