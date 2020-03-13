@@ -2,23 +2,30 @@
 import logging
 from typing import Callable
 
+from pyisy.constants import ISY_VALUE_UNKNOWN
+
 from homeassistant.components.light import DOMAIN, SUPPORT_BRIGHTNESS, Light
+from homeassistant.const import STATE_UNKNOWN
 from homeassistant.helpers.typing import ConfigType
 
-from . import ISY994_NODES, ISYDevice
+from . import ISYDevice
+from .const import ISY994_NODES
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def setup_platform(
-    hass, config: ConfigType, add_entities: Callable[[list], None], discovery_info=None
+async def async_setup_platform(
+    hass,
+    config: ConfigType,
+    async_add_entities: Callable[[list], None],
+    discovery_info=None,
 ):
     """Set up the ISY994 light platform."""
     devices = []
     for node in hass.data[ISY994_NODES][DOMAIN]:
         devices.append(ISYLightDevice(node))
 
-    add_entities(devices)
+    async_add_entities(devices)
 
 
 class ISYLightDevice(ISYDevice, Light):
@@ -27,24 +34,24 @@ class ISYLightDevice(ISYDevice, Light):
     @property
     def is_on(self) -> bool:
         """Get whether the ISY994 light is on."""
-        if self.is_unknown():
+        if self.value == ISY_VALUE_UNKNOWN:
             return False
-        return self.value != 0
+        return int(self.value) != 0
 
     @property
     def brightness(self) -> float:
         """Get the brightness of the ISY994 light."""
-        return None if self.is_unknown() else self.value
+        return STATE_UNKNOWN if self.value == ISY_VALUE_UNKNOWN else int(self.value)
 
     def turn_off(self, **kwargs) -> None:
         """Send the turn off command to the ISY994 light device."""
-        if not self._node.off():
+        if not self._node.turn_off():
             _LOGGER.debug("Unable to turn off light")
 
     # pylint: disable=arguments-differ
     def turn_on(self, brightness=None, **kwargs) -> None:
         """Send the turn on command to the ISY994 light device."""
-        if not self._node.on(val=brightness):
+        if not self._node.turn_on(val=brightness):
             _LOGGER.debug("Unable to turn on light")
 
     @property

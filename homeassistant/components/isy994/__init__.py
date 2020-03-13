@@ -3,38 +3,118 @@ from collections import namedtuple
 import logging
 from urllib.parse import urlparse
 
-import PyISY
-from PyISY.Nodes import Group
+from pyisy import ISY
+from pyisy.constants import (
+    COMMAND_FRIENDLY_NAME,
+    EVENT_PROPS_IGNORED,
+    ISY_VALUE_UNKNOWN,
+    PROTO_INSTEON,
+    PROTO_ZWAVE,
+)
+from pyisy.helpers import NodeProperty
+from pyisy.nodes import Group
 import voluptuous as vol
 
+from homeassistant.components.binary_sensor import (
+    DEVICE_CLASSES_SCHEMA as BINARY_SENSOR_DCS,
+)
+from homeassistant.components.sensor import DEVICE_CLASSES_SCHEMA as SENSOR_DCS
 from homeassistant.const import (
+    CONF_BINARY_SENSORS,
+    CONF_DEVICE_CLASS,
     CONF_HOST,
+    CONF_ICON,
+    CONF_ID,
+    CONF_NAME,
     CONF_PASSWORD,
+    CONF_PAYLOAD_OFF,
+    CONF_PAYLOAD_ON,
+    CONF_SENSORS,
+    CONF_SWITCHES,
+    CONF_TYPE,
+    CONF_UNIT_OF_MEASUREMENT,
     CONF_USERNAME,
+    EVENT_HOMEASSISTANT_START,
     EVENT_HOMEASSISTANT_STOP,
-    UNIT_PERCENTAGE,
+    STATE_UNKNOWN,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv, discovery
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.typing import ConfigType, Dict
 
+from .const import (
+    CONF_ENABLE_CLIMATE,
+    CONF_IGNORE_STRING,
+    CONF_ISY_VARIABLES,
+    CONF_SENSOR_STRING,
+    CONF_TLS_VER,
+    DEFAULT_IGNORE_STRING,
+    DEFAULT_OFF_VALUE,
+    DEFAULT_ON_VALUE,
+    DEFAULT_SENSOR_STRING,
+    DOMAIN,
+    ISY994_NODES,
+    ISY994_PROGRAMS,
+    ISY994_VARIABLES,
+    ISY994_WEATHER,
+    KEY_ACTIONS,
+    KEY_FOLDER,
+    KEY_MY_PROGRAMS,
+    KEY_STATUS,
+    NODE_FILTERS,
+    SCENE_DOMAIN,
+    SUPPORTED_DOMAINS,
+    SUPPORTED_PROGRAM_DOMAINS,
+    SUPPORTED_VARIABLE_DOMAINS,
+)
+
 _LOGGER = logging.getLogger(__name__)
 
-DOMAIN = "isy994"
+VAR_BASE_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_ID): cv.positive_int,
+        vol.Required(CONF_TYPE): vol.All(cv.positive_int, vol.In([1, 2])),
+        vol.Optional(CONF_ICON): cv.icon,
+        vol.Optional(CONF_NAME): cv.string,
+    }
+)
 
-CONF_IGNORE_STRING = "ignore_string"
-CONF_SENSOR_STRING = "sensor_string"
-CONF_ENABLE_CLIMATE = "enable_climate"
-CONF_TLS_VER = "tls"
+SENSOR_VAR_SCHEMA = VAR_BASE_SCHEMA.extend(
+    {
+        vol.Optional(CONF_DEVICE_CLASS): SENSOR_DCS,
+        vol.Optional(CONF_UNIT_OF_MEASUREMENT): cv.string,
+    }
+)
 
-DEFAULT_IGNORE_STRING = "{IGNORE ME}"
-DEFAULT_SENSOR_STRING = "sensor"
+BINARY_SENSOR_VAR_SCHEMA = VAR_BASE_SCHEMA.extend(
+    {
+        vol.Optional(CONF_DEVICE_CLASS): BINARY_SENSOR_DCS,
+        vol.Optional(CONF_PAYLOAD_ON, default=DEFAULT_ON_VALUE): vol.Coerce(int),
+        vol.Optional(CONF_PAYLOAD_OFF, default=DEFAULT_OFF_VALUE): vol.Coerce(int),
+    }
+)
 
-KEY_ACTIONS = "actions"
-KEY_FOLDER = "folder"
-KEY_MY_PROGRAMS = "My Programs"
-KEY_STATUS = "status"
+SWITCH_VAR_SCHEMA = VAR_BASE_SCHEMA.extend(
+    {
+        vol.Optional(CONF_PAYLOAD_ON, default=DEFAULT_ON_VALUE): vol.Coerce(int),
+        vol.Optional(CONF_PAYLOAD_OFF, default=DEFAULT_OFF_VALUE): vol.Coerce(int),
+    }
+)
+
+ISY_VARIABLES_SCHEMA = vol.Schema(
+    {
+        vol.Optional(CONF_SENSORS, default=[]): vol.All(
+            cv.ensure_list, [SENSOR_VAR_SCHEMA]
+        ),
+        vol.Optional(CONF_BINARY_SENSORS, default=[]): vol.All(
+            cv.ensure_list, [BINARY_SENSOR_VAR_SCHEMA]
+        ),
+        vol.Optional(CONF_SWITCHES, default=[]): vol.All(
+            cv.ensure_list, [SWITCH_VAR_SCHEMA]
+        ),
+    }
+)
 
 CONFIG_SCHEMA = vol.Schema(
     {
@@ -51,121 +131,12 @@ CONFIG_SCHEMA = vol.Schema(
                     CONF_SENSOR_STRING, default=DEFAULT_SENSOR_STRING
                 ): cv.string,
                 vol.Optional(CONF_ENABLE_CLIMATE, default=True): cv.boolean,
+                vol.Optional(CONF_ISY_VARIABLES, default={}): ISY_VARIABLES_SCHEMA,
             }
         )
     },
     extra=vol.ALLOW_EXTRA,
 )
-
-# Do not use the Home Assistant consts for the states here - we're matching
-# exact API responses, not using them for Home Assistant states
-NODE_FILTERS = {
-    "binary_sensor": {
-        "uom": [],
-        "states": [],
-        "node_def_id": ["BinaryAlarm", "BinaryAlarm_ADV"],
-        "insteon_type": ["16."],  # Does a startswith() match; include the dot
-    },
-    "sensor": {
-        # This is just a more-readable way of including MOST uoms between 1-100
-        # (Remember that range() is non-inclusive of the stop value)
-        "uom": (
-            ["1"]
-            + list(map(str, range(3, 11)))
-            + list(map(str, range(12, 51)))
-            + list(map(str, range(52, 66)))
-            + list(map(str, range(69, 78)))
-            + ["79"]
-            + list(map(str, range(82, 97)))
-        ),
-        "states": [],
-        "node_def_id": ["IMETER_SOLO"],
-        "insteon_type": ["9.0.", "9.7."],
-    },
-    "lock": {
-        "uom": ["11"],
-        "states": ["locked", "unlocked"],
-        "node_def_id": ["DoorLock"],
-        "insteon_type": ["15."],
-    },
-    "fan": {
-        "uom": [],
-        "states": ["off", "low", "med", "high"],
-        "node_def_id": ["FanLincMotor"],
-        "insteon_type": ["1.46."],
-    },
-    "cover": {
-        "uom": ["97"],
-        "states": ["open", "closed", "closing", "opening", "stopped"],
-        "node_def_id": [],
-        "insteon_type": [],
-    },
-    "light": {
-        "uom": ["51"],
-        "states": ["on", "off", UNIT_PERCENTAGE],
-        "node_def_id": [
-            "DimmerLampSwitch",
-            "DimmerLampSwitch_ADV",
-            "DimmerSwitchOnly",
-            "DimmerSwitchOnly_ADV",
-            "DimmerLampOnly",
-            "BallastRelayLampSwitch",
-            "BallastRelayLampSwitch_ADV",
-            "RemoteLinc2",
-            "RemoteLinc2_ADV",
-            "KeypadDimmer",
-            "KeypadDimmer_ADV",
-        ],
-        "insteon_type": ["1."],
-    },
-    "switch": {
-        "uom": ["2", "78"],
-        "states": ["on", "off"],
-        "node_def_id": [
-            "OnOffControl",
-            "RelayLampSwitch",
-            "RelayLampSwitch_ADV",
-            "RelaySwitchOnlyPlusQuery",
-            "RelaySwitchOnlyPlusQuery_ADV",
-            "RelayLampOnly",
-            "RelayLampOnly_ADV",
-            "KeypadButton",
-            "KeypadButton_ADV",
-            "EZRAIN_Input",
-            "EZRAIN_Output",
-            "EZIO2x4_Input",
-            "EZIO2x4_Input_ADV",
-            "BinaryControl",
-            "BinaryControl_ADV",
-            "AlertModuleSiren",
-            "AlertModuleSiren_ADV",
-            "AlertModuleArmed",
-            "Siren",
-            "Siren_ADV",
-            "X10",
-        ],
-        "insteon_type": ["2.", "9.10.", "9.11.", "113."],
-    },
-}
-
-SUPPORTED_DOMAINS = [
-    "binary_sensor",
-    "sensor",
-    "lock",
-    "fan",
-    "cover",
-    "light",
-    "switch",
-]
-SUPPORTED_PROGRAM_DOMAINS = ["binary_sensor", "lock", "fan", "cover", "switch"]
-
-# ISY Scenes are more like Switches than Home Assistant Scenes
-# (they can turn off, and report their state)
-SCENE_DOMAIN = "switch"
-
-ISY994_NODES = "isy994_nodes"
-ISY994_WEATHER = "isy994_weather"
-ISY994_PROGRAMS = "isy994_programs"
 
 WeatherNode = namedtuple("WeatherNode", ("status", "name", "uom"))
 
@@ -188,7 +159,6 @@ def _check_for_node_def(hass: HomeAssistant, node, single_domain: str = None) ->
             hass.data[ISY994_NODES][domain].append(node)
             return True
 
-    _LOGGER.warning("Unsupported node: %s, type: %s", node.name, node.type)
     return False
 
 
@@ -201,6 +171,8 @@ def _check_for_insteon_type(
     works for Insteon device. "Node Server" (v5+) and Z-Wave and others will
     not have a type.
     """
+    if not hasattr(node, "protocol") or node.protocol != PROTO_INSTEON:
+        return False
     if not hasattr(node, "type") or node.type is None:
         # Node doesn't have a type (non-Insteon device most likely)
         return False
@@ -215,12 +187,61 @@ def _check_for_insteon_type(
             ]
         ):
 
-            # Hacky special-case just for FanLinc, which has a light module
-            # as one of its nodes. Note that this special-case is not necessary
+            # Hacky special-cases for certain devices with different domains
+            # included as subnodes. Note that special-cases are not necessary
             # on ISY 5.x firmware as it uses the superior NodeDefs method
-            if domain == "fan" and int(node.nid[-1]) == 1:
+
+            # FanLinc, which has a light module as one of its nodes.
+            if domain == "fan" and str(node.address[-1]) in ["1"]:
                 hass.data[ISY994_NODES]["light"].append(node)
                 return True
+
+            # Thermostats, which has a "Heat" and "Cool" sub-node on address 2 and 3
+            if domain == "climate" and str(node.address[-1]) in ["2", "3"]:
+                hass.data[ISY994_NODES]["binary_sensor"].append(node)
+                return True
+
+            # IOLincs which have a sensor and relay on 2 different nodes
+            if (
+                domain == "binary_sensor"
+                and device_type.startswith("7.")
+                and str(node.address[-1]) in ["2"]
+            ):
+                hass.data[ISY994_NODES]["switch"].append(node)
+
+            # Smartenit EZIO2X4
+            if (
+                domain == "switch"
+                and device_type.startswith("7.3.255.")
+                and str(node.address[-1]) in ["9", "A", "B", "C"]
+            ):
+                hass.data[ISY994_NODES]["binary_sensor"].append(node)
+
+            hass.data[ISY994_NODES][domain].append(node)
+            return True
+
+    return False
+
+
+def _check_for_zwave_cat(hass: HomeAssistant, node, single_domain: str = None) -> bool:
+    """Check if the node matches the ISY Z-Wave Category for any domains.
+
+    This is for (presumably) every version of the ISY firmware, but only
+    works for Z-Wave Devices with the devtype.cat property.
+    """
+    if not hasattr(node, "protocol") or node.protocol != PROTO_ZWAVE:
+        return False
+
+    if not hasattr(node, "devtype_cat") or node.devtype_cat is None:
+        # Node doesn't have a device type category (non-Z-Wave device)
+        return False
+
+    device_type = node.devtype_cat
+    domains = SUPPORTED_DOMAINS if not single_domain else [single_domain]
+    for domain in domains:
+        if any(
+            [device_type.startswith(t) for t in set(NODE_FILTERS[domain]["zwave_cat"])]
+        ):
 
             hass.data[ISY994_NODES][domain].append(node)
             return True
@@ -327,7 +348,6 @@ def _categorize_nodes(
             # determine if it should be a binary_sensor.
             if _is_sensor_a_binary_sensor(hass, node):
                 continue
-
             hass.data[ISY994_NODES]["sensor"].append(node)
             continue
 
@@ -337,6 +357,8 @@ def _categorize_nodes(
         if _check_for_node_def(hass, node):
             continue
         if _check_for_insteon_type(hass, node):
+            continue
+        if _check_for_zwave_cat(hass, node):
             continue
         if _check_for_uom_id(hass, node):
             continue
@@ -376,6 +398,31 @@ def _categorize_programs(hass: HomeAssistant, programs: dict) -> None:
                 hass.data[ISY994_PROGRAMS][domain].append(entity)
 
 
+def _categorize_variables(
+    hass: HomeAssistant, variables: dict, domain_cfg: dict, domain: str
+) -> None:
+    """Categorize the ISY994 Variables."""
+    if domain_cfg is None:
+        return
+    for isy_var in domain_cfg:
+        vid = isy_var.get(CONF_ID)
+        vtype = isy_var.get(CONF_TYPE)
+        _, vname, _ = next(
+            (var for i, var in enumerate(variables[vtype].children) if var[2] == vid),
+            None,
+        )
+        if vname is None:
+            _LOGGER.error(
+                "ISY Variable Not Found in ISY List; "
+                "check your config for Variable %s.%s",
+                vtype,
+                vid,
+            )
+            continue
+        variable = (isy_var, vname, variables[vtype][vid])
+        hass.data[ISY994_VARIABLES][domain].append(variable)
+
+
 def _categorize_weather(hass: HomeAssistant, climate) -> None:
     """Categorize the ISY994 weather data."""
     climate_attrs = dir(climate)
@@ -391,7 +438,7 @@ def _categorize_weather(hass: HomeAssistant, climate) -> None:
     hass.data[ISY994_WEATHER].extend(weather_nodes)
 
 
-def setup(hass: HomeAssistant, config: ConfigType) -> bool:
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the ISY 994 platform."""
     hass.data[ISY994_NODES] = {}
     for domain in SUPPORTED_DOMAINS:
@@ -403,6 +450,10 @@ def setup(hass: HomeAssistant, config: ConfigType) -> bool:
     for domain in SUPPORTED_DOMAINS:
         hass.data[ISY994_PROGRAMS][domain] = []
 
+    hass.data[ISY994_VARIABLES] = {}
+    for domain in SUPPORTED_VARIABLE_DOMAINS:
+        hass.data[ISY994_VARIABLES][domain] = []
+
     isy_config = config.get(DOMAIN)
 
     user = isy_config.get(CONF_USERNAME)
@@ -412,6 +463,7 @@ def setup(hass: HomeAssistant, config: ConfigType) -> bool:
     ignore_identifier = isy_config.get(CONF_IGNORE_STRING)
     sensor_identifier = isy_config.get(CONF_SENSOR_STRING)
     enable_climate = isy_config.get(CONF_ENABLE_CLIMATE)
+    isy_variables = isy_config.get(CONF_ISY_VARIABLES)
 
     if host.scheme == "http":
         https = False
@@ -424,7 +476,7 @@ def setup(hass: HomeAssistant, config: ConfigType) -> bool:
         return False
 
     # Connect to ISY controller.
-    isy = PyISY.ISY(
+    isy = ISY(
         host.hostname,
         port,
         username=user,
@@ -438,61 +490,96 @@ def setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
     _categorize_nodes(hass, isy.nodes, ignore_identifier, sensor_identifier)
     _categorize_programs(hass, isy.programs)
+    _categorize_variables(
+        hass, isy.variables, isy_variables.get(CONF_SENSORS), "sensor"
+    )
+    _categorize_variables(
+        hass, isy.variables, isy_variables.get(CONF_BINARY_SENSORS), "binary_sensor"
+    )
+    _categorize_variables(
+        hass, isy.variables, isy_variables.get(CONF_SWITCHES), "switch"
+    )
+
+    # Dump ISY Clock Information. Future: Add ISY as sensor to Hass with attrs
+    _LOGGER.info(repr(isy.clock))
 
     if enable_climate and isy.configuration.get("Weather Information"):
         _categorize_weather(hass, isy.climate)
 
-    def stop(event: object) -> None:
+    async def start(event: object) -> None:
+        """Start ISY auto updates."""
+        _LOGGER.debug("ISY Starting Event Stream and automatic updates.")
+        isy.auto_update = True
+
+    async def stop(event: object) -> None:
         """Stop ISY auto updates."""
         isy.auto_update = False
 
+    # only start fetching data after HA boots to prevent delaying the boot
+    # process
+    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, start)
+
     # Listen for HA stop to disconnect.
-    hass.bus.listen_once(EVENT_HOMEASSISTANT_STOP, stop)
+    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, stop)
 
     # Load platforms for the devices in the ISY controller that we support.
     for component in SUPPORTED_DOMAINS:
-        discovery.load_platform(hass, component, DOMAIN, {}, config)
+        await discovery.async_load_platform(hass, component, DOMAIN, {}, config)
 
-    isy.auto_update = True
     return True
 
 
 class ISYDevice(Entity):
     """Representation of an ISY994 device."""
 
-    _attrs = {}
     _name: str = None
 
     def __init__(self, node) -> None:
         """Initialize the insteon device."""
         self._node = node
+        self._attrs = {}
         self._change_handler = None
+        self._group_change_handler = None
         self._control_handler = None
 
     async def async_added_to_hass(self) -> None:
         """Subscribe to the node change events."""
         self._change_handler = self._node.status.subscribe("changed", self.on_update)
 
-        if hasattr(self._node, "controlEvents"):
-            self._control_handler = self._node.controlEvents.subscribe(self.on_control)
+        if hasattr(self._node, "group_all_on"):
+            self._group_change_handler = self._node.group_all_on.subscribe(
+                "changed", self.on_update
+            )
+
+        if hasattr(self._node, "control_events"):
+            self._control_handler = self._node.control_events.subscribe(self.on_control)
 
     def on_update(self, event: object) -> None:
         """Handle the update event from the ISY994 Node."""
         self.schedule_update_ha_state()
 
-    def on_control(self, event: object) -> None:
+    def on_control(self, event: NodeProperty) -> None:
         """Handle a control event from the ISY994 Node."""
-        self.hass.bus.fire(
-            "isy994_control", {"entity_id": self.entity_id, "control": event}
-        )
+        event_data = {
+            "entity_id": self.entity_id,
+            "control": event.control,
+            "value": event.value,
+            "formatted": event.formatted,
+            "uom": event.uom,
+            "precision": event.prec,
+        }
+
+        if event.value is None or event.control not in EVENT_PROPS_IGNORED:
+            # New state attributes may be available, update the state.
+            self.schedule_update_ha_state()
+
+        self.hass.bus.fire("isy994_control", event_data)
 
     @property
     def unique_id(self) -> str:
         """Get the unique identifier of the device."""
-        # pylint: disable=protected-access
-        if hasattr(self._node, "_id"):
-            return self._node._id
-
+        if hasattr(self._node, "address"):
+            return self._node.address
         return None
 
     @property
@@ -511,25 +598,40 @@ class ISYDevice(Entity):
         # pylint: disable=protected-access
         return self._node.status._val
 
-    def is_unknown(self) -> bool:
-        """Get whether or not the value of this Entity's node is unknown.
-
-        PyISY reports unknown values as -inf
-        """
-        return self.value == -1 * float("inf")
-
     @property
     def state(self):
         """Return the state of the ISY device."""
-        if self.is_unknown():
-            return None
+        if self.value == ISY_VALUE_UNKNOWN:
+            return STATE_UNKNOWN
         return super().state
 
     @property
     def device_state_attributes(self) -> Dict:
-        """Get the state attributes for the device."""
+        """Get the state attributes for the device.
+
+        The 'aux_properties' in the pyisy Node class are combined with the
+        other attributes which have been picked up from the event stream and
+        the combined result are returned as the device state attributes.
+        """
         attr = {}
         if hasattr(self._node, "aux_properties"):
-            for name, val in self._node.aux_properties.items():
-                attr[name] = f"{val.get('value')} {val.get('uom')}"
-        return attr
+            # Cast as list due to RuntimeError if a new property is added while running.
+            for name, value in list(self._node.aux_properties.items()):
+                attr_name = COMMAND_FRIENDLY_NAME.get(name, name)
+                attr[attr_name] = str(value.formatted).lower()
+
+        # Add the ISY Address as a attribute.
+        if hasattr(self._node, "address"):
+            attr["isy994_address"] = self._node.address
+
+        # Add the device protocol as an attribute
+        if hasattr(self._node, "protocol"):
+            attr["isy994_protocol"] = self._node.protocol
+
+        # If a Group/Scene, set a property if the entire scene is on/off
+        if hasattr(self._node, "group_all_on"):
+            # pylint: disable=protected-access
+            attr["group_all_on"] = "on" if self._node.group_all_on._val else "off"
+
+        self._attrs.update(attr)
+        return self._attrs

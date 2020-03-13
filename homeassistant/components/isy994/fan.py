@@ -13,7 +13,8 @@ from homeassistant.components.fan import (
 )
 from homeassistant.helpers.typing import ConfigType
 
-from . import ISY994_NODES, ISY994_PROGRAMS, ISYDevice
+from . import ISYDevice
+from .const import ISY994_NODES, ISY994_PROGRAMS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -31,8 +32,11 @@ for key in VALUE_TO_STATE:
     STATE_TO_VALUE[VALUE_TO_STATE[key]] = key
 
 
-def setup_platform(
-    hass, config: ConfigType, add_entities: Callable[[list], None], discovery_info=None
+async def async_setup_platform(
+    hass,
+    config: ConfigType,
+    async_add_entities: Callable[[list], None],
+    discovery_info=None,
 ):
     """Set up the ISY994 fan platform."""
     devices = []
@@ -43,7 +47,7 @@ def setup_platform(
     for name, status, actions in hass.data[ISY994_PROGRAMS][DOMAIN]:
         devices.append(ISYFanProgram(name, status, actions))
 
-    add_entities(devices)
+    async_add_entities(devices)
 
 
 class ISYFanDevice(ISYDevice, FanEntity):
@@ -61,7 +65,7 @@ class ISYFanDevice(ISYDevice, FanEntity):
 
     def set_speed(self, speed: str) -> None:
         """Send the set speed command to the ISY994 fan device."""
-        self._node.on(val=STATE_TO_VALUE.get(speed, 255))
+        self._node.turn_on(val=STATE_TO_VALUE.get(speed, 255))
 
     def turn_on(self, speed: str = None, **kwargs) -> None:
         """Send the turn on command to the ISY994 fan device."""
@@ -69,7 +73,7 @@ class ISYFanDevice(ISYDevice, FanEntity):
 
     def turn_off(self, **kwargs) -> None:
         """Send the turn off command to the ISY994 fan device."""
-        self._node.off()
+        self._node.turn_off()
 
     @property
     def speed_list(self) -> list:
@@ -93,12 +97,12 @@ class ISYFanProgram(ISYFanDevice):
 
     def turn_off(self, **kwargs) -> None:
         """Send the turn on command to ISY994 fan program."""
-        if not self._actions.runThen():
+        if not self._actions.run_then():
             _LOGGER.error("Unable to turn off the fan")
 
     def turn_on(self, speed: str = None, **kwargs) -> None:
         """Send the turn off command to ISY994 fan program."""
-        if not self._actions.runElse():
+        if not self._actions.run_else():
             _LOGGER.error("Unable to turn on the fan")
 
     @property
