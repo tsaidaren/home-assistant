@@ -25,6 +25,7 @@ from homeassistant.util import dt as dt_util
 
 from . import ISYDevice
 from .const import (
+    DOMAIN as ISY994_DOMAIN,
     ISY994_NODES,
     ISY994_PROGRAMS,
     ISY994_VARIABLES,
@@ -41,7 +42,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     devices_by_address = {}
     child_nodes = []
 
-    hass_isy_data = hass.data[DOMAIN][entry.entry_id]
+    hass_isy_data = hass.data[ISY994_DOMAIN][entry.entry_id]
     for node in hass_isy_data[ISY994_NODES][DOMAIN]:
         device_class, device_type = _detect_device_type(node)
         if node.parent_node is None or node.protocol != PROTO_INSTEON:

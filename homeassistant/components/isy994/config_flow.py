@@ -6,83 +6,19 @@ from pyisy import ISY
 import voluptuous as vol
 
 from homeassistant import config_entries, core, exceptions
-from homeassistant.components.binary_sensor import (
-    DEVICE_CLASSES_SCHEMA as BINARY_SENSOR_DCS,
-)
-from homeassistant.components.sensor import DEVICE_CLASSES_SCHEMA as SENSOR_DCS
-from homeassistant.const import (
-    CONF_BINARY_SENSORS,
-    CONF_DEVICE_CLASS,
-    CONF_HOST,
-    CONF_ICON,
-    CONF_ID,
-    CONF_NAME,
-    CONF_PASSWORD,
-    CONF_PAYLOAD_OFF,
-    CONF_PAYLOAD_ON,
-    CONF_SENSORS,
-    CONF_SWITCHES,
-    CONF_TYPE,
-    CONF_UNIT_OF_MEASUREMENT,
-    CONF_USERNAME,
-)
+from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME
 
 from .const import (
     CONF_ENABLE_CLIMATE,
     CONF_IGNORE_STRING,
-    CONF_ISY_VARIABLES,
     CONF_SENSOR_STRING,
     CONF_TLS_VER,
     DEFAULT_IGNORE_STRING,
-    DEFAULT_OFF_VALUE,
-    DEFAULT_ON_VALUE,
     DEFAULT_SENSOR_STRING,
 )
 from .const import DOMAIN  # pylint:disable=unused-import
 
 _LOGGER = logging.getLogger(__name__)
-
-
-VAR_BASE_SCHEMA = vol.Schema(
-    {
-        vol.Required(CONF_ID): int,
-        vol.Required(CONF_TYPE): vol.All(int, vol.In([1, 2])),
-        vol.Optional(CONF_ICON): str,
-        vol.Optional(CONF_NAME): str,
-    }
-)
-
-SENSOR_VAR_SCHEMA = VAR_BASE_SCHEMA.extend(
-    {
-        vol.Optional(CONF_DEVICE_CLASS): SENSOR_DCS,
-        vol.Optional(CONF_UNIT_OF_MEASUREMENT): str,
-    }
-)
-
-BINARY_SENSOR_VAR_SCHEMA = VAR_BASE_SCHEMA.extend(
-    {
-        vol.Optional(CONF_DEVICE_CLASS): BINARY_SENSOR_DCS,
-        vol.Optional(CONF_PAYLOAD_ON, default=DEFAULT_ON_VALUE): vol.Coerce(int),
-        vol.Optional(CONF_PAYLOAD_OFF, default=DEFAULT_OFF_VALUE): vol.Coerce(int),
-    }
-)
-
-SWITCH_VAR_SCHEMA = VAR_BASE_SCHEMA.extend(
-    {
-        vol.Optional(CONF_PAYLOAD_ON, default=DEFAULT_ON_VALUE): vol.Coerce(int),
-        vol.Optional(CONF_PAYLOAD_OFF, default=DEFAULT_OFF_VALUE): vol.Coerce(int),
-    }
-)
-
-ISY_VARIABLES_SCHEMA = vol.Schema(
-    {
-        vol.Optional(CONF_SENSORS, default=[]): vol.All(list, [SENSOR_VAR_SCHEMA]),
-        vol.Optional(CONF_BINARY_SENSORS, default=[]): vol.All(
-            list, [BINARY_SENSOR_VAR_SCHEMA]
-        ),
-        vol.Optional(CONF_SWITCHES, default=[]): vol.All(list, [SWITCH_VAR_SCHEMA]),
-    }
-)
 
 
 DATA_SCHEMA = vol.Schema(
@@ -93,9 +29,10 @@ DATA_SCHEMA = vol.Schema(
         vol.Optional(CONF_TLS_VER): vol.Coerce(float),
         vol.Optional(CONF_IGNORE_STRING, default=DEFAULT_IGNORE_STRING): str,
         vol.Optional(CONF_SENSOR_STRING, default=DEFAULT_SENSOR_STRING): str,
-        vol.Optional(CONF_ENABLE_CLIMATE, default=True): bool,
-        vol.Optional(CONF_ISY_VARIABLES, default={}): ISY_VARIABLES_SCHEMA,
-    }
+        vol.Optional(CONF_ENABLE_CLIMATE, default=True): bool
+        # Variables require yaml
+    },
+    extra=vol.ALLOW_EXTRA,
 )
 
 

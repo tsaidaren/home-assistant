@@ -20,6 +20,7 @@ from homeassistant.helpers.typing import Dict
 
 from . import ISYDevice
 from .const import (
+    DOMAIN as ISY994_DOMAIN,
     ISY994_NODES,
     ISY994_VARIABLES,
     ISY994_WEATHER,
@@ -32,7 +33,7 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up the ISY994 sensor platform."""
-    hass_isy_data = hass.data[DOMAIN][entry.entry_id]
+    hass_isy_data = hass.data[ISY994_DOMAIN][entry.entry_id]
     devices = []
 
     for node in hass_isy_data[ISY994_NODES][DOMAIN]:

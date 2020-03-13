@@ -12,7 +12,7 @@ from homeassistant.components.fan import (
 )
 
 from . import ISYDevice
-from .const import ISY994_NODES, ISY994_PROGRAMS
+from .const import DOMAIN as ISY994_DOMAIN, ISY994_NODES, ISY994_PROGRAMS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ for key in VALUE_TO_STATE:
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up the ISY994 fan platform."""
-    hass_isy_data = hass.data[DOMAIN][entry.entry_id]
+    hass_isy_data = hass.data[ISY994_DOMAIN][entry.entry_id]
     devices = []
 
     for node in hass_isy_data[ISY994_NODES][DOMAIN]:

@@ -491,6 +491,7 @@ async def async_setup(hass: HomeAssistant, config: dict):
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up the ISY 994 platform."""
 
+    hass.data[DOMAIN][entry.entry_id] = {}
     hass_isy_data = hass.data[DOMAIN][entry.entry_id]
     hass_isy_data[ISY994_NODES] = {}
     for domain in SUPPORTED_DOMAINS:
@@ -515,7 +516,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     ignore_identifier = isy_config.get(CONF_IGNORE_STRING)
     sensor_identifier = isy_config.get(CONF_SENSOR_STRING)
     enable_climate = isy_config.get(CONF_ENABLE_CLIMATE)
-    isy_variables = isy_config.get(CONF_ISY_VARIABLES)
+    isy_variables = isy_config.get(CONF_ISY_VARIABLES, {})
 
     if host.scheme == "http":
         https = False
