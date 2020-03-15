@@ -1,16 +1,19 @@
 """Support for August sensors."""
 import logging
 
-from homeassistant.const import DEVICE_CLASS_POWER
-from homeassistant.helpers.entity import Entity
+from homeassistant.const import DEVICE_CLASS_BATTERY, DEVICE_CLASS_POWER
 
+from . import PowerWallEntity
 from .const import (
+    ATTR_ENERGY_EXPORTED,
+    ATTR_ENERGY_IMPORTED,
+    ATTR_FREQUENCY,
+    ATTR_INSTANT_AVERAGE_VOLTAGE,
     DOMAIN,
     POWERWALL_API_CHARGE,
     POWERWALL_API_METERS,
     POWERWALL_COORDINATOR,
     POWERWALL_IP_ADDRESS,
-    POWERWALL_METERS,
     POWERWALL_SITE_INFO,
     POWERWALL_SITE_NAME,
 )
@@ -21,28 +24,29 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the August sensors."""
     powerwall_data = hass.data[DOMAIN][config_entry.entry_id]
+    _LOGGER.debug("Powerwall_data: %s", powerwall_data)
 
     coordinator = powerwall_data[POWERWALL_COORDINATOR]
     site_info = powerwall_data[POWERWALL_SITE_INFO]
     ip_address = powerwall_data[POWERWALL_IP_ADDRESS]
 
     entities = []
-    for meter in POWERWALL_METERS:
-        if meter in coordinator.data[POWERWALL_API_METERS]:
-            entities.append(
-                PowerWallEnergySensor(meter, coordinator, site_info, ip_address)
-            )
+    for meter in coordinator.data[POWERWALL_API_METERS]:
+        entities.append(
+            PowerWallEnergySensor(meter, coordinator, site_info, ip_address)
+        )
 
     entities.append(PowerWallChargeSensor(coordinator, site_info, ip_address))
 
     async_add_entities(entities, True)
 
 
-class PowerWallSensor(Entity):
+class PowerWallSensor(PowerWallEntity):
     """Base class for powerwall sensors."""
 
-    def __init__(self, coordinator):
+    def __init__(self, coordinator, site_info, ip_address):
         """Initialize the sensor."""
+        super().__init__(coordinator, site_info, ip_address)
         self._coordinator = coordinator
 
     @property
@@ -76,7 +80,7 @@ class PowerWallChargeSensor(PowerWallSensor):
 
     def __init__(self, coordinator, site_info, ip_address):
         """Initialize the sensor."""
-        super().__init__(coordinator)
+        super().__init__(coordinator, site_info, ip_address)
         self._coordinator = coordinator
         self._site_info = site_info
         self._site_name = site_info[POWERWALL_SITE_NAME]
@@ -90,7 +94,12 @@ class PowerWallChargeSensor(PowerWallSensor):
     @property
     def name(self):
         """Device Name."""
-        return f"{self._site_name} Powerwall Charge"
+        return "Powerwall Charge"
+
+    @property
+    def device_class(self):
+        """Device Class."""
+        return DEVICE_CLASS_BATTERY
 
     @property
     def unique_id(self):
@@ -108,7 +117,7 @@ class PowerWallEnergySensor(PowerWallSensor):
 
     def __init__(self, meter, coordinator, site_info, ip_address):
         """Initialize the sensor."""
-        super().__init__(coordinator)
+        super().__init__(coordinator, site_info, ip_address)
         self._coordinator = coordinator
         self._meter = meter
         self._site_info = site_info
@@ -123,7 +132,7 @@ class PowerWallEnergySensor(PowerWallSensor):
     @property
     def name(self):
         """Device Name."""
-        return f"{self._site_name} {self._meter.title()} Now"
+        return f"Powerwall {self._meter.title()} Now"
 
     @property
     def device_class(self):
@@ -140,3 +149,14 @@ class PowerWallEnergySensor(PowerWallSensor):
         """Get the current value in kWh."""
         meter = self._coordinator.data[POWERWALL_API_METERS][self._meter]
         return round(float(meter.instant_power / 1000), 3)
+
+    @property
+    def device_state_attributes(self):
+        """Return the device specific state attributes."""
+        meter = self._coordinator.data[POWERWALL_API_METERS][self._meter]
+        return {
+            ATTR_FREQUENCY: meter.frequency,
+            ATTR_ENERGY_EXPORTED: meter.energy_exported,
+            ATTR_ENERGY_IMPORTED: meter.energy_imported,
+            ATTR_INSTANT_AVERAGE_VOLTAGE: meter.instant_average_voltage,
+        }

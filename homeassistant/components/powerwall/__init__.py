@@ -11,24 +11,27 @@ from tesla_powerwall import (
 )
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import CONF_IP_ADDRESS
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import (
     DOMAIN,
+    MANUFACTURER,
+    MODEL,
     POWERWALL_API_CHARGE,
     POWERWALL_API_GRID_STATUS,
     POWERWALL_API_METERS,
     POWERWALL_API_SITEMASTER,
     POWERWALL_COORDINATOR,
     POWERWALL_IP_ADDRESS,
-    POWERWALL_METERS,
     POWERWALL_OBJECT,
     POWERWALL_SITE_INFO,
+    POWERWALL_SITE_NAME,
     UPDATE_INTERVAL,
 )
 
@@ -45,6 +48,16 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup(hass: HomeAssistant, config: dict):
     """Set up the Tesla Powerwall component."""
     hass.data.setdefault(DOMAIN, {})
+    conf = config.get(DOMAIN)
+
+    if not conf:
+        return True
+
+    hass.async_create_task(
+        hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": SOURCE_IMPORT}, data=conf,
+        )
+    )
     return True
 
 
@@ -52,12 +65,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up Tesla Powerwall from a config entry."""
 
     entry_id = entry.entry_id
+    _LOGGER.debug("power_wall entry: %s", entry_id)
+
     hass.data[DOMAIN].setdefault(entry_id, {})
     power_wall = PowerWall(entry.data[CONF_IP_ADDRESS])
 
     def _call_site_info(power_wall):
         """Wrap site_info to be a callable."""
         return power_wall.site_info
+
+    _LOGGER.debug("power_wall: %s", power_wall)
 
     site_info = None
     try:
@@ -84,6 +101,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         POWERWALL_IP_ADDRESS: entry.data[CONF_IP_ADDRESS],
     }
 
+    await coordinator.async_refresh()
+
+    _LOGGER.debug("DATA: %s", coordinator.data)
+
     for component in PLATFORMS:
         hass.async_create_task(
             hass.config_entries.async_forward_entry_setup(entry, component)
@@ -95,14 +116,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 def _fetch_powerwall_data(power_wall):
     """Process and update powerwall data."""
     meters = power_wall.meters
-    meter_objects = {}
-    for meter in POWERWALL_METERS:
-        if meter in meters:
-            meter_objects[meter] = MetersResponse(meters[meter])
     return {
         POWERWALL_API_CHARGE: power_wall.charge,
         POWERWALL_API_SITEMASTER: power_wall.sitemaster,
-        POWERWALL_API_METERS: meter_objects,
+        POWERWALL_API_METERS: {
+            meter: MetersResponse(meters[meter]) for meter in meters
+        },
         POWERWALL_API_GRID_STATUS: power_wall.grid_status,
     }
 
@@ -121,3 +140,25 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
         hass.data[DOMAIN].pop(entry.entry_id)
 
     return unload_ok
+
+
+class PowerWallEntity(Entity):
+    """Base class for powerwall entities."""
+
+    def __init__(self, coordinator, site_info, ip_address):
+        """Initialize the sensor."""
+        super().__init__()
+        self._coordinator = coordinator
+        self._site_info = site_info
+        self._site_name = site_info[POWERWALL_SITE_NAME]
+        self._ip_address = ip_address
+
+    @property
+    def device_info(self):
+        """Powerwall device info."""
+        return {
+            "identifiers": {(DOMAIN, self._ip_address)},
+            "name": self._site_name,
+            "manufacturer": MANUFACTURER,
+            "model": MODEL,
+        }

@@ -1,16 +1,27 @@
 """Support for August sensors."""
 import logging
 
+from homeassistant.components.binary_sensor import (
+    DEVICE_CLASS_CONNECTIVITY,
+    BinarySensorDevice,
+)
 from homeassistant.const import DEVICE_CLASS_POWER
-from homeassistant.helpers.entity import Entity
 
+from . import PowerWallEntity
 from .const import (
+    ATTR_GRID_CODE,
+    ATTR_NOMINAL_SYSTEM_POWER,
+    ATTR_REGION,
     DOMAIN,
     POWERWALL_API_GRID_STATUS,
     POWERWALL_API_SITEMASTER,
+    POWERWALL_CONNECTED_KEY,
     POWERWALL_COORDINATOR,
+    POWERWALL_GRID_CODE,
     POWERWALL_GRID_ONLINE,
     POWERWALL_IP_ADDRESS,
+    POWERWALL_NOMINAL_SYSTEM_POWER,
+    POWERWALL_REGION,
     POWERWALL_RUNNING_KEY,
     POWERWALL_SITE_INFO,
     POWERWALL_SITE_NAME,
@@ -30,15 +41,17 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     entities = []
     entities.append(PowerWallRunningSensor(coordinator, site_info, ip_address))
     entities.append(PowerWallGridStatusSensor(coordinator, site_info, ip_address))
+    entities.append(PowerWallConnectedSensor(coordinator, site_info, ip_address))
 
     async_add_entities(entities, True)
 
 
-class PowerWallBinarySensor(Entity):
+class PowerWallBinarySensor(PowerWallEntity, BinarySensorDevice):
     """Base class for powerwall binary sensors."""
 
-    def __init__(self, coordinator):
+    def __init__(self, coordinator, site_info, ip_address):
         """Initialize the sensor."""
+        super().__init__(coordinator, site_info, ip_address)
         self._coordinator = coordinator
 
     @property
@@ -72,7 +85,7 @@ class PowerWallRunningSensor(PowerWallBinarySensor):
 
     def __init__(self, coordinator, site_info, ip_address):
         """Initialize the sensor."""
-        super().__init__(coordinator)
+        super().__init__(coordinator, site_info, ip_address)
         self._coordinator = coordinator
         self._site_info = site_info
         self._site_name = site_info[POWERWALL_SITE_NAME]
@@ -81,7 +94,7 @@ class PowerWallRunningSensor(PowerWallBinarySensor):
     @property
     def name(self):
         """Device Name."""
-        return f"{self._site_name} Powerwall Status"
+        return "Powerwall Status"
 
     @property
     def device_class(self):
@@ -94,17 +107,26 @@ class PowerWallRunningSensor(PowerWallBinarySensor):
         return f"{self._ip_address}_running"
 
     @property
-    def state(self):
+    def is_on(self):
         """Get the powerwall running state."""
         return self._coordinator.data[POWERWALL_API_SITEMASTER][POWERWALL_RUNNING_KEY]
 
+    @property
+    def device_state_attributes(self):
+        """Return the device specific state attributes."""
+        return {
+            ATTR_REGION: self._site_info[POWERWALL_REGION],
+            ATTR_GRID_CODE: self._site_info[POWERWALL_GRID_CODE],
+            ATTR_NOMINAL_SYSTEM_POWER: self._site_info[POWERWALL_NOMINAL_SYSTEM_POWER],
+        }
 
-class PowerWallGridStatusSensor(PowerWallBinarySensor):
-    """Representation of an Powerwall Energy sensor."""
+
+class PowerWallConnectedSensor(PowerWallBinarySensor):
+    """Representation of an Powerwall connected sensor."""
 
     def __init__(self, coordinator, site_info, ip_address):
         """Initialize the sensor."""
-        super().__init__(coordinator)
+        super().__init__(coordinator, site_info, ip_address)
         self._coordinator = coordinator
         self._site_info = site_info
         self._site_name = site_info[POWERWALL_SITE_NAME]
@@ -113,7 +135,39 @@ class PowerWallGridStatusSensor(PowerWallBinarySensor):
     @property
     def name(self):
         """Device Name."""
-        return f"{self._site_name} Grid Status"
+        return "Powerwall Connected to Tesla"
+
+    @property
+    def device_class(self):
+        """Device Class."""
+        return DEVICE_CLASS_CONNECTIVITY
+
+    @property
+    def unique_id(self):
+        """Device Uniqueid."""
+        return f"{self._ip_address}_connected_to_tesla"
+
+    @property
+    def is_on(self):
+        """Get the powerwall connected to tesla state."""
+        return self._coordinator.data[POWERWALL_API_SITEMASTER][POWERWALL_CONNECTED_KEY]
+
+
+class PowerWallGridStatusSensor(PowerWallBinarySensor):
+    """Representation of an Powerwall grid status sensor."""
+
+    def __init__(self, coordinator, site_info, ip_address):
+        """Initialize the sensor."""
+        super().__init__(coordinator, site_info, ip_address)
+        self._coordinator = coordinator
+        self._site_info = site_info
+        self._site_name = site_info[POWERWALL_SITE_NAME]
+        self._ip_address = ip_address
+
+    @property
+    def name(self):
+        """Device Name."""
+        return "Grid Status"
 
     @property
     def device_class(self):
@@ -126,7 +180,7 @@ class PowerWallGridStatusSensor(PowerWallBinarySensor):
         return f"{self._ip_address}_grid_status"
 
     @property
-    def state(self):
+    def is_on(self):
         """Get the current value in kWh."""
         return (
             self._coordinator.data[POWERWALL_API_GRID_STATUS] == POWERWALL_GRID_ONLINE
