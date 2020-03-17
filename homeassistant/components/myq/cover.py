@@ -20,7 +20,16 @@ from homeassistant.const import (
 )
 from homeassistant.helpers import config_validation as cv
 
-from .const import DOMAIN, GARAGE_STATE_ICONS, GATE_STATE_ICONS, MYQ_TO_HASS
+from .const import (
+    DOMAIN,
+    GARAGE_STATE_ICONS,
+    GATE_STATE_ICONS,
+    MYQ_DEVICE_STATE,
+    MYQ_DEVICE_STATE_ONLINE,
+    MYQ_DEVICE_TYPE,
+    MYQ_DEVICE_TYPE_GATE,
+    MYQ_TO_HASS,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -73,7 +82,8 @@ class MyQDevice(CoverDevice):
     def icon(self):
         """Return the correct icon for the device type."""
         state = MYQ_TO_HASS.get(self._device.state)
-        if self._device.device_family == "gate":
+        device_type = self._device.device_json.get(MYQ_DEVICE_TYPE)
+        if device_type is not None and device_type == MYQ_DEVICE_TYPE_GATE:
             return GATE_STATE_ICONS[state]
 
         return GARAGE_STATE_ICONS[state]
@@ -86,7 +96,10 @@ class MyQDevice(CoverDevice):
     @property
     def available(self):
         """Return if the device is online."""
-        return self._device.online
+        # Not all devices report online so assume True if its missing
+        return self._device.device_json[MYQ_DEVICE_STATE].get(
+            MYQ_DEVICE_STATE_ONLINE, True
+        )
 
     @property
     def is_closed(self):
@@ -116,10 +129,12 @@ class MyQDevice(CoverDevice):
     async def async_close_cover(self, **kwargs):
         """Issue close command to cover."""
         await self._device.close()
+        self.async_write_ha_state()
 
     async def async_open_cover(self, **kwargs):
         """Issue open command to cover."""
         await self._device.open()
+        self.async_write_ha_state()
 
     async def async_update(self):
         """Update status of cover."""

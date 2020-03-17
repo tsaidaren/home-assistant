@@ -5,6 +5,10 @@ DOMAIN = "myq"
 
 PLATFORMS = ["cover"]
 
+MYQ_DEVICE_TYPE = "device_type"
+MYQ_DEVICE_TYPE_GATE = "gate"
+MYQ_DEVICE_STATE = "state"
+MYQ_DEVICE_STATE_ONLINE = "online"
 
 MYQ_TO_HASS = {
     "closed": STATE_CLOSED,
@@ -14,15 +18,15 @@ MYQ_TO_HASS = {
 }
 
 GATE_STATE_ICONS = {
-    STATE_CLOSED: "mdi:garage",
-    STATE_CLOSING: "mdi:garage",
-    STATE_OPENING: "mdi:garage-open",
-    STATE_OPEN: "mdi:garage-open",
-}
-
-GARAGE_STATE_ICONS = {
     STATE_CLOSED: "mdi:gate",
     STATE_CLOSING: "mdi:gate-arrow-right",
     STATE_OPENING: "mdi:gate-arrow-right",
     STATE_OPEN: "mdi:gate-open",
+}
+
+GARAGE_STATE_ICONS = {
+    STATE_CLOSED: "mdi:garage",
+    STATE_CLOSING: "mdi:garage-variant",
+    STATE_OPENING: "mdi:garage-open-variant",
+    STATE_OPEN: "mdi:garage-open",
 }
