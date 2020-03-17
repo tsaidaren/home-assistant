@@ -63,8 +63,11 @@ async def _update_listener(hass, entry):
 
     device = hass.data[DOMAIN][entry.entry_id]
 
-    device.delay_seconds = entry.options[ATTR_DELAY_SECS]
-    device.default_activity = entry.options[ATTR_ACTIVITY]
+    if ATTR_DELAY_SECS in entry.options:
+        device.delay_seconds = entry.options[ATTR_DELAY_SECS]
+
+    if ATTR_ACTIVITY in entry.options:
+        device.default_activity = entry.options[ATTR_ACTIVITY]
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):

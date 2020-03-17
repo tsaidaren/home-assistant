@@ -185,6 +185,9 @@ class HarmonyRemote(remote.RemoteDevice):
     @property
     def device_info(self):
         """Return device info."""
+        model = "Harmony Hub"
+        if "ethernetStatus" in self._client.hub_config.info:
+            model = "Harmony Hub Pro 2400"
         return {
             "identifiers": {(DOMAIN, self.unique_id)},
             "manufacturer": "Logitech",
@@ -192,6 +195,7 @@ class HarmonyRemote(remote.RemoteDevice):
                 "hubSwVersion", self._client.fw_version
             ),
             "name": self.name,
+            "model": model,
         }
 
     @property
