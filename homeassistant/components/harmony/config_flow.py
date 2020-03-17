@@ -73,7 +73,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 options[ATTR_DELAY_SECS] = user_input[ATTR_DELAY_SECS]
 
             _LOGGER.debug(
-                "ABOUT TO IMPORT: user_input:%s options:%s", user_input, options,
+                "ABOUT TO USER: user_input:%s options:%s", user_input, options,
             )
 
             try:
@@ -145,8 +145,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_import(self, user_input):
         """Handle import from yaml."""
+        _LOGGER.debug("ABOUT TO IMPORT: user_input:%s", user_input)
         await self.async_set_unique_id(user_input[CONF_HOST])
         self._abort_if_unique_id_configured()
+        _LOGGER.debug("MADE IT THOUGH ABORT: user_input:%s", user_input)
         return await self.async_step_user(user_input)
 
     @staticmethod
