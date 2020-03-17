@@ -60,15 +60,12 @@ HARMONY_CHANGE_CHANNEL_SCHEMA = vol.Schema(
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Harmony platform."""
 
-    import_config = {}
-    import_config[ATTR_ACTIVITY] = None
-
-    if CONF_DEVICE_CACHE not in hass.data:
-        hass.data[CONF_DEVICE_CACHE] = []
+    hass.data.setdefault(CONF_DEVICE_CACHE, [])
+    import_config = None
 
     if discovery_info:
         # Find the discovered device in the list of user configurations
-        override = next(
+        matching_configuration_entry = next(
             (
                 c
                 for c in hass.data[CONF_DEVICE_CACHE]
@@ -77,19 +74,25 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
             None,
         )
 
-        import_config[ATTR_DELAY_SECS] = DEFAULT_DELAY_SECS
-        if override is not None:
-            import_config[ATTR_ACTIVITY] = override.get(ATTR_ACTIVITY)
-            import_config[ATTR_DELAY_SECS] = override.get(ATTR_DELAY_SECS)
+        if matching_configuration_entry is None:
+            # This name is not configured in their yaml
+            return
 
-        import_config[CONF_NAME] = discovery_info.get(CONF_NAME)
-        import_config[CONF_HOST] = discovery_info.get(CONF_HOST)
+        matching_name = discovery_info.get(CONF_NAME)
 
         # Ignore hub name when checking if this hub is known - ip only
-        if import_config[CONF_HOST] in (harmony.host for harmony in DEVICES):
+        if matching_name in (harmony.host for harmony in DEVICES):
             _LOGGER.debug("Discovered host already known: %s", import_config[CONF_HOST])
             return
 
+        import_config = {
+            ATTR_DELAY_SECS: matching_configuration_entry.get(
+                ATTR_DELAY_SECS, DEFAULT_DELAY_SECS
+            ),
+            ATTR_ACTIVITY: matching_configuration_entry.get(ATTR_ACTIVITY),
+            CONF_NAME: matching_name,
+            CONF_HOST: discovery_info.get(CONF_HOST),
+        }
         _LOGGER.info(
             "The hub with name '%s' has been found to have address '%s'.",
             import_config[CONF_NAME],
@@ -98,9 +101,14 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         # The name matches one of the names that was provided in the yaml
         # We fall though and will proceed to import the config entry
     elif CONF_HOST in config:
+        # Here we are loading the yaml config and CONF_HOST is defined
         import_config = config
     else:
-        # Cache the device so discovery will pick it up later
+        # Here we are loading the yaml config and CONF_HOST is NOT defined
+        #
+        # Cache the device config entry so discovery can add it to the list
+        # of entries without CONF_HOST it will auto import as soon as this function
+        # is called with discovery_info that contains a matching CONF_NAME
         _LOGGER.info(
             "The hub with name '%s' will be imported upon discovery.",
             config[CONF_NAME],
