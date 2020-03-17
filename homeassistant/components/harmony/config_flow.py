@@ -150,7 +150,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 ): vol.Coerce(float),
                 vol.Optional(
                     ATTR_ACTIVITY, default=self.config_entry.options.get(ATTR_ACTIVITY),
-                ): vol.Coerce(float),
+                ): str,
             }
         )
         return self.async_show_form(step_id="init", data_schema=data_schema)
