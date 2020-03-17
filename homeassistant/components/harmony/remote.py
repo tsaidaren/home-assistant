@@ -60,10 +60,6 @@ HARMONY_CHANGE_CHANNEL_SCHEMA = vol.Schema(
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Harmony platform."""
 
-    _LOGGER.debug(
-        "Import harmony from yaml: %s with discovery_info: %s", config, discovery_info
-    )
-
     import_config = {}
     import_config[ATTR_ACTIVITY] = None
 
@@ -95,7 +91,8 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
             return
 
         _LOGGER.info(
-            "The hub with name '%s' has been found and will be imported.",
+            "The hub with name '%s' has been found to have address '%s'.",
+            import_config[CONF_NAME],
             import_config[CONF_HOST],
         )
         # The name matches one of the names that was provided in the yaml
@@ -105,8 +102,8 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     else:
         # Cache the device so discovery will pick it up later
         _LOGGER.info(
-            "The hub with name '%s' will be imported as soon as it is discovered.",
-            config[CONF_HOST],
+            "The hub with name '%s' will be imported upon discovery.",
+            config[CONF_NAME],
         )
         hass.data[CONF_DEVICE_CACHE].append(config)
         return
