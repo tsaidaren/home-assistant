@@ -38,7 +38,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         activity,
     )
 
-    harmony_conf_file = hass.config.path(f"harmony_{slugify(name)}.conf")
+    harmony_conf_file = hass.config.path(f"harmony_{slugify(address)}.conf")
     try:
         device = HarmonyRemote(name, address, activity, harmony_conf_file, delay_secs)
         await device.connect()

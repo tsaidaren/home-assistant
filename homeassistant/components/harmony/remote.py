@@ -24,7 +24,6 @@ from homeassistant.components.remote import (
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import ATTR_ENTITY_ID, CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import PlatformNotReady
 import homeassistant.helpers.config_validation as cv
 
 from .const import DOMAIN, SERVICE_CHANGE_CHANNEL, SERVICE_SYNC
@@ -94,18 +93,23 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         if import_config[CONF_HOST] in (harmony.host for harmony in DEVICES):
             _LOGGER.debug("Discovered host already known: %s", import_config[CONF_HOST])
             return
+
+        _LOGGER.info(
+            "The hub with name '%s' has been found and will be imported.",
+            import_config[CONF_HOST],
+        )
+        # The name matches one of the names that was provided in the yaml
+        # We fall though and will proceed to import the config entry
     elif CONF_HOST in config:
         import_config = config
     else:
+        # Cache the device so discovery will pick it up later
+        _LOGGER.info(
+            "The hub with name '%s' will be imported as soon as it is discovered.",
+            config[CONF_HOST],
+        )
         hass.data[CONF_DEVICE_CACHE].append(config)
         return
-
-    _LOGGER.debug("After processing discovery_info: %s", import_config)
-
-    # If discovery info has not been populated yet we need
-    # to retry later
-    if CONF_HOST not in import_config:
-        raise PlatformNotReady
 
     hass.async_create_task(
         hass.config_entries.flow.async_init(
