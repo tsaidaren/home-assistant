@@ -36,6 +36,7 @@ ATTR_CURRENT_ACTIVITY = "current_activity"
 
 DEFAULT_PORT = 8088
 DEVICES = []
+CONF_DEVICE_CACHE = "harmony_device_cache"
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
@@ -64,12 +65,42 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         "Import harmony from yaml: %s with discovery_info: %s", config, discovery_info
     )
 
-    import_config = config.copy()
+    import_config = {}
+    import_config[ATTR_ACTIVITY] = None
+
+    if CONF_DEVICE_CACHE not in hass.data:
+        hass.data[CONF_DEVICE_CACHE] = []
+
     if discovery_info:
-        if "host" in discovery_info:
-            import_config[CONF_HOST] = discovery_info["host"]
-        if "name" in discovery_info:
-            import_config[CONF_NAME] = discovery_info["name"]
+        # Find the discovered device in the list of user configurations
+        override = next(
+            (
+                c
+                for c in hass.data[CONF_DEVICE_CACHE]
+                if c.get(CONF_NAME) == discovery_info.get(CONF_NAME)
+            ),
+            None,
+        )
+
+        import_config[ATTR_DELAY_SECS] = DEFAULT_DELAY_SECS
+        if override is not None:
+            import_config[ATTR_ACTIVITY] = override.get(ATTR_ACTIVITY)
+            import_config[ATTR_DELAY_SECS] = override.get(ATTR_DELAY_SECS)
+
+        import_config[CONF_NAME] = (discovery_info.get(CONF_NAME),)
+        import_config[CONF_HOST] = (discovery_info.get(CONF_HOST),)
+
+        # Ignore hub name when checking if this hub is known - ip only
+        if import_config[CONF_HOST] in (harmony.host for harmony in DEVICES):
+            _LOGGER.debug("Discovered host already known: %s", import_config[CONF_HOST])
+            return
+    elif CONF_HOST in config:
+        import_config = config
+    else:
+        hass.data[CONF_DEVICE_CACHE].append(config)
+        return
+
+    _LOGGER.debug("After processing discovery_info: %s", import_config)
 
     # If discovery info has not been populated yet we need
     # to retry later
