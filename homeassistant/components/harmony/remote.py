@@ -87,8 +87,8 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
             import_config[ATTR_ACTIVITY] = override.get(ATTR_ACTIVITY)
             import_config[ATTR_DELAY_SECS] = override.get(ATTR_DELAY_SECS)
 
-        import_config[CONF_NAME] = (discovery_info.get(CONF_NAME),)
-        import_config[CONF_HOST] = (discovery_info.get(CONF_HOST),)
+        import_config[CONF_NAME] = discovery_info.get(CONF_NAME)
+        import_config[CONF_HOST] = discovery_info.get(CONF_HOST)
 
         # Ignore hub name when checking if this hub is known - ip only
         if import_config[CONF_HOST] in (harmony.host for harmony in DEVICES):
