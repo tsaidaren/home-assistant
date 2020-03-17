@@ -22,7 +22,7 @@ from homeassistant.components.remote import (
     PLATFORM_SCHEMA,
 )
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
-from homeassistant.const import ATTR_ENTITY_ID, CONF_HOST, CONF_NAME, CONF_PORT
+from homeassistant.const import ATTR_ENTITY_ID, CONF_HOST, CONF_NAME
 from homeassistant.core import HomeAssistant
 import homeassistant.helpers.config_validation as cv
 
@@ -33,7 +33,6 @@ _LOGGER = logging.getLogger(__name__)
 ATTR_CHANNEL = "channel"
 ATTR_CURRENT_ACTIVITY = "current_activity"
 
-DEFAULT_PORT = 8088
 DEVICES = []
 CONF_DEVICE_CACHE = "harmony_device_cache"
 
@@ -43,8 +42,9 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Required(CONF_NAME): cv.string,
         vol.Optional(ATTR_DELAY_SECS, default=DEFAULT_DELAY_SECS): vol.Coerce(float),
         vol.Optional(CONF_HOST): cv.string,
-        vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
+        # The client ignores port so lets not confuse the user by pretenting we do anything with this
     },
+    extra=vol.ALLOW_EXTRA,
 )
 
 HARMONY_SYNC_SCHEMA = vol.Schema({vol.Optional(ATTR_ENTITY_ID): cv.entity_ids})
