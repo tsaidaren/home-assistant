@@ -22,13 +22,7 @@ from homeassistant.components.remote import (
     PLATFORM_SCHEMA,
 )
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
-from homeassistant.const import (
-    ATTR_ENTITY_ID,
-    CONF_HOST,
-    CONF_NAME,
-    CONF_PORT,
-    EVENT_HOMEASSISTANT_STOP,
-)
+from homeassistant.const import ATTR_ENTITY_ID, CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.core import HomeAssistant
 import homeassistant.helpers.config_validation as cv
 
@@ -85,6 +79,13 @@ async def async_setup_entry(
 
     async_add_entities([device])
     register_services(hass)
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Shutdown a harmony remote for removal."""
+
+    device = hass.data[DOMAIN][entry.entry_id]
+    await device.shutdown()
 
 
 def register_services(hass):
@@ -174,15 +175,13 @@ class HarmonyRemote(remote.RemoteDevice):
         # activity
         await self.new_config()
 
-        async def shutdown(_):
-            """Close connection on shutdown."""
-            _LOGGER.debug("%s: Closing Harmony Hub", self._name)
-            try:
-                await self._client.close()
-            except aioexc.TimeOut:
-                _LOGGER.warning("%s: Disconnect timed-out", self._name)
-
-        self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, shutdown)
+    async def shutdown(self, _):
+        """Close connection on shutdown."""
+        _LOGGER.debug("%s: Closing Harmony Hub", self._name)
+        try:
+            await self._client.close()
+        except aioexc.TimeOut:
+            _LOGGER.warning("%s: Disconnect timed-out", self._name)
 
     @property
     def device_info(self):

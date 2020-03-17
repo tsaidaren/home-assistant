@@ -37,7 +37,10 @@ async def validate_input(hass: core.HomeAssistant, data):
     except harmony_exceptions.TimeOut:
         raise CannotConnect
 
-    if CONF_NAME not in data:
+    _LOGGER.info("data: %s", data)
+    _LOGGER.info("CONFIG: %s", harmony.hub_config)
+
+    if CONF_NAME not in data or data[CONF_NAME] is None or data[CONF_NAME] == "":
         data[CONF_NAME] = harmony.name
     # Return info that you want to store in the config entry.
     return data
@@ -88,7 +91,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         self.harmony_config = {
             CONF_HOST: parsed_url.hostname,
-            # TODO: parsed_url.port ?
             CONF_NAME: friendly_name,
         }
 
