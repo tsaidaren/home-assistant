@@ -2,10 +2,11 @@
 from datetime import timedelta
 import functools as ft
 import logging
-from typing import Any, Iterable
+from typing import Any, Iterable, cast
 
 import voluptuous as vol
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     SERVICE_TOGGLE,
     SERVICE_TURN_OFF,
@@ -111,14 +112,16 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType) -> bool:
     return True
 
 
-async def async_setup_entry(hass, entry):
+async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry) -> bool:
     """Set up a config entry."""
-    return await hass.data[DOMAIN].async_setup_entry(entry)
+    return cast(
+        bool, await cast(EntityComponent, hass.data[DOMAIN]).async_setup_entry(entry)
+    )
 
 
-async def async_unload_entry(hass, entry):
+async def async_unload_entry(hass: HomeAssistantType, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    return await hass.data[DOMAIN].async_unload_entry(entry)
+    return await cast(EntityComponent, hass.data[DOMAIN]).async_unload_entry(entry)
 
 
 class RemoteDevice(ToggleEntity):

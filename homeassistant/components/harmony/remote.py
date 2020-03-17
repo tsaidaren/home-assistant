@@ -21,6 +21,7 @@ from homeassistant.components.remote import (
     DEFAULT_DELAY_SECS,
     PLATFORM_SCHEMA,
 )
+from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import (
     ATTR_ENTITY_ID,
     CONF_HOST,
@@ -28,9 +29,8 @@ from homeassistant.const import (
     CONF_PORT,
     EVENT_HOMEASSISTANT_STOP,
 )
-from homeassistant.exceptions import PlatformNotReady
+from homeassistant.core import HomeAssistant
 import homeassistant.helpers.config_validation as cv
-from homeassistant.util import slugify
 
 from .const import DOMAIN, SERVICE_CHANGE_CHANNEL, SERVICE_SYNC
 
@@ -41,7 +41,6 @@ ATTR_CURRENT_ACTIVITY = "current_activity"
 
 DEFAULT_PORT = 8088
 DEVICES = []
-CONF_DEVICE_CACHE = "harmony_device_cache"
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
@@ -63,81 +62,27 @@ HARMONY_CHANGE_CHANNEL_SCHEMA = vol.Schema(
 )
 
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
-    """Set up the Harmony config entry."""
-    await async_setup_platform(
-        hass,
-        {
-            CONF_HOST: config_entry.data.get(CONF_HOST),
-            CONF_NAME: config_entry.data.get(CONF_NAME),
-        },
-        async_add_entities,
-    )
-
-
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Harmony platform."""
-    activity = None
 
-    if CONF_DEVICE_CACHE not in hass.data:
-        hass.data[CONF_DEVICE_CACHE] = []
-
-    if discovery_info:
-        # Find the discovered device in the list of user configurations
-        override = next(
-            (
-                c
-                for c in hass.data[CONF_DEVICE_CACHE]
-                if c.get(CONF_NAME) == discovery_info.get(CONF_NAME)
-            ),
-            None,
+    hass.async_create_task(
+        hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": SOURCE_IMPORT},
+            data={CONF_HOST: config[CONF_HOST], CONF_NAME: config[CONF_NAME]},
         )
-
-        port = DEFAULT_PORT
-        delay_secs = DEFAULT_DELAY_SECS
-        if override is not None:
-            activity = override.get(ATTR_ACTIVITY)
-            delay_secs = override.get(ATTR_DELAY_SECS)
-            port = override.get(CONF_PORT, DEFAULT_PORT)
-
-        host = (discovery_info.get(CONF_NAME), discovery_info.get(CONF_HOST), port)
-
-        # Ignore hub name when checking if this hub is known - ip and port only
-        if host[1:] in ((h.host, h.port) for h in DEVICES):
-            _LOGGER.debug("Discovered host already known: %s", host)
-            return
-    elif CONF_HOST in config:
-        host = (config.get(CONF_NAME), config.get(CONF_HOST), config.get(CONF_PORT))
-        activity = config.get(ATTR_ACTIVITY)
-        delay_secs = config.get(ATTR_DELAY_SECS)
-    else:
-        hass.data[CONF_DEVICE_CACHE].append(config)
-        return
-
-    name, address, port = host
-    _LOGGER.info(
-        "Loading Harmony Platform: %s at %s:%s, startup activity: %s",
-        name,
-        address,
-        port,
-        activity,
     )
 
-    harmony_conf_file = hass.config.path(
-        "{}{}{}".format("harmony_", slugify(name), ".conf")
-    )
-    try:
-        device = HarmonyRemote(
-            name, address, port, activity, harmony_conf_file, delay_secs
-        )
-        if not await device.connect():
-            raise PlatformNotReady
 
-        DEVICES.append(device)
-        async_add_entities([device])
-        register_services(hass)
-    except (ValueError, AttributeError):
-        raise PlatformNotReady
+async def async_setup_entry(
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities
+):
+    """Set up the Harmony config entry."""
+
+    device = hass.data[DOMAIN][entry.entry_id]
+
+    async_add_entities([device])
+    register_services(hass)
 
 
 def register_services(hass):
@@ -191,6 +136,26 @@ class HarmonyRemote(remote.RemoteDevice):
         self._config_path = out_path
         self._delay_secs = delay_secs
         self._available = False
+
+    @property
+    def delay_secs(self):
+        """Delay seconds between sending commands."""
+        return self._delay_secs
+
+    @delay_secs.setter
+    def delay_secs(self, delay_secs):
+        """Update the delay seconds (from options flow)."""
+        self._delay_secs = delay_secs
+
+    @property
+    def default_activity(self):
+        """Activity used when non specified."""
+        return self._default_activity
+
+    @default_activity.setter
+    def default_activity(self, activity):
+        """Update the default activity (from options flow)."""
+        self._default_activity = activity
 
     async def async_added_to_hass(self):
         """Complete the initialization."""
