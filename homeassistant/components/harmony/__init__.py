@@ -4,7 +4,7 @@ import logging
 
 from homeassistant.components.remote import ATTR_ACTIVITY, ATTR_DELAY_SECS
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
+from homeassistant.const import CONF_HOST, CONF_NAME
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.util import slugify
@@ -28,23 +28,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     conf = entry.data
     address = conf[CONF_HOST]
     name = conf.get(CONF_NAME)
-    port = conf.get(CONF_PORT)
     activity = conf.get(ATTR_ACTIVITY)
     delay_secs = conf.get(ATTR_DELAY_SECS)
 
     _LOGGER.info(
-        "Loading Harmony Platform: %s at %s:%s, startup activity: %s",
+        "Loading Harmony Platform: %s at %s, startup activity: %s",
         name,
         address,
-        port,
         activity,
     )
 
     harmony_conf_file = hass.config.path(f"harmony_{slugify(name)}.conf")
     try:
-        device = HarmonyRemote(
-            name, address, port, activity, harmony_conf_file, delay_secs
-        )
+        device = HarmonyRemote(name, address, activity, harmony_conf_file, delay_secs)
+        await device.connect()
     except (asyncio.TimeoutError, ValueError, AttributeError):
         raise ConfigEntryNotReady
 

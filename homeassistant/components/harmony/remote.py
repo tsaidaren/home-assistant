@@ -43,7 +43,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(ATTR_DELAY_SECS, default=DEFAULT_DELAY_SECS): vol.Coerce(float),
         vol.Optional(CONF_HOST): cv.string,
         vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
-    }
+    },
 )
 
 HARMONY_SYNC_SCHEMA = vol.Schema({vol.Optional(ATTR_ENTITY_ID): cv.entity_ids})
@@ -127,11 +127,10 @@ async def _change_channel_service(service):
 class HarmonyRemote(remote.RemoteDevice):
     """Remote representation used to control a Harmony device."""
 
-    def __init__(self, name, host, port, activity, out_path, delay_secs):
+    def __init__(self, name, host, activity, out_path, delay_secs):
         """Initialize HarmonyRemote class."""
         self._name = name
         self.host = host
-        self.port = port
         self._state = None
         self._current_activity = None
         self._default_activity = activity
@@ -189,14 +188,25 @@ class HarmonyRemote(remote.RemoteDevice):
         return {
             "identifiers": {(DOMAIN, self.unique_id)},
             "manufacturer": "Logitech",
-            "sw_version": self._client.fw_version,
+            "sw_version": self._client.hub_config.info.get(
+                "hubSwVersion", self._client.fw_version
+            ),
             "name": self.name,
         }
 
     @property
     def unique_id(self):
         """Return the unique id."""
-        return self._client.hub_config.info.get("activeRemoteId")
+
+        websocket_unique_id = self._client.hub_config.info.get("activeRemoteId")
+        if websocket_unique_id is not None:
+            return websocket_unique_id
+
+        xmpp_unique_id = self._client.config.get("global", {}).get("timeStampHash")
+        if not xmpp_unique_id:
+            return None
+
+        return xmpp_unique_id.split(";")[-1]
 
     @property
     def name(self):
@@ -234,7 +244,6 @@ class HarmonyRemote(remote.RemoteDevice):
         except aioexc.TimeOut:
             _LOGGER.warning("%s: Connection timed-out", self._name)
             return False
-
         return True
 
     def new_activity(self, activity_info: tuple) -> None:
