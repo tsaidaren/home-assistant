@@ -63,7 +63,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         hass.config_entries.flow.async_init(
             DOMAIN,
             context={"source": SOURCE_IMPORT},
-            data={CONF_HOST: config[CONF_HOST], CONF_NAME: config[CONF_NAME]},
+            data={CONF_HOST: config.get(CONF_HOST), CONF_NAME: config[CONF_NAME]},
         )
     )
 
