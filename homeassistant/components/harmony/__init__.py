@@ -2,8 +2,6 @@
 import asyncio
 import logging
 
-import voluptuous as vol
-
 from homeassistant.components.remote import ATTR_ACTIVITY, ATTR_DELAY_SECS
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
@@ -13,8 +11,6 @@ from homeassistant.util import slugify
 
 from .const import DOMAIN
 from .remote import DEVICES, HarmonyRemote
-
-CONFIG_SCHEMA = vol.Schema({DOMAIN: vol.Schema({})}, extra=vol.ALLOW_EXTRA)
 
 PLATFORMS = ["remote"]
 
