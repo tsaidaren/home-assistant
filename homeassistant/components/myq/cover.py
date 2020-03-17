@@ -129,11 +129,13 @@ class MyQDevice(CoverDevice):
     async def async_close_cover(self, **kwargs):
         """Issue close command to cover."""
         await self._device.close()
+        # Writes closing state
         self.async_write_ha_state()
 
     async def async_open_cover(self, **kwargs):
         """Issue open command to cover."""
         await self._device.open()
+        # Writes opening state
         self.async_write_ha_state()
 
     async def async_update(self):
