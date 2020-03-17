@@ -1,31 +1,21 @@
 """Config flow for MyQ integration."""
 import logging
 
+from pymyq import login
+from pymyq.errors import InvalidCredentialsError, MyQError
 import voluptuous as vol
 
 from homeassistant import config_entries, core, exceptions
+from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
+from homeassistant.helpers import aiohttp_client
 
 from .const import DOMAIN  # pylint:disable=unused-import
 
 _LOGGER = logging.getLogger(__name__)
 
-# TODO adjust the data schema to the data that you need
-DATA_SCHEMA = vol.Schema({"host": str, "username": str, "password": str})
-
-
-class PlaceholderHub:
-    """Placeholder class to make tests pass.
-
-    TODO Remove this placeholder class and replace with things from your PyPI package.
-    """
-
-    def __init__(self, host):
-        """Initialize."""
-        self.host = host
-
-    async def authenticate(self, username, password) -> bool:
-        """Test if we can authenticate with the host."""
-        return True
+DATA_SCHEMA = vol.Schema(
+    {vol.Required(CONF_USERNAME): str, vol.Required(CONF_PASSWORD): str}
+)
 
 
 async def validate_input(hass: core.HomeAssistant, data):
@@ -33,34 +23,24 @@ async def validate_input(hass: core.HomeAssistant, data):
 
     Data has the keys from DATA_SCHEMA with values provided by the user.
     """
-    # TODO validate the data can be used to set up a connection.
 
-    # If your PyPI package is not built with async, pass your methods
-    # to the executor:
-    # await hass.async_add_executor_job(
-    #     your_validate_func, data["username"], data["password"]
-    # )
+    websession = aiohttp_client.async_get_clientsession(hass)
 
-    hub = PlaceholderHub(data["host"])
-
-    if not await hub.authenticate(data["username"], data["password"]):
+    try:
+        await login(data[CONF_USERNAME], data[CONF_PASSWORD], websession)
+    except InvalidCredentialsError:
         raise InvalidAuth
+    except MyQError:
+        raise CannotConnect
 
-    # If you cannot connect:
-    # throw CannotConnect
-    # If the authentication is wrong:
-    # InvalidAuth
-
-    # Return info that you want to store in the config entry.
-    return {"title": "Name of the device"}
+    return {"title": data[CONF_USERNAME]}
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for MyQ."""
 
     VERSION = 1
-    # TODO pick one of the available connection classes in homeassistant/config_entries.py
-    CONNECTION_CLASS = config_entries.CONN_CLASS_UNKNOWN
+    CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_POLL
 
     async def async_step_user(self, user_input=None):
         """Handle the initial step."""
@@ -68,8 +48,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 info = await validate_input(self.hass, user_input)
-
-                return self.async_create_entry(title=info["title"], data=user_input)
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except InvalidAuth:
@@ -78,9 +56,20 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
 
+            if "base" not in errors:
+                await self.async_set_unique_id(user_input[CONF_USERNAME])
+                self._abort_if_unique_id_configured()
+                return self.async_create_entry(title=info["title"], data=user_input)
+
         return self.async_show_form(
             step_id="user", data_schema=DATA_SCHEMA, errors=errors
         )
+
+    async def async_step_import(self, user_input):
+        """Handle import."""
+        await self.async_set_unique_id(user_input[CONF_USERNAME])
+        self._abort_if_unique_id_configured()
+        return await self.async_step_user(user_input)
 
 
 class CannotConnect(exceptions.HomeAssistantError):
