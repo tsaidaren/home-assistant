@@ -2,7 +2,7 @@
 import asyncio
 import logging
 
-from pymyq import login
+import pymyq
 from pymyq.errors import InvalidCredentialsError, MyQError
 
 from homeassistant.config_entries import ConfigEntry
@@ -31,7 +31,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     conf = entry.data
 
     try:
-        myq = await login(conf[CONF_USERNAME], conf[CONF_PASSWORD], websession)
+        myq = await pymyq.login(conf[CONF_USERNAME], conf[CONF_PASSWORD], websession)
     except InvalidCredentialsError as err:
         _LOGGER.error("There was an error while logging in: %s", err)
         return False

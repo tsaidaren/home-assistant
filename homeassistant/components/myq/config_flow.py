@@ -1,7 +1,7 @@
 """Config flow for MyQ integration."""
 import logging
 
-from pymyq import login
+import pymyq
 from pymyq.errors import InvalidCredentialsError, MyQError
 import voluptuous as vol
 
@@ -27,7 +27,7 @@ async def validate_input(hass: core.HomeAssistant, data):
     websession = aiohttp_client.async_get_clientsession(hass)
 
     try:
-        await login(data[CONF_USERNAME], data[CONF_PASSWORD], websession)
+        await pymyq.login(data[CONF_USERNAME], data[CONF_PASSWORD], websession)
     except InvalidCredentialsError:
         raise InvalidAuth
     except MyQError:
