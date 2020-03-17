@@ -24,6 +24,7 @@ from homeassistant.components.remote import (
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import ATTR_ENTITY_ID, CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import PlatformNotReady
 import homeassistant.helpers.config_validation as cv
 
 from .const import DOMAIN, SERVICE_CHANGE_CHANNEL, SERVICE_SYNC
@@ -59,11 +60,18 @@ HARMONY_CHANGE_CHANNEL_SCHEMA = vol.Schema(
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Harmony platform."""
 
+    _LOGGER.debug(
+        "Import harmony from yaml: %s with discovery_info: %s", config, discovery_info
+    )
+
+    if not config.get(CONF_HOST) and not discovery_info:
+        raise PlatformNotReady
+
     hass.async_create_task(
         hass.config_entries.flow.async_init(
             DOMAIN,
             context={"source": SOURCE_IMPORT},
-            data={CONF_HOST: config.get(CONF_HOST), CONF_NAME: config[CONF_NAME]},
+            data={CONF_HOST: config[CONF_HOST], CONF_NAME: config[CONF_NAME]},
         )
     )
 
