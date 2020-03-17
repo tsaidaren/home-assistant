@@ -37,6 +37,8 @@ async def validate_input(hass: core.HomeAssistant, data):
     except harmony_exceptions.TimeOut:
         raise CannotConnect
 
+    if CONF_NAME not in data:
+        data[CONF_NAME] = harmony.name
     # Return info that you want to store in the config entry.
     return data
 
