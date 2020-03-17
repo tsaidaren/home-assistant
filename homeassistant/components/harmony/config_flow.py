@@ -37,10 +37,12 @@ async def validate_input(hass: core.HomeAssistant, data):
     except harmony_exceptions.TimeOut:
         raise CannotConnect
 
+    # As a last resort we get the name from the harmony client
+    # in the event a name was not provided
     if CONF_NAME not in data or data[CONF_NAME] is None or data[CONF_NAME] == "":
         data[CONF_NAME] = harmony.name
-    # Return info that you want to store in the config entry.
-    return data
+
+    return {CONF_NAME: data[CONF_NAME], CONF_HOST: data[CONF_HOST]}
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -62,9 +64,19 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._abort_if_unique_id_configured(
                 updates={CONF_HOST: user_input[CONF_HOST]}
             )
+
+            # If we are importing we need to keep their options
+            options = {}
+            if ATTR_ACTIVITY in user_input:
+                options[ATTR_ACTIVITY] = user_input[ATTR_ACTIVITY]
+            if ATTR_DELAY_SECS in user_input:
+                options[ATTR_DELAY_SECS] = user_input[ATTR_DELAY_SECS]
+
             try:
                 info = await validate_input(self.hass, user_input)
-                return self.async_create_entry(title=info[CONF_NAME], data=info)
+                return self.async_create_entry(
+                    title=info[CONF_NAME], data=info, options=options
+                )
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except Exception:  # pylint: disable=broad-except

@@ -64,14 +64,21 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         "Import harmony from yaml: %s with discovery_info: %s", config, discovery_info
     )
 
-    if CONF_HOST not in config and not discovery_info:
+    import_config = config.copy()
+    if discovery_info:
+        if "host" in discovery_info:
+            import_config[CONF_HOST] = discovery_info["host"]
+        if "name" in discovery_info:
+            import_config[CONF_NAME] = discovery_info["name"]
+
+    # If discovery info has not been populated yet we need
+    # to retry later
+    if CONF_HOST not in import_config:
         raise PlatformNotReady
 
     hass.async_create_task(
         hass.config_entries.flow.async_init(
-            DOMAIN,
-            context={"source": SOURCE_IMPORT},
-            data={CONF_HOST: config[CONF_HOST], CONF_NAME: config[CONF_NAME]},
+            DOMAIN, context={"source": SOURCE_IMPORT}, data=import_config
         )
     )
 
