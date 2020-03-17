@@ -20,7 +20,7 @@ from .const import DOMAIN  # pylint:disable=unused-import
 
 _LOGGER = logging.getLogger(__name__)
 
-DATA_SCHEMA = vol.Schema({vol.Required(CONF_HOST): str, vol.Optional(CONF_NAME): str})
+DATA_SCHEMA = vol.Schema({vol.Required(CONF_HOST): str, vol.Required(CONF_NAME): str})
 
 
 async def validate_input(hass: core.HomeAssistant, data):
@@ -36,9 +36,6 @@ async def validate_input(hass: core.HomeAssistant, data):
             raise CannotConnect
     except harmony_exceptions.TimeOut:
         raise CannotConnect
-
-    _LOGGER.info("data: %s", data)
-    _LOGGER.info("CONFIG: %s", harmony.hub_config)
 
     if CONF_NAME not in data or data[CONF_NAME] is None or data[CONF_NAME] == "":
         data[CONF_NAME] = harmony.name
@@ -133,7 +130,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class OptionsFlowHandler(config_entries.OptionsFlow):
-    """Handle a option flow for Rachio."""
+    """Handle a option flow for Harmony."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry):
         """Initialize options flow."""
