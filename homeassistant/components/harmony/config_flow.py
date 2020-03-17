@@ -74,9 +74,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             try:
                 info = await validate_input(self.hass, user_input)
-                return self.async_create_entry(
-                    title=info[CONF_NAME], data=info, options=options
-                )
+                config_entry = self.async_create_entry(title=info[CONF_NAME], data=info)
+                if options:
+                    self.hass.config_entries.async_update_entry(
+                        config_entry, data=info, options=options
+                    )
+                return config_entry
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except Exception:  # pylint: disable=broad-except
