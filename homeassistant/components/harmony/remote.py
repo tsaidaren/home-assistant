@@ -82,7 +82,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
         # Ignore hub name when checking if this hub is known - ip only
         if matching_name in (harmony.host for harmony in DEVICES):
-            _LOGGER.debug("Discovered host already known: %s", import_config[CONF_HOST])
+            _LOGGER.debug("Discovered host already known: %s", matching_name)
             return
 
         import_config = {
