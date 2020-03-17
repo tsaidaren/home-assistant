@@ -81,6 +81,8 @@ async def async_setup_entry(
 
     device = hass.data[DOMAIN][entry.entry_id]
 
+    _LOGGER.info("Harmony Remote: %s", device)
+
     async_add_entities([device])
     register_services(hass)
 

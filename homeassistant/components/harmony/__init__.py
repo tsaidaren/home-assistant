@@ -9,10 +9,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.util import slugify
 
-from .const import DOMAIN
+from .const import DOMAIN, PLATFORMS
 from .remote import DEVICES, HarmonyRemote
-
-PLATFORMS = ["remote"]
 
 _LOGGER = logging.getLogger(__name__)
 
