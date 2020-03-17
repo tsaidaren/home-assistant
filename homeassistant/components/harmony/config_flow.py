@@ -72,8 +72,18 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if ATTR_DELAY_SECS in user_input:
                 options[ATTR_DELAY_SECS] = user_input[ATTR_DELAY_SECS]
 
+            _LOGGER.debug(
+                "ABOUT TO IMPORT: user_input:%s options:%s", user_input, options,
+            )
+
             try:
                 info = await validate_input(self.hass, user_input)
+                _LOGGER.debug(
+                    "AFTER VALIDATE: user_input:%s options:%s info: %s",
+                    user_input,
+                    options,
+                    info,
+                )
                 config_entry = self.async_create_entry(title=info[CONF_NAME], data=info)
                 if options:
                     self.hass.config_entries.async_update_entry(
@@ -85,6 +95,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except Exception:  # pylint: disable=broad-except
                 _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
+
+            _LOGGER.debug("FLOW FAILED: %s", user_input)
 
         # Return form
         return self.async_show_form(
@@ -156,6 +168,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
+        # TODO: see how heos looks at hass.data to find the ips
+        # we can prevent a list of activities for the default activity
         data_schema = vol.Schema(
             {
                 vol.Optional(
