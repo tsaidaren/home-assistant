@@ -64,7 +64,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         "Import harmony from yaml: %s with discovery_info: %s", config, discovery_info
     )
 
-    if not config.get(CONF_HOST) and not discovery_info:
+    if CONF_HOST not in config and not discovery_info:
         raise PlatformNotReady
 
     hass.async_create_task(
