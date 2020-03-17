@@ -25,8 +25,8 @@ GATE_STATE_ICONS = {
 }
 
 GARAGE_STATE_ICONS = {
-    STATE_CLOSED: "mdi:garage",
-    STATE_CLOSING: "mdi:garage-variant",
-    STATE_OPENING: "mdi:garage-open-variant",
-    STATE_OPEN: "mdi:garage-open",
+    STATE_CLOSED: "mdi:garage-variant",
+    STATE_CLOSING: "mdi:arrow-down-bold-box",
+    STATE_OPENING: "mdi:arrow-up-bold-box",
+    STATE_OPEN: "mdi:garage-open-variant",
 }
