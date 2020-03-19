@@ -201,6 +201,11 @@ class Thermostat(HomeAccessory):
                 setter_callback=self.set_heating_threshold,
             )
 
+        serv_thermostat.setter_callback = self._set_chars
+
+    def _set_chars(self, char_values):
+        _LOGGER.debug("thermostat -- _set_chars: %s", char_values)
+
     def get_temperature_range(self):
         """Return min and max temperature range."""
         max_temp = self.hass.states.get(self.entity_id).attributes.get(ATTR_MAX_TEMP)

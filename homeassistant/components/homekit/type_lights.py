@@ -82,17 +82,14 @@ class Light(HomeAccessory):
             self.chars.append(CHAR_COLOR_TEMPERATURE)
 
         serv_light = self.add_preload_service(SERV_LIGHTBULB, self.chars)
-        self.char_on = serv_light.configure_char(
-            CHAR_ON, value=self._state, setter_callback=self.set_state
-        )
+
+        self.char_on = serv_light.configure_char(CHAR_ON, value=self._state)
 
         if CHAR_BRIGHTNESS in self.chars:
             # Initial value is set to 100 because 0 is a special value (off). 100 is
             # an arbitrary non-zero value. It is updated immediately by update_state
             # to set to the correct initial value.
-            self.char_brightness = serv_light.configure_char(
-                CHAR_BRIGHTNESS, value=100, setter_callback=self.set_brightness
-            )
+            self.char_brightness = serv_light.configure_char(CHAR_BRIGHTNESS, value=100)
 
         if CHAR_COLOR_TEMPERATURE in self.chars:
             min_mireds = self.hass.states.get(self.entity_id).attributes.get(
@@ -105,7 +102,6 @@ class Light(HomeAccessory):
                 CHAR_COLOR_TEMPERATURE,
                 value=min_mireds,
                 properties={PROP_MIN_VALUE: min_mireds, PROP_MAX_VALUE: max_mireds},
-                setter_callback=self.set_color_temperature,
             )
 
         if CHAR_HUE in self.chars:
@@ -117,6 +113,34 @@ class Light(HomeAccessory):
             self.char_saturation = serv_light.configure_char(
                 CHAR_SATURATION, value=75, setter_callback=self.set_saturation
             )
+
+        serv_light.setter_callback = self._set_chars
+
+    def _set_chars(self, char_values):
+        _LOGGER.debug("_set_chars: %s", char_values)
+        service = SERVICE_TURN_ON
+        params = {ATTR_ENTITY_ID: self.entity_id}
+        if CHAR_ON in char_values and not char_values[CHAR_ON]:
+            service = SERVICE_TURN_OFF
+
+        if CHAR_BRIGHTNESS in char_values:
+            if char_values[CHAR_BRIGHTNESS] == 0:
+                service = SERVICE_TURN_OFF
+            else:
+                params[ATTR_BRIGHTNESS_PCT] = char_values[CHAR_BRIGHTNESS]
+        if CHAR_COLOR_TEMPERATURE in char_values:
+            params[CHAR_COLOR_TEMPERATURE] = char_values[CHAR_BRIGHTNESS]
+
+        if (
+            self._features & SUPPORT_COLOR
+            and CHAR_HUE in char_values
+            and CHAR_SATURATION in char_values
+        ):
+            color = (char_values[CHAR_HUE], char_values[CHAR_SATURATION])
+            _LOGGER.debug("%s: Set hs_color to %s", self.entity_id, color)
+            params[ATTR_HS_COLOR] = color
+
+        self.call_service(DOMAIN, service, params)
 
     def set_state(self, value):
         """Set state if call came from HomeKit."""
