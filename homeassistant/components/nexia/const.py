@@ -14,6 +14,8 @@ NEXIA_SCAN_INTERVAL = "scan_interval"
 DOMAIN = "nexia"
 DEFAULT_ENTITY_NAMESPACE = "nexia"
 
+ATTR_DESCRIPTION = "description"
+
 ATTR_ZONE_STATUS = "zone_status"
 ATTR_HUMIDIFY_SUPPORTED = "humidify_supported"
 ATTR_DEHUMIDIFY_SUPPORTED = "dehumidify_supported"
