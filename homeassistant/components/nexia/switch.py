@@ -61,7 +61,7 @@ class NexiaAutomationSwitch(NexiaEntity, SwitchDevice):
 
     @property
     def icon(self):
-        """Return the device class of the sensor."""
+        """Return the device class of the automations switch."""
         return "mdi:script-text-outline"
 
     @property
@@ -71,5 +71,5 @@ class NexiaAutomationSwitch(NexiaEntity, SwitchDevice):
         return False
 
     def turn_on(self, **kwargs) -> None:
-        """Send the turn on an automation switch."""
+        """Activate an automation switch."""
         self._automation.activate()
