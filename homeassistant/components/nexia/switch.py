@@ -1,7 +1,7 @@
 """Support for Nexia Switches."""
 
 from homeassistant.components.switch import SwitchDevice
-from homeassistant.const import ATTR_ATTRIBUTION, STATE_UNKNOWN
+from homeassistant.const import ATTR_ATTRIBUTION
 
 from .const import (
     ATTR_DESCRIPTION,
@@ -11,6 +11,7 @@ from .const import (
     NEXIA_DEVICE,
     UPDATE_COORDINATOR,
 )
+from .entity import NexiaEntity
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
@@ -21,21 +22,19 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     coordinator = nexia_data[UPDATE_COORDINATOR]
     entities = []
 
-    # Thermostat / System Sensors
+    # Automation switches
     for automation_id in nexia_home.get_automation_ids():
         automation = nexia_home.get_automation_by_id(automation_id)
 
-        entities.append(NexiaAutomationSwitch(coordinator, automation,))
+        entities.append(NexiaAutomationSwitch(coordinator, automation))
 
     async_add_entities(entities, True)
 
 
-class NexiaAutomationSwitch(SwitchDevice):
+class NexiaAutomationSwitch(NexiaEntity, SwitchDevice):
     """Provides Nexia automation support."""
 
-    def __init__(
-        self, coordinator, automation,
-    ):
+    def __init__(self, coordinator, automation):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._coordinator = coordinator
@@ -53,11 +52,6 @@ class NexiaAutomationSwitch(SwitchDevice):
         return self._automation.name
 
     @property
-    def available(self):
-        """Return the name of the sensor."""
-        return self._automation.enabled
-
-    @property
     def device_state_attributes(self):
         """Return the device specific state attributes."""
         return {
@@ -73,7 +67,7 @@ class NexiaAutomationSwitch(SwitchDevice):
     @property
     def is_on(self):
         """Get whether the automation is enabled is in the on state."""
-        return STATE_UNKNOWN
+        return False
 
     def turn_on(self, **kwargs) -> None:
         """Send the turn on an automation switch."""
