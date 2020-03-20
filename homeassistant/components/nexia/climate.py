@@ -33,6 +33,7 @@ from homeassistant.components.climate.const import (
     SUPPORT_PRESET_MODE,
     SUPPORT_TARGET_HUMIDITY,
     SUPPORT_TARGET_TEMPERATURE,
+    SUPPORT_TARGET_TEMPERATURE_RANGE,
 )
 from homeassistant.const import (
     ATTR_ATTRIBUTION,
@@ -120,7 +121,12 @@ class NexiaZone(NexiaEntity, ClimateDevice):
     @property
     def supported_features(self):
         """Return the list of supported features."""
-        supported = SUPPORT_TARGET_TEMPERATURE | SUPPORT_FAN_MODE | SUPPORT_PRESET_MODE
+        supported = (
+            SUPPORT_TARGET_TEMPERATURE_RANGE
+            | SUPPORT_TARGET_TEMPERATURE
+            | SUPPORT_FAN_MODE
+            | SUPPORT_PRESET_MODE
+        )
 
         if self._has_humidify_support or self._has_dehumidify_support:
             supported |= SUPPORT_TARGET_HUMIDITY
@@ -159,6 +165,16 @@ class NexiaZone(NexiaEntity, ClimateDevice):
     def fan_modes(self):
         """Return the list of available fan modes."""
         return FAN_MODES
+
+    @property
+    def min_temp(self):
+        """Minimum temp for the current setting."""
+        return (self._device.thermostat.get_setpoint_limits())[0]
+
+    @property
+    def max_temp(self):
+        """Maximum temp for the current setting."""
+        return (self._device.thermostat.get_setpoint_limits())[1]
 
     def set_fan_mode(self, fan_mode):
         """Set new target fan mode."""
