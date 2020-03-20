@@ -67,6 +67,7 @@ class NexiaAutomationSwitch(NexiaEntity, SwitchDevice):
     @property
     def is_on(self):
         """Get whether the automation is enabled is in the on state."""
+        # These are all momentary activations
         return False
 
     def turn_on(self, **kwargs) -> None:
