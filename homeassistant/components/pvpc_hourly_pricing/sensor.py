@@ -63,13 +63,12 @@ class ElecPriceSensor(RestoreEntity):
         self._unique_id = unique_id
         self._pvpc_data = pvpc_data_handler
         self._num_retries = 0
-
+        self._pvpc_data_available = True
         self._hourly_tracker = None
         self._price_tracker = None
 
     async def async_will_remove_from_hass(self) -> None:
         """Cancel listeners for sensor updates."""
-        self._hourly_tracker()
         self._price_tracker()
 
     async def async_added_to_hass(self):
@@ -79,15 +78,14 @@ class ElecPriceSensor(RestoreEntity):
         if state:
             self._pvpc_data.state = state.state
 
-        # Update 'state' value in hour changes
-        self._hourly_tracker = async_track_time_change(
-            self.hass, self.async_update, second=[0], minute=[0]
-        )
         # Update prices at random time, 2 times/hour (don't want to upset API)
         random_minute = randint(1, 29)
         mins_update = [random_minute, random_minute + 30]
         self._price_tracker = async_track_time_change(
-            self.hass, self.async_update_prices, second=[0], minute=mins_update,
+            self.hass,
+            self._async_update_and_write_state,
+            second=[0],
+            minute=mins_update,
         )
         _LOGGER.debug(
             "Setup of price sensor %s (%s) with tariff '%s', "
@@ -97,8 +95,7 @@ class ElecPriceSensor(RestoreEntity):
             self._pvpc_data.tariff,
             mins_update,
         )
-        await self.async_update_prices(dt_util.utcnow())
-        await self.async_update()
+        await self._async_update_and_write_state(dt_util.utcnow())
 
     @property
     def unique_id(self) -> Optional[str]:
@@ -118,7 +115,7 @@ class ElecPriceSensor(RestoreEntity):
     @property
     def available(self) -> bool:
         """Return True if entity is available."""
-        return self._pvpc_data.state_available
+        return self._pvpc_data_available
 
     @property
     def device_state_attributes(self):
@@ -126,44 +123,50 @@ class ElecPriceSensor(RestoreEntity):
         return self._pvpc_data.attributes
 
     async def async_update(self, *args):
-        """Update the sensor state."""
-        now = dt_util.utcnow() if not args else args[0]
-        self._pvpc_data.process_state_and_attributes(now)
-        self.async_write_ha_state()
+        """Update the sensor state from the API."""
+        await self._async_update(dt_util.utcnow())
 
-    async def async_update_prices(self, now):
+    async def _async_update_and_write_state(self, now):
+        """Update the sensor state and write it to ha if successful."""
+        if await self._async_update(now):
+            self.async_write_ha_state()
+
+    async def _async_update(self, now):
         """Update electricity prices from the ESIOS API."""
-        prices = await self._pvpc_data.async_update_prices(now)
-        if not prices and self._pvpc_data.source_available:
-            self._num_retries += 1
-            if self._num_retries > 2:
+        if await self._pvpc_data.async_update_prices(now):
+            if not self._pvpc_data.source_available:
                 _LOGGER.warning(
-                    "%s: repeated bad data update, mark component as unavailable source",
-                    self.entity_id,
+                    "%s: component has recovered data access", self.entity_id
                 )
-                self._pvpc_data.source_available = False
-                return
+                self._pvpc_data.source_available = True
+                self._num_retries = 0
 
-            retry_delay = 2 * self._pvpc_data.timeout
-            _LOGGER.debug(
-                "%s: Bad update[retry:%d], will try again in %d s",
+            self._pvpc_data.process_state_and_attributes(now)
+            return True
+
+        if not self._pvpc_data_available:
+            _LOGGER.debug("%s: data source is not available", self.entity_id)
+            return False
+
+        self._num_retries += 1
+        if self._num_retries > 2:
+            _LOGGER.warning(
+                "%s: repeated bad data update, mark component as unavailable source",
                 self.entity_id,
-                self._num_retries,
-                retry_delay,
             )
-            async_track_point_in_time(
-                self.hass,
-                self.async_update_prices,
-                dt_util.now() + timedelta(seconds=retry_delay),
-            )
-            return
+            self._pvpc_data_available = False
+            return False
 
-        if not prices:
-            _LOGGER.debug("%s: data source is not yet available", self.entity_id)
-            return
-
-        self._num_retries = 0
-        if not self._pvpc_data.source_available:
-            self._pvpc_data.source_available = True
-            _LOGGER.warning("%s: component has recovered data access", self.entity_id)
-            await self.async_update(now)
+        retry_delay = 2 * self._pvpc_data.timeout
+        _LOGGER.debug(
+            "%s: Bad update[retry:%d], will try again in %d s",
+            self.entity_id,
+            self._num_retries,
+            retry_delay,
+        )
+        async_track_point_in_time(
+            self.hass,
+            self._async_update,
+            dt_util.now() + timedelta(seconds=retry_delay),
+        )
+        return False
