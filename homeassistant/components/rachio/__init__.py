@@ -8,9 +8,19 @@ from aiohttp import web
 from rachiopy import Rachio
 import voluptuous as vol
 
+from homeassistant.components import cloud
+from homeassistant.components.webhook import (
+    async_register as webhook_register,
+    async_unregister as webhook_unregister,
+)
 from homeassistant.components.http import HomeAssistantView
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
-from homeassistant.const import CONF_API_KEY, EVENT_HOMEASSISTANT_STOP, URL_API
+from homeassistant.const import (
+    CONF_API_KEY,
+    EVENT_HOMEASSISTANT_STOP,
+    URL_API,
+    CONF_WEBHOOK_ID,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import config_validation as cv, device_registry
@@ -18,6 +28,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity import Entity
 
 from .const import (
+    CONF_CLOUDHOOK_URL,
     CONF_CUSTOM_URL,
     CONF_MANUAL_RUN_MINS,
     DEFAULT_MANUAL_RUN_MINS,
@@ -120,23 +131,6 @@ async def async_setup(hass: HomeAssistant, config: dict):
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
-    """Unload a config entry."""
-    unload_ok = all(
-        await asyncio.gather(
-            *[
-                hass.config_entries.async_forward_entry_unload(entry, component)
-                for component in SUPPORTED_DOMAINS
-            ]
-        )
-    )
-
-    if unload_ok:
-        hass.data[DOMAIN].pop(entry.entry_id)
-
-    return unload_ok
-
-
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up the Rachio config entry."""
 
@@ -180,6 +174,50 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # Enable component
     hass.data[DOMAIN][entry.entry_id] = person
 
+    async def unregister_webhook(event):
+        _LOGGER.debug("Unregister rachio webhook (%s)", entry.data[CONF_WEBHOOK_ID])
+        webhook_unregister(hass, entry.data[CONF_WEBHOOK_ID])
+
+    async def register_webhook(event):
+        # Wait for the cloud integration to be ready
+        await asyncio.sleep(WAIT_FOR_CLOUD)
+
+        if CONF_WEBHOOK_ID not in entry.data:
+            data = {**entry.data, CONF_WEBHOOK_ID: secrets.token_hex()}
+            hass.config_entries.async_update_entry(entry, data=data)
+
+        if hass.components.cloud.async_active_subscription():
+            # Wait for cloud connection to be established
+            await asyncio.sleep(WAIT_FOR_CLOUD)
+
+            if CONF_CLOUDHOOK_URL not in entry.data:
+                webhook_url = await hass.components.cloud.async_create_cloudhook(
+                    entry.data[CONF_WEBHOOK_ID]
+                )
+                data = {**entry.data, CONF_CLOUDHOOK_URL: webhook_url}
+                hass.config_entries.async_update_entry(entry, data=data)
+            else:
+                webhook_url = entry.data[CONF_CLOUDHOOK_URL]
+        else:
+            webhook_url = hass.components.webhook.async_generate_url(
+                entry.data[CONF_WEBHOOK_ID]
+            )
+
+        try:
+            await hass.async_add_executor_job(
+                hass.data[DOMAIN][entry.entry_id][AUTH].addwebhook, webhook_url
+            )
+            webhook_register(
+                hass, DOMAIN, "Rachio", entry.data[CONF_WEBHOOK_ID], handle_webhook
+            )
+            _LOGGER.info("Register Rachio webhook: %s", webhook_url)
+        except pyatmo.ApiError as err:
+            _LOGGER.error("Error during webhook registration - %s", err)
+
+        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, unregister_webhook)
+
+    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, register_webhook)
+
     # Listen for incoming webhook connections after the data is there
     hass.http.register_view(RachioWebhookView(entry.entry_id, webhook_url_path))
 
@@ -189,6 +227,38 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         )
 
     return True
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Unload a config entry."""
+    unload_ok = all(
+        await asyncio.gather(
+            *[
+                hass.config_entries.async_forward_entry_unload(entry, component)
+                for component in SUPPORTED_DOMAINS
+            ]
+        )
+    )
+
+    if CONF_WEBHOOK_ID in entry.data:
+        await hass.async_add_executor_job(
+            hass.data[DOMAIN][entry.entry_id][AUTH].dropwebhook()
+        )
+
+    if unload_ok:
+        hass.data[DOMAIN].pop(entry.entry_id)
+
+    return unload_ok
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Cleanup when entry is removed."""
+    if CONF_WEBHOOK_ID in entry.data:
+        try:
+            _LOGGER.debug("Removing rachio cloudhook (%s)", entry.data[CONF_WEBHOOK_ID])
+            await cloud.async_delete_cloudhook(hass, entry.data[CONF_WEBHOOK_ID])
+        except cloud.CloudNotAvailable:
+            pass
 
 
 class RachioPerson:

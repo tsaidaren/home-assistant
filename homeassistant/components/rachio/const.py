@@ -8,9 +8,14 @@ DEFAULT_NAME = "Rachio"
 DOMAIN = "rachio"
 
 CONF_CUSTOM_URL = "hass_url_override"
+CONF_WEBHOOKS = "webhooks"
+CONF_CLOUDHOOK_URL = "cloudhook_url"
+
+WAIT_FOR_CLOUD = 5
 # Manual run length
 CONF_MANUAL_RUN_MINS = "manual_run_mins"
 DEFAULT_MANUAL_RUN_MINS = 10
+
 
 # Keys used in the API JSON
 KEY_DEVICE_ID = "deviceId"
