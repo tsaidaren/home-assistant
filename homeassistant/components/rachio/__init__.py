@@ -8,29 +8,21 @@ from aiohttp import web
 from rachiopy import Rachio
 import voluptuous as vol
 
-from homeassistant.components import cloud
-from homeassistant.components.webhook import (
-    async_register as webhook_register,
-    async_unregister as webhook_unregister,
-)
 from homeassistant.components.http import HomeAssistantView
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import (
     CONF_API_KEY,
+    CONF_WEBHOOK_ID,
+    EVENT_HOMEASSISTANT_START,
     EVENT_HOMEASSISTANT_STOP,
     URL_API,
-    CONF_WEBHOOK_ID,
 )
-from homeassistant.const import EVENT_HOMEASSISTANT_START, EVENT_HOMEASSISTANT_STOP
-
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import config_validation as cv, device_registry
-from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity import Entity
 
 from .const import (
-    WAIT_FOR_CLOUD,
     CONF_CLOUDHOOK_URL,
     CONF_CUSTOM_URL,
     CONF_MANUAL_RUN_MINS,
@@ -50,7 +42,9 @@ from .const import (
     KEY_USERNAME,
     KEY_ZONES,
     RACHIO_API_EXCEPTIONS,
+    WAIT_FOR_CLOUD,
 )
+from .webhooks import async_setup_webhooks
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -75,46 +69,10 @@ CONFIG_SCHEMA = vol.Schema(
 STATUS_ONLINE = "ONLINE"
 STATUS_OFFLINE = "OFFLINE"
 
-# Device webhook values
-TYPE_CONTROLLER_STATUS = "DEVICE_STATUS"
-SUBTYPE_OFFLINE = "OFFLINE"
-SUBTYPE_ONLINE = "ONLINE"
-SUBTYPE_OFFLINE_NOTIFICATION = "OFFLINE_NOTIFICATION"
-SUBTYPE_COLD_REBOOT = "COLD_REBOOT"
-SUBTYPE_SLEEP_MODE_ON = "SLEEP_MODE_ON"
-SUBTYPE_SLEEP_MODE_OFF = "SLEEP_MODE_OFF"
-SUBTYPE_BROWNOUT_VALVE = "BROWNOUT_VALVE"
-SUBTYPE_RAIN_SENSOR_DETECTION_ON = "RAIN_SENSOR_DETECTION_ON"
-SUBTYPE_RAIN_SENSOR_DETECTION_OFF = "RAIN_SENSOR_DETECTION_OFF"
-SUBTYPE_RAIN_DELAY_ON = "RAIN_DELAY_ON"
-SUBTYPE_RAIN_DELAY_OFF = "RAIN_DELAY_OFF"
-
-# Schedule webhook values
-TYPE_SCHEDULE_STATUS = "SCHEDULE_STATUS"
-SUBTYPE_SCHEDULE_STARTED = "SCHEDULE_STARTED"
-SUBTYPE_SCHEDULE_STOPPED = "SCHEDULE_STOPPED"
-SUBTYPE_SCHEDULE_COMPLETED = "SCHEDULE_COMPLETED"
-SUBTYPE_WEATHER_NO_SKIP = "WEATHER_INTELLIGENCE_NO_SKIP"
-SUBTYPE_WEATHER_SKIP = "WEATHER_INTELLIGENCE_SKIP"
-SUBTYPE_WEATHER_CLIMATE_SKIP = "WEATHER_INTELLIGENCE_CLIMATE_SKIP"
-SUBTYPE_WEATHER_FREEZE = "WEATHER_INTELLIGENCE_FREEZE"
-
-# Zone webhook values
-TYPE_ZONE_STATUS = "ZONE_STATUS"
-SUBTYPE_ZONE_STARTED = "ZONE_STARTED"
-SUBTYPE_ZONE_STOPPED = "ZONE_STOPPED"
-SUBTYPE_ZONE_COMPLETED = "ZONE_COMPLETED"
-SUBTYPE_ZONE_CYCLING = "ZONE_CYCLING"
-SUBTYPE_ZONE_CYCLING_COMPLETED = "ZONE_CYCLING_COMPLETED"
-
 # Webhook callbacks
 LISTEN_EVENT_TYPES = ["DEVICE_STATUS_EVENT", "ZONE_STATUS_EVENT"]
 WEBHOOK_CONST_ID = "homeassistant.rachio:"
 WEBHOOK_PATH = URL_API + DOMAIN
-SIGNAL_RACHIO_UPDATE = DOMAIN + "_update"
-SIGNAL_RACHIO_CONTROLLER_UPDATE = SIGNAL_RACHIO_UPDATE + "_controller"
-SIGNAL_RACHIO_ZONE_UPDATE = SIGNAL_RACHIO_UPDATE + "_zone"
-SIGNAL_RACHIO_SCHEDULE_UPDATE = SIGNAL_RACHIO_UPDATE + "_schedule"
 
 
 async def async_setup(hass: HomeAssistant, config: dict):
@@ -177,52 +135,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # Enable component
     hass.data[DOMAIN][entry.entry_id] = person
 
-    async def unregister_webhook(event):
-        _LOGGER.debug("Unregister rachio webhook (%s)", entry.data[CONF_WEBHOOK_ID])
-        webhook_unregister(hass, entry.data[CONF_WEBHOOK_ID])
-
-    async def register_webhook(event):
-        # Wait for the cloud integration to be ready
-        await asyncio.sleep(WAIT_FOR_CLOUD)
-
-        if CONF_WEBHOOK_ID not in entry.data:
-            data = {**entry.data, CONF_WEBHOOK_ID: secrets.token_hex()}
-            hass.config_entries.async_update_entry(entry, data=data)
-
-        if hass.components.cloud.async_active_subscription():
-            # Wait for cloud connection to be established
-            await asyncio.sleep(WAIT_FOR_CLOUD)
-
-            if CONF_CLOUDHOOK_URL not in entry.data:
-                webhook_url = await hass.components.cloud.async_create_cloudhook(
-                    entry.data[CONF_WEBHOOK_ID]
-                )
-                data = {**entry.data, CONF_CLOUDHOOK_URL: webhook_url}
-                hass.config_entries.async_update_entry(entry, data=data)
-            else:
-                webhook_url = entry.data[CONF_CLOUDHOOK_URL]
-        else:
-            webhook_url = hass.components.webhook.async_generate_url(
-                entry.data[CONF_WEBHOOK_ID]
-            )
-
-        try:
-            await hass.async_add_executor_job(
-                hass.data[DOMAIN][entry.entry_id][AUTH].addwebhook, webhook_url
-            )
-            webhook_register(
-                hass, DOMAIN, "Rachio", entry.data[CONF_WEBHOOK_ID], handle_webhook
-            )
-            _LOGGER.info("Register Rachio webhook: %s", webhook_url)
-        except pyatmo.ApiError as err:
-            _LOGGER.error("Error during webhook registration - %s", err)
-
-        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, unregister_webhook)
-
-    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, register_webhook)
-
-    # Listen for incoming webhook connections after the data is there
-    hass.http.register_view(RachioWebhookView(entry.entry_id, webhook_url_path))
+    # FIXME: we actually need one per controller, not just one
+    # per config entry
+    await async_setup_webhooks(hass, entry)
 
     for component in SUPPORTED_DOMAINS:
         hass.async_create_task(
@@ -441,41 +356,3 @@ class RachioDeviceInfoProvider(Entity):
             "model": self._controller.model,
             "manufacturer": DEFAULT_NAME,
         }
-
-
-class RachioWebhookView(HomeAssistantView):
-    """Provide a page for the server to call."""
-
-    SIGNALS = {
-        TYPE_CONTROLLER_STATUS: SIGNAL_RACHIO_CONTROLLER_UPDATE,
-        TYPE_SCHEDULE_STATUS: SIGNAL_RACHIO_SCHEDULE_UPDATE,
-        TYPE_ZONE_STATUS: SIGNAL_RACHIO_ZONE_UPDATE,
-    }
-
-    requires_auth = False  # Handled separately
-
-    def __init__(self, entry_id, webhook_url):
-        """Initialize the instance of the view."""
-        self._entry_id = entry_id
-        self.url = webhook_url
-        self.name = webhook_url[1:].replace("/", ":")
-        _LOGGER.debug(
-            "Initialize webhook at url: %s, with name %s", self.url, self.name
-        )
-
-    async def post(self, request) -> web.Response:
-        """Handle webhook calls from the server."""
-        hass = request.app["hass"]
-        data = await request.json()
-
-        try:
-            auth = data.get(KEY_EXTERNAL_ID, str()).split(":")[1]
-            assert auth == hass.data[DOMAIN][self._entry_id].rachio.webhook_auth
-        except (AssertionError, IndexError):
-            return web.Response(status=web.HTTPForbidden.status_code)
-
-        update_type = data[KEY_TYPE]
-        if update_type in self.SIGNALS:
-            async_dispatcher_send(hass, self.SIGNALS[update_type], data)
-
-        return web.Response(status=web.HTTPNoContent.status_code)
