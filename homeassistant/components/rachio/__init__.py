@@ -21,6 +21,8 @@ from homeassistant.const import (
     URL_API,
     CONF_WEBHOOK_ID,
 )
+from homeassistant.const import EVENT_HOMEASSISTANT_START, EVENT_HOMEASSISTANT_STOP
+
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import config_validation as cv, device_registry
@@ -28,6 +30,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity import Entity
 
 from .const import (
+    WAIT_FOR_CLOUD,
     CONF_CLOUDHOOK_URL,
     CONF_CUSTOM_URL,
     CONF_MANUAL_RUN_MINS,
