@@ -25,6 +25,7 @@ DOMAIN = "elkm1"
 
 SYNC_TIMEOUT = 55
 
+CONF_AUTO_CONFIGURE = "auto_configure"
 CONF_AREA = "area"
 CONF_COUNTER = "counter"
 CONF_ENABLED = "enabled"
@@ -114,6 +115,7 @@ DEVICE_SCHEMA = vol.Schema(
         vol.Optional(CONF_PREFIX, default=""): vol.All(cv.string, vol.Lower),
         vol.Optional(CONF_USERNAME, default=""): cv.string,
         vol.Optional(CONF_PASSWORD, default=""): cv.string,
+        vol.Optional(CONF_AUTO_CONFIGURE, default=False): cv.boolean,
         vol.Optional(CONF_TEMPERATURE_UNIT, default="F"): cv.temperature_unit,
         vol.Optional(CONF_AREA, default={}): DEVICE_SCHEMA_SUBDOMAIN,
         vol.Optional(CONF_COUNTER, default={}): DEVICE_SCHEMA_SUBDOMAIN,
@@ -161,6 +163,10 @@ async def async_setup(hass: HomeAssistant, hass_config: ConfigType) -> bool:
         _LOGGER.debug("Setting up elkm1 #%d - %s", index, conf["host"])
 
         config = {"temperature_unit": conf[CONF_TEMPERATURE_UNIT]}
+
+        if conf[CONF_AUTO_CONFIGURE]:
+            continue
+
         config["panel"] = {"enabled": True, "included": [True]}
 
         for item, max_ in configs.items():
@@ -203,6 +209,7 @@ async def async_setup(hass: HomeAssistant, hass_config: ConfigType) -> bool:
         elk_datas[prefix] = {
             "elk": elk,
             "prefix": prefix,
+            "auto_configure": conf[CONF_AUTO_CONFIGURE],
             "config": config,
             "keypads": {},
         }
@@ -258,15 +265,24 @@ def _create_elk_services(hass, elks):
 
 def create_elk_entities(elk_data, elk_elements, element_type, class_, entities):
     """Create the ElkM1 devices of a particular class."""
-    if elk_data["config"][element_type]["enabled"]:
-        elk = elk_data["elk"]
-        _LOGGER.debug("Creating elk entities for %s", elk)
-        for element in elk_elements:
-            if (
-                elk_data["config"][element_type]["included"][element.index]
-                and element.configured
-            ):
-                entities.append(class_(element, elk, elk_data))
+    auto_configure = elk_data["auto_configure"]
+
+    if not auto_configure and not elk_data["config"][element_type]["enabled"]:
+        return
+
+    elk = elk_data["elk"]
+    _LOGGER.debug("Creating elk entities for %s", elk)
+    included_list = elk_data["config"][element_type]["included"]
+
+    for element in elk_elements:
+        if auto_configure:
+            if not element.configured:
+                continue
+        # Only check the included list if auto configure is not
+        elif not included_list[element.index]:
+            continue
+
+        entities.append(class_(element, elk, elk_data))
     return entities
 
 
