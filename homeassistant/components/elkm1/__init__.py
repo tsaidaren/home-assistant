@@ -1,7 +1,9 @@
 """Support the ElkM1 Gold and ElkM1 EZ8 alarm/integration panels."""
+import asyncio
 import logging
 import re
 
+import async_timeout
 import elkm1_lib as elkm1
 from elkm1_lib.const import Max
 import voluptuous as vol
@@ -20,6 +22,8 @@ from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.typing import ConfigType
 
 DOMAIN = "elkm1"
+
+SYNC_TIMEOUT = 55
 
 CONF_AREA = "area"
 CONF_COUNTER = "counter"
@@ -177,6 +181,20 @@ async def async_setup(hass: HomeAssistant, hass_config: ConfigType) -> bool:
                 "url": conf[CONF_HOST],
                 "userid": conf[CONF_USERNAME],
                 "password": conf[CONF_PASSWORD],
+                "element_list": [
+                    "zones",
+                    "lights",
+                    "areas",
+                    "tasks",
+                    "keypads",
+                    "outputs",
+                    "thermostats",
+                    "counters",
+                    "settings",
+                    "panel",
+                    # Skip "user" as it takes a long time to setup
+                    # and we do not use it
+                ],
             }
         )
         elk.connect()
@@ -191,6 +209,8 @@ async def async_setup(hass: HomeAssistant, hass_config: ConfigType) -> bool:
 
     _create_elk_services(hass, devices)
 
+    await asyncio.gather(*[_wait_for_device_to_sync(elk) for elk in devices.values()])
+
     hass.data[DOMAIN] = elk_datas
     for component in SUPPORTED_DOMAINS:
         hass.async_create_task(
@@ -198,6 +218,17 @@ async def async_setup(hass: HomeAssistant, hass_config: ConfigType) -> bool:
         )
 
     return True
+
+
+async def _wait_for_device_to_sync(elk):
+    try:
+        with async_timeout.timeout(SYNC_TIMEOUT):
+            await elk.sync_complete()
+            return True
+    except asyncio.TimeoutError:
+        elk.pause()
+
+    return False
 
 
 def _create_elk_services(hass, elks):
@@ -231,7 +262,10 @@ def create_elk_entities(elk_data, elk_elements, element_type, class_, entities):
         elk = elk_data["elk"]
         _LOGGER.debug("Creating elk entities for %s", elk)
         for element in elk_elements:
-            if elk_data["config"][element_type]["included"][element.index]:
+            if (
+                elk_data["config"][element_type]["included"][element.index]
+                and element.configured
+            ):
                 entities.append(class_(element, elk, elk_data))
     return entities
 

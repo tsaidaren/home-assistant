@@ -1,4 +1,6 @@
 """Each ElkM1 area will be created as a separate alarm_control_panel."""
+import logging
+
 from elkm1_lib.const import AlarmState, ArmedStatus, ArmLevel, ArmUpState
 import voluptuous as vol
 
@@ -61,6 +63,8 @@ DISPLAY_MESSAGE_SERVICE_SCHEMA = vol.Schema(
     }
 )
 
+_LOGGER = logging.getLogger(__name__)
+
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the ElkM1 alarm platform."""
@@ -69,9 +73,18 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
     elk_datas = hass.data[DOMAIN]
     entities = []
+
     for elk_data in elk_datas.values():
         elk = elk_data["elk"]
-        entities = create_elk_entities(elk_data, elk.areas, "area", ElkArea, entities)
+        areas_with_keypad = set()
+        for keypad in elk.keypads:
+            areas_with_keypad.add(keypad.area)
+
+        areas = []
+        for area in elk.areas:
+            if area.index in areas_with_keypad:
+                areas.append(area)
+        entities = create_elk_entities(elk_data, areas, "area", ElkArea, entities)
     async_add_entities(entities, True)
 
     def _dispatch(signal, entity_ids, *args):
