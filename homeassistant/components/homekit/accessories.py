@@ -6,7 +6,15 @@ import logging
 
 from pyhap.accessory import Accessory, Bridge
 from pyhap.accessory_driver import AccessoryDriver
-from pyhap.const import CATEGORY_OTHER
+from pyhap.characteristic import Characteristic
+from pyhap.const import (
+    CATEGORY_OTHER,
+    HAP_REPR_AID,
+    HAP_REPR_CHARS,
+    HAP_REPR_IID,
+    HAP_REPR_VALUE,
+)
+from pyhap.service import Service
 
 from homeassistant.const import (
     ATTR_BATTERY_CHARGING,
@@ -238,8 +246,29 @@ class HomeBridge(Bridge):
         pass
 
 
+class HomeService(Service):
+    """Adapter class for Service."""
+
+    def __init__(self, setter_callback, **kwargs):
+        """Initialize a Service object."""
+        super().__init__(**kwargs)
+        self.setter_callback = None
+
+
+class HomeCharacteristic(Characteristic):
+    """Adapter class for Characteristic."""
+
+    def __init__(self, setter_callback, **kwargs):
+        """Initialize a Characteristic object."""
+        super().__init__(**kwargs)
+        self.service = None
+
+
 class HomeDriver(AccessoryDriver):
     """Adapter class for AccessoryDriver."""
+
+    SERVICE_CALLBACK = 0
+    SERVICE_CALLBACK_DATA = 1
 
     def __init__(self, hass, **kwargs):
         """Initialize a AccessoryDriver object."""
@@ -257,3 +286,33 @@ class HomeDriver(AccessoryDriver):
         """Override super function to show setup message if unpaired."""
         super().unpair(client_uuid)
         show_setup_message(self.hass, self.state.pincode)
+
+    def set_characteristics(self, chars_query, client_addr):
+        """Override super function in order add callback to services."""
+
+        service_callbacks = {}
+        for char_query in chars_query[HAP_REPR_CHARS]:
+            aid, iid = char_query[HAP_REPR_AID], char_query[HAP_REPR_IID]
+            char = self.accessory.get_characteristic(aid, iid)
+            if HAP_REPR_VALUE in char_query and hasattr(char, "service"):
+                # For some services we want to send all the char value
+                # changes at once.  This resolves an issue where we send
+                # ON and then BRIGHTNESS and the light would go to 100%
+                # and then dim to the brightness because each callback
+                # would only send one char at a time.
+                service = char.service
+
+                if service and service.setter_callback:
+                    service_callbacks.setdefault(
+                        service.display_name, [service.setter_callback, {}]
+                    )
+                    service_callbacks[service.display_name][self.SERVICE_CALLBACK_DATA][
+                        char.display_name
+                    ] = char_query[HAP_REPR_VALUE]
+
+        for service_name in service_callbacks:
+            service_callbacks[service_name][self.SERVICE_CALLBACK](
+                service_callbacks[service_name][self.SERVICE_CALLBACK_DATA]
+            )
+
+        return super().set_characteristics(chars_query, client_addr)
