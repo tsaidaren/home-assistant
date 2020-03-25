@@ -166,20 +166,19 @@ CONFIG_SCHEMA = vol.Schema(
 )
 
 
-async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+async def async_setup(hass: HomeAssistant, hass_config: ConfigType) -> bool:
     """Set up the Elk M1 platform."""
     hass.data.setdefault(DOMAIN, {})
-    conf = config.get(DOMAIN)
     _create_elk_services(hass)
 
-    if not conf:
-        return True
-
-    hass.async_create_task(
-        hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": SOURCE_IMPORT}, data=conf,
+    for index, conf in enumerate(hass_config[DOMAIN]):
+        _LOGGER.debug("Importing elkm1 #%d - %s", index, conf["host"])
+        hass.async_create_task(
+            hass.config_entries.flow.async_init(
+                DOMAIN, context={"source": SOURCE_IMPORT}, data=conf,
+            )
         )
-    )
+
     return True
 
 
@@ -193,13 +192,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     config = {"temperature_unit": conf[CONF_TEMPERATURE_UNIT]}
 
     if not conf[CONF_AUTO_CONFIGURE]:
-        # The previous way to configure the system was to
-        # manually write out a list of includes and excludes.
-        #
-        # With elkm1-lib==0.7.16 and later this is no longer needed
-        # and non-autoconfigure support is left only for yaml
-        # imports.
-        #
+        # With elkm1-lib==0.7.16 and later auto configure is available
         config["panel"] = {"enabled": True, "included": [True]}
         for item, max_ in ELK_DOMAINS.items():
             config[item] = {

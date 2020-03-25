@@ -41,8 +41,8 @@ async def validate_input(data):
     Data has the keys from DATA_SCHEMA with values provided by the user.
     """
 
-    userid = data[CONF_USERNAME]
-    password = data[CONF_PASSWORD]
+    userid = data.get(CONF_USERNAME)
+    password = data.get(CONF_PASSWORD)
     prefix = data[CONF_PREFIX]
 
     if data.get(CONF_HOST):
