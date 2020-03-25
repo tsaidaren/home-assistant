@@ -37,7 +37,7 @@ DATA_SCHEMA = vol.Schema(
     }
 )
 
-VALIDATE_TIMEOUT = 12
+VALIDATE_TIMEOUT = 15
 
 
 async def validate_input(data):
@@ -66,9 +66,7 @@ async def validate_input(data):
             raise InvalidAuth
         raise CannotConnect
 
-    device_name = "ElkM1"
-    if data[CONF_PREFIX]:
-        device_name += f" {data[CONF_PREFIX]}"
+    device_name = data[CONF_PREFIX] if data[CONF_PREFIX] else "ElkM1"
     # Return info that you want to store in the config entry.
     return {"title": device_name, CONF_HOST: url, CONF_PREFIX: slugify(prefix)}
 
