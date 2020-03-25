@@ -323,14 +323,13 @@ def create_elk_entities(elk_data, elk_elements, element_type, class_, entities):
 
     elk = elk_data["elk"]
     _LOGGER.debug("Creating elk entities for %s", elk)
-    included_list = elk_data["config"][element_type]["included"]
 
     for element in elk_elements:
         if auto_configure:
             if not element.configured:
                 continue
         # Only check the included list if auto configure is not
-        elif not included_list[element.index]:
+        elif not elk_data["config"][element_type]["included"][element.index]:
             continue
 
         entities.append(class_(element, elk, elk_data))
