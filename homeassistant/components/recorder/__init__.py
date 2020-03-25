@@ -378,12 +378,17 @@ class Recorder(threading.Thread):
                     self.queue.task_done()
                     continue
 
+            _LOGGER.info("past filter: %s", event)
+
             try:
                 dbevent = Events.from_event(event)
                 self.event_session.add(dbevent)
                 self.event_session.flush()
             except (TypeError, ValueError):
                 _LOGGER.warning("Event is not JSON serializable: %s", event)
+
+            _LOGGER.info("past event add: %s", event)
+
 
             if dbevent and event.event_type == EVENT_STATE_CHANGED:
                 try:
@@ -396,10 +401,15 @@ class Recorder(threading.Thread):
                         event.data.get("new_state"),
                     )
 
+            _LOGGER.info("past state add: %s", event)
+
+
             # If they do not have a commit interval
             # than we commit right away
             if not self.commit_interval:
                 self._commit_event_session_or_retry()
+
+            _LOGGER.info("past commit: %s", event)
 
             self.queue.task_done()
 
