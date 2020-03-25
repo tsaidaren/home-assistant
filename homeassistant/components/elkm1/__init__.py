@@ -270,7 +270,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     # disconnect cleanly
     elk = hass.data[DOMAIN][entry.entry_id]["elk"]
     elk.pause()
-    elk.loop.stop()
 
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)
@@ -286,7 +285,6 @@ async def async_wait_for_elk_to_sync(elk):
             return True
     except asyncio.TimeoutError:
         elk.pause()
-        elk.loop.stop()
 
     return False
 
