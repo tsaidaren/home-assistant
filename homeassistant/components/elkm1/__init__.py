@@ -159,8 +159,6 @@ async def async_setup(hass: HomeAssistant, hass_config: ConfigType) -> bool:
     hass.data.setdefault(DOMAIN, {})
     _create_elk_services(hass)
 
-    _LOGGER.debug("CONFIG:%s", hass_config[DOMAIN])
-
     for index, conf in enumerate(hass_config[DOMAIN]):
         _LOGGER.debug("Importing elkm1 #%d - %s", index, conf[CONF_HOST])
         current_config_entry = _async_find_matching_config_entry(
