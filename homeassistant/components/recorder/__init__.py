@@ -425,12 +425,9 @@ class Recorder(threading.Thread):
                     )
                 tries += 1
 
-            except exc.SQLAlchemyError as err:
-                _LOGGER.exception("Error saving events: %s", err)
-                return
             except Exception as err:  # pylint: disable=broad-except
                 # Must catch the exception to prevent the loop from collapsing
-                _LOGGER.exception("Unhandled error saving events: %s", err)
+                _LOGGER.exception("Error saving events: %s", err)
                 return
 
         _LOGGER.error(
@@ -441,7 +438,7 @@ class Recorder(threading.Thread):
             self.event_session.close()
         except Exception as err:  # pylint: disable=broad-except
             # Must catch the exception to prevent the loop from collapsing
-            _LOGGER.exception("Unhandled error while closing event session: %s", err)
+            _LOGGER.exception("Error while closing event session: %s", err)
 
         self.event_session = self.get_session()
 
