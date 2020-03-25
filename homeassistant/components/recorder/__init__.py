@@ -342,7 +342,6 @@ class Recorder(threading.Thread):
         # has changed.  This reduces the disk io.
         while True:
             event = self.queue.get()
-            _LOGGER.info("LOOP ONCE: %s", event)
             if event is None:
                 self._close_run()
                 self._close_connection()
@@ -353,16 +352,10 @@ class Recorder(threading.Thread):
                 self.queue.task_done()
                 continue
             if event.event_type == EVENT_TIME_CHANGED:
-                _LOGGER.info("EVENT TIME CHANGED")
                 self.queue.task_done()
                 if self.commit_interval:
                     self._timechanges_seen += 1
                     if self._timechanges_seen >= self.commit_interval:
-                        _LOGGER.info(
-                            "DO COMMIT: commit_interval: %d timechanges_seen: %d",
-                            self.commit_interval,
-                            self._timechanges_seen,
-                        )
                         self._timechanges_seen = 0
                         self._commit_event_session_or_retry()
                 continue
@@ -370,15 +363,11 @@ class Recorder(threading.Thread):
                 self.queue.task_done()
                 continue
 
-            _LOGGER.info("Into add: %s", event)
-
             entity_id = event.data.get(ATTR_ENTITY_ID)
             if entity_id is not None:
                 if not self.entity_filter(entity_id):
                     self.queue.task_done()
                     continue
-
-            _LOGGER.info("past filter: %s", event)
 
             try:
                 dbevent = Events.from_event(event)
@@ -389,8 +378,6 @@ class Recorder(threading.Thread):
             except Exception as err:  # pylint: disable=broad-except
                 # Must catch the exception to prevent the loop from collapsing
                 _LOGGER.exception("Error adding event: %s", err)
-            _LOGGER.info("past event add: %s", event)
-
 
             if dbevent and event.event_type == EVENT_STATE_CHANGED:
                 try:
@@ -405,15 +392,11 @@ class Recorder(threading.Thread):
                 except Exception as err:  # pylint: disable=broad-except
                     # Must catch the exception to prevent the loop from collapsing
                     _LOGGER.exception("Error adding state change: %s", err)
-            _LOGGER.info("past state add: %s", event)
-
 
             # If they do not have a commit interval
             # than we commit right away
             if not self.commit_interval:
                 self._commit_event_session_or_retry()
-
-            _LOGGER.info("past commit: %s", event)
 
             self.queue.task_done()
 
