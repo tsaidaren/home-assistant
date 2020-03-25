@@ -184,8 +184,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up Elk-M1 Control from a config entry."""
-    # TODO Store an API object for your platforms to access
-    # hass.data[DOMAIN][entry.entry_id] = MyApi(...)
+
     conf = entry.data
 
     _LOGGER.debug("Setting up elkm1 %s", conf["host"])
@@ -193,6 +192,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     config = {"temperature_unit": conf[CONF_TEMPERATURE_UNIT]}
 
     if not conf[CONF_AUTO_CONFIGURE]:
+        # The previous way to configure the system was to
+        # manually write out a list of includes and excludes.
+        #
+        # With elkm1-lib==0.7.16 and later this is no longer needed
+        # and non-autoconfigure support is left only for yaml
+        # imports.
+        #
         config["panel"] = {"enabled": True, "included": [True]}
         for item, max_ in ELK_DOMAINS.items():
             config[item] = {
@@ -391,3 +397,17 @@ class ElkEntity(Entity):
         """Register callback for ElkM1 changes and update entity state."""
         self._element.add_callback(self._element_callback)
         self._element_callback(self._element, {})
+
+    @property
+    def device_info(self):
+        """Device info for the underlying ElkM1 system."""
+        device_name = "ElkM1"
+        if self._prefix:
+            device_name += f" {self._prefix}"
+        return {
+            "name": device_name,
+            "identifiers": {(DOMAIN, f"{self._prefix}_system")},
+            "sw_version": self._elk.panel.elkm1_version,
+            "manufacturer": "ELK Products, Inc.",
+            "model": "M1",
+        }
