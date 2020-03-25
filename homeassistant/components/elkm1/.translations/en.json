@@ -10,7 +10,7 @@
           "address": "The IP address or domain or serial port if connecting via serial.",
           "username": "Username (secure only).",
           "password": "Password (secure only).",
-          "prefix": "A unique prefix (leave empty if you only have one ElkM1).",
+          "prefix": "A unique prefix (leave blank if you only have one ElkM1).",
           "temperature_unit": "The temperature unit ElkM1 uses."
         }
       }
