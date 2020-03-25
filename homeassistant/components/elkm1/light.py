@@ -42,7 +42,12 @@ class ElkLight(ElkEntity, Light):
         return self._brightness != 0
 
     def _element_changed(self, element, changeset):
-        _LOGGER.debug("Light changes -- element:%s changeset:%s")
+        _LOGGER.debug(
+            "Light changes -- status:%s element:%s changeset:%s",
+            self._element.status,
+            element,
+            changeset,
+        )
         status = self._element.status if self._element.status != 1 else 100
         self._brightness = round(status * 2.55)
 
