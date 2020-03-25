@@ -412,7 +412,8 @@ class Recorder(threading.Thread):
             ) as err:
                 if err.connection_invalidated:
                     _LOGGER.error(
-                        "Connection invalidated: %s. " "(retrying in %s seconds)",
+                        "Database connection invalidated: %s. "
+                        "(retrying in %s seconds)",
                         err,
                         self.db_retry_wait,
                     )
