@@ -386,7 +386,9 @@ class Recorder(threading.Thread):
                 self.event_session.flush()
             except (TypeError, ValueError):
                 _LOGGER.warning("Event is not JSON serializable: %s", event)
-
+            except Exception as err:  # pylint: disable=broad-except
+                # Must catch the exception to prevent the loop from collapsing
+                _LOGGER.exception("Error adding event: %s", err)
             _LOGGER.info("past event add: %s", event)
 
 
@@ -400,7 +402,9 @@ class Recorder(threading.Thread):
                         "State is not JSON serializable: %s",
                         event.data.get("new_state"),
                     )
-
+                except Exception as err:  # pylint: disable=broad-except
+                    # Must catch the exception to prevent the loop from collapsing
+                    _LOGGER.exception("Error adding state change: %s", err)
             _LOGGER.info("past state add: %s", event)
 
 
