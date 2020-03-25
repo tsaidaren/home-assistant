@@ -37,7 +37,7 @@ DATA_SCHEMA = vol.Schema(
     }
 )
 
-VALIDATE_TIMEOUT = 15
+VALIDATE_TIMEOUT = 35
 
 
 async def validate_input(data):
@@ -61,11 +61,21 @@ async def validate_input(data):
     )
     elk.connect()
 
+    timed_out = False
     if not await async_wait_for_elk_to_sync(elk, VALIDATE_TIMEOUT):
-        elk.disconnect()
-        raise InvalidAuth if elk.invalid_auth else CannotConnect
+        _LOGGER.error(
+            "Timed out after %d seconds while trying to sync with elkm1",
+            VALIDATE_TIMEOUT,
+        )
+        timed_out = True
 
     elk.disconnect()
+
+    if timed_out:
+        raise CannotConnect
+    if elk.invalid_auth:
+        raise InvalidAuth
+
     device_name = data[CONF_PREFIX] if data[CONF_PREFIX] else "ElkM1"
     # Return info that you want to store in the config entry.
     return {"title": device_name, CONF_HOST: url, CONF_PREFIX: slugify(prefix)}

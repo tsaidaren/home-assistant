@@ -225,10 +225,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     elk.connect()
 
     if not await async_wait_for_elk_to_sync(elk, SYNC_TIMEOUT):
+        _LOGGER.error(
+            "Timed out after %d seconds while trying to sync with ElkM1", SYNC_TIMEOUT,
+        )
         elk.disconnect()
-        if elk.invalid_auth:
-            return False
         raise ConfigEntryNotReady
+
+    if elk.invalid_auth:
+        _LOGGER.error("Authentication failed for ElkM1")
+        return False
 
     hass.data[DOMAIN][entry.entry_id] = {
         "elk": elk,
