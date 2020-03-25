@@ -251,9 +251,9 @@ def _included(ranges, set_to, values):
 
 def _find_elk_by_prefix(hass, prefix):
     """Search all config entries for a given prefix."""
-    for entry in hass.data[DOMAIN]:
-        if hass.data[DOMAIN][entry]["prefix"] == prefix:
-            return hass.data[DOMAIN][entry]["elk"]
+    for entry_id in hass.data[DOMAIN]:
+        if hass.data[DOMAIN][entry_id]["prefix"] == prefix:
+            return hass.data[DOMAIN][entry_id]["elk"]
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
@@ -266,6 +266,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
             ]
         )
     )
+
+    # disconnect cleanly
+    hass.data[DOMAIN][entry.entry_id]["elk"].pause()
+
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)
 
