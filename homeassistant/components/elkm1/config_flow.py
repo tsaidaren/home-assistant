@@ -46,29 +46,16 @@ async def validate_input(data):
 
     userid = data.get(CONF_USERNAME)
     password = data.get(CONF_PASSWORD)
-    host = data.get(CONF_HOST)
-    prefix = data[CONF_PREFIX]
-    requires_password = False
 
-    if host:
-        # from yaml
-        requires_password = host.startswith("elks://")
-    else:
-        protocol = PROTOCOL_MAP[data[CONF_PROTOCOL]]
-        address = data[CONF_ADDRESS]
-        host = f"{protocol}{address}"
-        requires_password = protocol == "secure"
+    prefix = data[CONF_PREFIX]
+    url = _make_url_from_data(data)
+    requires_password = url.startswith("elks://")
 
     if requires_password and (not userid or not password):
         raise InvalidAuth
 
     elk = elkm1.Elk(
-        {
-            "url": host,
-            "userid": userid,
-            "password": password,
-            "element_list": ["panel"],
-        }
+        {"url": url, "userid": userid, "password": password, "element_list": ["panel"]}
     )
     elk.connect()
 
@@ -81,7 +68,17 @@ async def validate_input(data):
     if data[CONF_PREFIX]:
         device_name += f" {data[CONF_PREFIX]}"
     # Return info that you want to store in the config entry.
-    return {"title": device_name, CONF_HOST: host, CONF_PREFIX: slugify(prefix)}
+    return {"title": device_name, CONF_HOST: url, CONF_PREFIX: slugify(prefix)}
+
+
+def _make_url_from_data(data):
+    host = data.get(CONF_HOST)
+    if host:
+        return host
+
+    protocol = PROTOCOL_MAP[data[CONF_PROTOCOL]]
+    address = data[CONF_ADDRESS]
+    return f"{protocol}{address}"
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -98,6 +95,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle the initial step."""
         errors = {}
         if user_input is not None:
+            if self._host_already_configured(_make_url_from_data(user_input)):
+                return self.async_abort(reason="address_already_configured")
+
             try:
                 info = await validate_input(user_input)
 
@@ -112,8 +112,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if "base" not in errors:
                 await self.async_set_unique_id(user_input[CONF_PREFIX])
                 self._abort_if_unique_id_configured()
-                if self._host_already_configured(user_input):
-                    return self.async_abort(reason="address_already_configured")
+
                 if self.importing:
                     return self.async_create_entry(title=info["title"], data=user_input)
 
@@ -138,13 +137,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self.importing = True
         return await self.async_step_user(user_input)
 
-    def _host_already_configured(self, user_input):
+    def _url_already_configured(self, url):
         """See if we already have a elkm1 matching user input configured."""
         existing_hosts = {
             urlparse(entry.data[CONF_HOST]).hostname
             for entry in self._async_current_entries()
         }
-        return urlparse(user_input[CONF_HOST]).hostname in existing_hosts
+        return urlparse(url).hostname in existing_hosts
 
 
 class CannotConnect(exceptions.HomeAssistantError):
