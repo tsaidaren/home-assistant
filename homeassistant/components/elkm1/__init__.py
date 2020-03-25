@@ -403,6 +403,13 @@ class ElkEntity(Entity):
         self._element.add_callback(self._element_callback)
         self._element_callback(self._element, {})
 
+    @property
+    def device_info(self):
+        """Device info connecting via the ElkM1 system."""
+        return {
+            "via_device": (DOMAIN, f"{self._prefix}_system"),
+        }
+
 
 class ElkAttachedEntity(ElkEntity):
     """An elk entity that is attached to the elk system."""
