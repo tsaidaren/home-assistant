@@ -353,13 +353,11 @@ class Recorder(threading.Thread):
                 self.queue.task_done()
                 continue
             if event.event_type == EVENT_TIME_CHANGED:
-                _LOGGER.info("Seen time change")
                 self.queue.task_done()
                 if self.commit_interval:
                     self._timechanges_seen += 1
                     if self.commit_interval >= self._timechanges_seen:
                         self._timechanges_seen = 0
-                        _LOGGER.info("attempt commit")
                         self._commit_event_session_or_retry()
                 continue
             if event.event_type in self.exclude_t:
@@ -406,31 +404,32 @@ class Recorder(threading.Thread):
             try:
                 self._commit_event_session()
                 return
-            except exc.InternalError as err:
+            except (
+                exc.InternalError,
+                exc.DisconnectionError,
+                exc.OperationalError,
+                exc.TimeoutError,
+            ) as err:
                 if err.connection_invalidated:
                     _LOGGER.error(
                         "Connection invalidated: %s. " "(retrying in %s seconds)",
                         err,
                         self.db_retry_wait,
                     )
-                    tries += 1
                 else:
-                    _LOGGER.exception("Error saving events")
-                    return
-            except exc.OperationalError as err:
-                _LOGGER.error(
-                    "Error in database connectivity: %s. " "(retrying in %s seconds)",
-                    err,
-                    self.db_retry_wait,
-                )
+                    _LOGGER.error(
+                        "Error in database connectivity: %s. "
+                        "(retrying in %s seconds)",
+                        err,
+                        self.db_retry_wait,
+                    )
                 tries += 1
 
             except exc.SQLAlchemyError as err:
                 _LOGGER.exception("Error saving events: %s", err)
                 return
             except Exception as err:  # pylint: disable=broad-except
-                # Must catch the exception to prevent the loop
-                # from collapsing
+                # Must catch the exception to prevent the loop from collapsing
                 _LOGGER.exception("Unhandled error saving events: %s", err)
                 return
 
@@ -440,11 +439,8 @@ class Recorder(threading.Thread):
         )
         try:
             self.event_session.close()
-        except exc.SQLAlchemyError:
-            _LOGGER.exception("Failed to close event session.")
         except Exception as err:  # pylint: disable=broad-except
-            # Must catch the exception to prevent the loop
-            # from collapsing
+            # Must catch the exception to prevent the loop from collapsing
             _LOGGER.exception("Unhandled error while closing event session: %s", err)
 
         self.event_session = self.get_session()
