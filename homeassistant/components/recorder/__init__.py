@@ -404,7 +404,17 @@ class Recorder(threading.Thread):
             try:
                 self._commit_event_session()
                 return
-
+            except exc.InternalError as err:
+                if err.connection_invalidated:
+                    _LOGGER.error(
+                        "Connection invalidated: %s. " "(retrying in %s seconds)",
+                        err,
+                        self.db_retry_wait,
+                    )
+                    tries += 1
+                else:
+                    _LOGGER.exception("Error saving events")
+                    return
             except exc.OperationalError as err:
                 _LOGGER.error(
                     "Error in database connectivity: %s. " "(retrying in %s seconds)",
