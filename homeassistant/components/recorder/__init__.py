@@ -342,7 +342,7 @@ class Recorder(threading.Thread):
         # has changed.  This reduces the disk io.
         while True:
             event = self.queue.get()
-
+            _LOGGER.info("LOOP ONCE: %s", event)
             if event is None:
                 self._close_run()
                 self._close_connection()
@@ -442,7 +442,11 @@ class Recorder(threading.Thread):
             # Must catch the exception to prevent the loop from collapsing
             _LOGGER.exception("Error while closing event session: %s", err)
 
-        self.event_session = self.get_session()
+        try:
+            self.event_session = self.get_session()
+        except Exception as err:  # pylint: disable=broad-except
+            # Must catch the exception to prevent the loop from collapsing
+            _LOGGER.exception("Error while creating new event session: %s", err)
 
     def _commit_event_session(self):
         try:
