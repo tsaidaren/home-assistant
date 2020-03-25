@@ -31,6 +31,7 @@ def session_scope(*, hass=None, session=None):
     except Exception as err:
         _LOGGER.error("Error executing query: %s", err)
         if need_rollback:
+            _LOGGER.error("The session will be rolled back to recover")
             session.rollback()
         raise
     finally:
