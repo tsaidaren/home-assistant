@@ -221,7 +221,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     )
     elk.connect()
 
-    if not await async_wait_for_elk_to_sync(elk):
+    if not await async_wait_for_elk_to_sync(elk, SYNC_TIMEOUT):
         raise ConfigEntryNotReady
 
     hass.data[DOMAIN][entry.entry_id] = {
@@ -274,10 +274,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     return unload_ok
 
 
-async def async_wait_for_elk_to_sync(elk):
+async def async_wait_for_elk_to_sync(elk, timeout):
     """Wait until the elk system has finished sync."""
     try:
-        with async_timeout.timeout(SYNC_TIMEOUT):
+        with async_timeout.timeout(timeout):
             await elk.sync_complete()
             return True
     except asyncio.TimeoutError:

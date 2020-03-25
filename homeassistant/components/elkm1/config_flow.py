@@ -37,6 +37,8 @@ DATA_SCHEMA = vol.Schema(
     }
 )
 
+VALIDATE_TIMEOUT = 12
+
 
 async def validate_input(data):
     """Validate the user input allows us to connect.
@@ -59,7 +61,7 @@ async def validate_input(data):
     )
     elk.connect()
 
-    if not await async_wait_for_elk_to_sync(elk):
+    if not await async_wait_for_elk_to_sync(elk, VALIDATE_TIMEOUT):
         if requires_password:
             raise InvalidAuth
         raise CannotConnect
