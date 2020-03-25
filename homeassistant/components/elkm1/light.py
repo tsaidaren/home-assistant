@@ -1,8 +1,12 @@
 """Support for control of ElkM1 lighting (X10, UPB, etc)."""
+import logging
+
 from homeassistant.components.light import ATTR_BRIGHTNESS, SUPPORT_BRIGHTNESS, Light
 
 from . import ElkEntity, create_elk_entities
 from .const import DOMAIN
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
@@ -38,6 +42,7 @@ class ElkLight(ElkEntity, Light):
         return self._brightness != 0
 
     def _element_changed(self, element, changeset):
+        _LOGGER.debug("Light changes -- element:%s changeset:%s")
         status = self._element.status if self._element.status != 1 else 100
         self._brightness = round(status * 2.55)
 
