@@ -21,7 +21,7 @@
       "unknown": "Unexpected error"
     },
     "abort": {
-      "prefix_already_configured": "An ElkM1 with this prefix is already configured",
+      "already_configured": "An ElkM1 with this prefix is already configured",
       "address_already_configured": "An ElkM1 with this address is already configured"
     }
   }

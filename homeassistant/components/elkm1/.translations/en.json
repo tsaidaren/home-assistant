@@ -7,11 +7,11 @@
         "description": "The address string must be in the form 'address[:port]' for 'secure' and 'non-secure'.  Example: '192.168.1.1'. The port is optional and defaults to 2101 for 'non-secure' and 2601 for 'secure'. For the serial protocol, the address must be in the form 'tty[:baud]'. Example: '/dev/ttyS1'. The baud is optional and defaults to 115200.",
         "data": {
           "protocol": "Protocol",
-          "address": "The IP address or domain or for serial the serial port that the Elk is connected to.",
-          "username": "Username to login to Elk. (secure connection only).",
-          "password": "Password to login to Elk. (secure connection only).",
-          "prefix": "A unique prefix to identify this system. If you only have one Elk system, prefix may be omitted.",
-          "temperature_unit": "The temperature unit that the Elk panel uses."
+          "address": "The IP address or domain or serial port.",
+          "username": "Username (secure connection only).",
+          "password": "Password (secure connection only).",
+          "prefix": "A unique prefix. (multiple systems only).",
+          "temperature_unit": "The temperature unit ElkM1 uses."
         }
       }
     },
@@ -21,7 +21,8 @@
       "unknown": "Unexpected error"
     },
     "abort": {
-      "already_configured": "An ElkM1 with this prefix is already configured"
+      "already_configured": "An ElkM1 with this prefix is already configured",
+      "address_already_configured": "An ElkM1 with this address is already configured"
     }
   }
 }
