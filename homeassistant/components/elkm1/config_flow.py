@@ -14,6 +14,7 @@ from homeassistant.const import (
     CONF_TEMPERATURE_UNIT,
     CONF_USERNAME,
 )
+from homeassistant.util import slugify
 
 from . import async_wait_for_elk_to_sync
 from .const import CONF_AUTO_CONFIGURE, CONF_PREFIX
@@ -31,7 +32,7 @@ DATA_SCHEMA = vol.Schema(
         vol.Required(CONF_ADDRESS): str,
         vol.Optional(CONF_USERNAME, default=""): str,
         vol.Optional(CONF_PASSWORD, default=""): str,
-        vol.Optional(CONF_PREFIX, default=""): str,
+        vol.Optional(CONF_PREFIX, default="Main House"): str,
         vol.Optional(CONF_TEMPERATURE_UNIT, default="F"): vol.In(["F", "C"]),
     }
 )
@@ -80,7 +81,7 @@ async def validate_input(data):
     if data[CONF_PREFIX]:
         device_name += f" {data[CONF_PREFIX]}"
     # Return info that you want to store in the config entry.
-    return {"title": device_name, CONF_HOST: host, CONF_PREFIX: prefix.lower()}
+    return {"title": device_name, CONF_HOST: host, CONF_PREFIX: slugify(prefix)}
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):

@@ -7,9 +7,9 @@
         "description": "The address string must be in the form 'address[:port]' for 'secure' and 'non-secure'.  Example: '192.168.1.1'. The port is optional and defaults to 2101 for 'non-secure' and 2601 for 'secure'. For the serial protocol, the address must be in the form 'tty[:baud]'. Example: '/dev/ttyS1'. The baud is optional and defaults to 115200.",
         "data": {
           "protocol": "Protocol",
-          "address": "The IP address or domain or serial port.",
-          "username": "Username (secure connection only).",
-          "password": "Password (secure connection only).",
+          "address": "The IP address or domain or serial port if connecting via serial.",
+          "username": "Username (secure connections only).",
+          "password": "Password (secure connections only).",
           "prefix": "A unique prefix. (multiple systems only).",
           "temperature_unit": "The temperature unit ElkM1 uses."
         }
