@@ -62,10 +62,12 @@ async def validate_input(data):
     elk.connect()
 
     if not await async_wait_for_elk_to_sync(elk, VALIDATE_TIMEOUT):
+        elk.disconnect()
         if requires_password:
             raise InvalidAuth
         raise CannotConnect
 
+    elk.disconnect()
     device_name = data[CONF_PREFIX] if data[CONF_PREFIX] else "ElkM1"
     # Return info that you want to store in the config entry.
     return {"title": device_name, CONF_HOST: url, CONF_PREFIX: slugify(prefix)}
