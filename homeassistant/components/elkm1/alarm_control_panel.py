@@ -32,7 +32,7 @@ from . import (
     SERVICE_ALARM_ARM_NIGHT_INSTANT,
     SERVICE_ALARM_ARM_VACATION,
     SERVICE_ALARM_DISPLAY_MESSAGE,
-    ElkEntity,
+    ElkAttachedEntity,
     create_elk_entities,
 )
 from .const import DOMAIN
@@ -98,7 +98,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     )
 
 
-class ElkArea(ElkEntity, AlarmControlPanel):
+class ElkArea(ElkAttachedEntity, AlarmControlPanel):
     """Representation of an Area / Partition within the ElkM1 alarm panel."""
 
     def __init__(self, element, elk, elk_data):

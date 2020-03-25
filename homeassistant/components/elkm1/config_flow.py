@@ -43,17 +43,19 @@ async def validate_input(data):
 
     userid = data.get(CONF_USERNAME)
     password = data.get(CONF_PASSWORD)
+    host = data.get(CONF_HOST)
     prefix = data[CONF_PREFIX]
+    requires_password = False
 
-    if data.get(CONF_HOST):
+    if host:
         # from yaml
-        host = data[CONF_HOST]
+        requires_password = host.startswith("elks://")
     else:
         protocol = PROTOCOL_MAP[data[CONF_PROTOCOL]]
         address = data[CONF_ADDRESS]
         host = f"{protocol}{address}"
+        requires_password = protocol == "secure"
 
-    requires_password = protocol == "secure"
     if requires_password and (not userid or not password):
         raise InvalidAuth
 

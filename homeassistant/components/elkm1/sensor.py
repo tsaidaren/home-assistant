@@ -7,7 +7,7 @@ from elkm1_lib.const import (
 )
 from elkm1_lib.util import pretty_const, username
 
-from . import ElkEntity, create_elk_entities
+from . import ElkAttachedEntity, create_elk_entities
 from .const import DOMAIN
 
 
@@ -29,7 +29,7 @@ def temperature_to_state(temperature, undefined_temperature):
     return temperature if temperature > undefined_temperature else None
 
 
-class ElkSensor(ElkEntity):
+class ElkSensor(ElkAttachedEntity):
     """Base representation of Elk-M1 sensor."""
 
     def __init__(self, element, elk, elk_data):

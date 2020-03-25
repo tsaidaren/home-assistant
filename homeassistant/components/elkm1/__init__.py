@@ -93,17 +93,6 @@ def _elk_range_validator(rng):
     return (start, end)
 
 
-def _has_all_unique_prefixes(value):
-    """Validate that each m1 configured has a unique prefix.
-
-    Uniqueness is determined case-independently.
-    """
-    prefixes = [device[CONF_PREFIX] for device in value]
-    schema = vol.Schema(vol.Unique())
-    schema(prefixes)
-    return value
-
-
 ELK_DOMAINS = {
     CONF_AREA: Max.AREAS.value,
     CONF_COUNTER: Max.COUNTERS.value,
@@ -161,8 +150,7 @@ DEVICE_SCHEMA = vol.Schema(
 )
 
 CONFIG_SCHEMA = vol.Schema(
-    {DOMAIN: vol.All(cv.ensure_list, [DEVICE_SCHEMA], _has_all_unique_prefixes)},
-    extra=vol.ALLOW_EXTRA,
+    {DOMAIN: vol.All(cv.ensure_list, [DEVICE_SCHEMA])}, extra=vol.ALLOW_EXTRA,
 )
 
 
@@ -171,8 +159,20 @@ async def async_setup(hass: HomeAssistant, hass_config: ConfigType) -> bool:
     hass.data.setdefault(DOMAIN, {})
     _create_elk_services(hass)
 
+    _LOGGER.debug("CONFIG:%s", hass_config[DOMAIN])
+
     for index, conf in enumerate(hass_config[DOMAIN]):
-        _LOGGER.debug("Importing elkm1 #%d - %s", index, conf["host"])
+        _LOGGER.debug("Importing elkm1 #%d - %s", index, conf[CONF_HOST])
+        current_config_entry = _async_find_matching_config_entry(
+            hass, conf[CONF_PREFIX]
+        )
+        if current_config_entry:
+            # If they alter the yaml config we import the changes
+            # since there currently is no practicle way to do an options flow
+            # with the large amount of include/exclude that elkm1 has.
+            hass.config_entries.async_update_entry(current_config_entry, data=conf)
+            continue
+
         hass.async_create_task(
             hass.config_entries.flow.async_init(
                 DOMAIN, context={"source": SOURCE_IMPORT}, data=conf,
@@ -180,6 +180,13 @@ async def async_setup(hass: HomeAssistant, hass_config: ConfigType) -> bool:
         )
 
     return True
+
+
+@callback
+def _async_find_matching_config_entry(hass, prefix):
+    for entry in hass.config_entries.async_entries(DOMAIN):
+        if entry.unique_id == prefix:
+            return entry
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
@@ -392,6 +399,10 @@ class ElkEntity(Entity):
         """Register callback for ElkM1 changes and update entity state."""
         self._element.add_callback(self._element_callback)
         self._element_callback(self._element, {})
+
+
+class ElkAttachedEntity(ElkEntity):
+    """An elk entity that is attached to the elk system."""
 
     @property
     def device_info(self):

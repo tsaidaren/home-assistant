@@ -1,7 +1,7 @@
 """Support for control of ElkM1 outputs (relays)."""
 from homeassistant.components.switch import SwitchDevice
 
-from . import ElkEntity, create_elk_entities
+from . import ElkAttachedEntity, create_elk_entities
 from .const import DOMAIN
 
 
@@ -14,7 +14,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     async_add_entities(entities, True)
 
 
-class ElkOutput(ElkEntity, SwitchDevice):
+class ElkOutput(ElkAttachedEntity, SwitchDevice):
     """Elk output as switch."""
 
     @property

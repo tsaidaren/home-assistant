@@ -1,7 +1,7 @@
 """Support for control of ElkM1 tasks ("macros")."""
 from homeassistant.components.scene import Scene
 
-from . import ElkEntity, create_elk_entities
+from . import ElkAttachedEntity, create_elk_entities
 from .const import DOMAIN
 
 
@@ -14,7 +14,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     async_add_entities(entities, True)
 
 
-class ElkTask(ElkEntity, Scene):
+class ElkTask(ElkAttachedEntity, Scene):
     """Elk-M1 task as scene."""
 
     async def async_activate(self):
