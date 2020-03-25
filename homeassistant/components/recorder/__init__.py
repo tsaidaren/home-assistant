@@ -404,12 +404,7 @@ class Recorder(threading.Thread):
             try:
                 self._commit_event_session()
                 return
-            except (
-                exc.InternalError,
-                exc.DisconnectionError,
-                exc.OperationalError,
-                exc.TimeoutError,
-            ) as err:
+            except (exc.InternalError, exc.OperationalError) as err:
                 if err.connection_invalidated:
                     _LOGGER.error(
                         "Database connection invalidated: %s. "
