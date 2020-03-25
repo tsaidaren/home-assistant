@@ -32,7 +32,7 @@ DATA_SCHEMA = vol.Schema(
         vol.Required(CONF_ADDRESS): str,
         vol.Optional(CONF_USERNAME, default=""): str,
         vol.Optional(CONF_PASSWORD, default=""): str,
-        vol.Optional(CONF_PREFIX, default="Main House"): str,
+        vol.Optional(CONF_PREFIX, default=""): str,
         vol.Optional(CONF_TEMPERATURE_UNIT, default="F"): vol.In(["F", "C"]),
     }
 )
