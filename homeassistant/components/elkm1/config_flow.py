@@ -25,7 +25,9 @@ PROTOCOL_MAP = {"secure": "elks://", "non-secure": "elk://", "serial": "serial:/
 
 DATA_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_PROTOCOL): vol.In(["secure", "non-secure", "serial"]),
+        vol.Required(CONF_PROTOCOL, default="secure"): vol.In(
+            ["secure", "non-secure", "serial"]
+        ),
         vol.Required(CONF_ADDRESS): str,
         vol.Optional(CONF_USERNAME, default=""): str,
         vol.Optional(CONF_PASSWORD, default=""): str,
