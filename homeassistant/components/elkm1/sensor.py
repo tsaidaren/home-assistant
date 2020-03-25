@@ -10,6 +10,8 @@ from elkm1_lib.util import pretty_const, username
 from . import ElkAttachedEntity, create_elk_entities
 from .const import DOMAIN
 
+UNDEFINED_TEMPATURE = -40
+
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Create the Elk-M1 sensor platform."""
@@ -78,7 +80,7 @@ class ElkKeypad(ElkSensor):
         """Attributes of the sensor."""
         attrs = self.initial_attrs()
         attrs["area"] = self._element.area + 1
-        attrs["temperature"] = self._element.temperature
+        attrs["temperature"] = self._state
         attrs["last_user_time"] = self._element.last_user_time.isoformat()
         attrs["last_user"] = self._element.last_user + 1
         attrs["code"] = self._element.code
@@ -87,7 +89,9 @@ class ElkKeypad(ElkSensor):
         return attrs
 
     def _element_changed(self, element, changeset):
-        self._state = temperature_to_state(self._element.temperature, -40)
+        self._state = temperature_to_state(
+            self._element.temperature, UNDEFINED_TEMPATURE
+        )
 
 
 class ElkPanel(ElkSensor):
@@ -196,7 +200,9 @@ class ElkZone(ElkSensor):
 
     def _element_changed(self, element, changeset):
         if self._element.definition == ZoneType.TEMPERATURE.value:
-            self._state = temperature_to_state(self._element.temperature, -60)
+            self._state = temperature_to_state(
+                self._element.temperature, UNDEFINED_TEMPATURE
+            )
         elif self._element.definition == ZoneType.ANALOG_ZONE.value:
             self._state = self._element.voltage
         else:

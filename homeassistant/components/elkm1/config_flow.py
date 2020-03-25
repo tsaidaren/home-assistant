@@ -110,9 +110,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             if "base" not in errors:
                 await self.async_set_unique_id(user_input[CONF_PREFIX])
-                self._abort_if_unique_id_configured()
+                self._abort_if_unique_id_configured(reason="prefix_already_configured")
                 if self._host_already_configured(user_input):
-                    return self.async_abort(reason="already_configured")
+                    return self.async_abort(reason="address_already_configured")
                 if self.importing:
                     return self.async_create_entry(title=info["title"], data=user_input)
 

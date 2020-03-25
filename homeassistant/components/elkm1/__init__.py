@@ -268,8 +268,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     )
 
     # disconnect cleanly
-    elk = hass.data[DOMAIN][entry.entry_id]["elk"]
-    elk.pause()
+    hass.data[DOMAIN][entry.entry_id]["elk"].pause()
 
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)
@@ -397,7 +396,7 @@ class ElkEntity(Entity):
     def _element_callback(self, element, changeset):
         """Handle callback from an Elk element that has changed."""
         self._element_changed(element, changeset)
-        self.async_schedule_update_ha_state(True)
+        self.async_write_ha_state()
 
     async def async_added_to_hass(self):
         """Register callback for ElkM1 changes and update entity state."""
