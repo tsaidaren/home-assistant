@@ -357,7 +357,7 @@ class Recorder(threading.Thread):
                 self.queue.task_done()
                 if self.commit_interval:
                     self._timechanges_seen += 1
-                    if self.commit_interval >= self._timechanges_seen:
+                    if self._timechanges_seen >= self.commit_interval:
                         _LOGGER.info(
                             "DO COMMIT: commit_interval: %d timechanges_seen: %d",
                             self.commit_interval,
