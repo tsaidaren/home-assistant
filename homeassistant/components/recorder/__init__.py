@@ -370,6 +370,8 @@ class Recorder(threading.Thread):
                 self.queue.task_done()
                 continue
 
+            _LOGGER.info("Into add: %s", event)
+
             entity_id = event.data.get(ATTR_ENTITY_ID)
             if entity_id is not None:
                 if not self.entity_filter(entity_id):
