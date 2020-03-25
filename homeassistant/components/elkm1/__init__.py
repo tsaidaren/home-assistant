@@ -8,6 +8,7 @@ import elkm1_lib as elkm1
 from elkm1_lib.const import Max
 import voluptuous as vol
 
+from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import (
     CONF_EXCLUDE,
     CONF_HOST,
@@ -17,11 +18,12 @@ from homeassistant.const import (
     CONF_USERNAME,
 )
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import config_validation as cv, discovery
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.typing import ConfigType
 
-DOMAIN = "elkm1"
+from .const import DOMAIN
 
 SYNC_TIMEOUT = 55
 
@@ -101,6 +103,33 @@ def _has_all_unique_prefixes(value):
     return value
 
 
+ELK_DOMAINS = {
+    CONF_AREA: Max.AREAS.value,
+    CONF_COUNTER: Max.COUNTERS.value,
+    CONF_KEYPAD: Max.KEYPADS.value,
+    CONF_OUTPUT: Max.OUTPUTS.value,
+    CONF_PLC: Max.LIGHTS.value,
+    CONF_SETTING: Max.SETTINGS.value,
+    CONF_TASK: Max.TASKS.value,
+    CONF_THERMOSTAT: Max.THERMOSTATS.value,
+    CONF_ZONE: Max.ZONES.value,
+}
+
+ELK_ELEMENTS = [
+    "zones",
+    "lights",
+    "areas",
+    "tasks",
+    "keypads",
+    "outputs",
+    "thermostats",
+    "counters",
+    "settings",
+    "panel",
+    # Skip "user" as it takes a long time to setup
+    # and we do not use it
+]
+
 DEVICE_SCHEMA_SUBDOMAIN = vol.Schema(
     {
         vol.Optional(CONF_ENABLED, default=True): cv.boolean,
@@ -136,40 +165,36 @@ CONFIG_SCHEMA = vol.Schema(
 )
 
 
-async def async_setup(hass: HomeAssistant, hass_config: ConfigType) -> bool:
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Elk M1 platform."""
-    devices = {}
-    elk_datas = {}
+    hass.data.setdefault(DOMAIN, {})
+    conf = config.get(DOMAIN)
+    _create_elk_services(hass)
 
-    configs = {
-        CONF_AREA: Max.AREAS.value,
-        CONF_COUNTER: Max.COUNTERS.value,
-        CONF_KEYPAD: Max.KEYPADS.value,
-        CONF_OUTPUT: Max.OUTPUTS.value,
-        CONF_PLC: Max.LIGHTS.value,
-        CONF_SETTING: Max.SETTINGS.value,
-        CONF_TASK: Max.TASKS.value,
-        CONF_THERMOSTAT: Max.THERMOSTATS.value,
-        CONF_ZONE: Max.ZONES.value,
-    }
+    if not conf:
+        return True
 
-    def _included(ranges, set_to, values):
-        for rng in ranges:
-            if not rng[0] <= rng[1] <= len(values):
-                raise vol.Invalid(f"Invalid range {rng}")
-            values[rng[0] - 1 : rng[1]] = [set_to] * (rng[1] - rng[0] + 1)
+    hass.async_create_task(
+        hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": SOURCE_IMPORT}, data=conf,
+        )
+    )
+    return True
 
-    for index, conf in enumerate(hass_config[DOMAIN]):
-        _LOGGER.debug("Setting up elkm1 #%d - %s", index, conf["host"])
 
-        config = {"temperature_unit": conf[CONF_TEMPERATURE_UNIT]}
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Set up Elk-M1 Control from a config entry."""
+    # TODO Store an API object for your platforms to access
+    # hass.data[DOMAIN][entry.entry_id] = MyApi(...)
+    conf = entry.data
 
-        if conf[CONF_AUTO_CONFIGURE]:
-            continue
+    _LOGGER.debug("Setting up elkm1 %s", conf["host"])
 
+    config = {"temperature_unit": conf[CONF_TEMPERATURE_UNIT]}
+
+    if not conf[CONF_AUTO_CONFIGURE]:
         config["panel"] = {"enabled": True, "included": [True]}
-
-        for item, max_ in configs.items():
+        for item, max_ in ELK_DOMAINS.items():
             config[item] = {
                 "enabled": conf[item][CONF_ENABLED],
                 "included": [not conf[item]["include"]] * max_,
@@ -181,53 +206,66 @@ async def async_setup(hass: HomeAssistant, hass_config: ConfigType) -> bool:
                 _LOGGER.error("Config item: %s; %s", item, err)
                 return False
 
-        prefix = conf[CONF_PREFIX]
-        elk = elkm1.Elk(
-            {
-                "url": conf[CONF_HOST],
-                "userid": conf[CONF_USERNAME],
-                "password": conf[CONF_PASSWORD],
-                "element_list": [
-                    "zones",
-                    "lights",
-                    "areas",
-                    "tasks",
-                    "keypads",
-                    "outputs",
-                    "thermostats",
-                    "counters",
-                    "settings",
-                    "panel",
-                    # Skip "user" as it takes a long time to setup
-                    # and we do not use it
-                ],
-            }
-        )
-        elk.connect()
-
-        devices[prefix] = elk
-        elk_datas[prefix] = {
-            "elk": elk,
-            "prefix": prefix,
-            "auto_configure": conf[CONF_AUTO_CONFIGURE],
-            "config": config,
-            "keypads": {},
+    elk = elkm1.Elk(
+        {
+            "url": conf[CONF_HOST],
+            "userid": conf[CONF_USERNAME],
+            "password": conf[CONF_PASSWORD],
+            "element_list": ELK_ELEMENTS,
         }
+    )
+    elk.connect()
 
-    _create_elk_services(hass, devices)
+    if not _wait_for_elk_to_sync(elk):
+        raise ConfigEntryNotReady
 
-    await asyncio.gather(*[_wait_for_device_to_sync(elk) for elk in devices.values()])
+    hass.data[DOMAIN][entry.entry_id] = {
+        "elk": elk,
+        "prefix": conf[CONF_PREFIX],
+        "auto_configure": conf[CONF_AUTO_CONFIGURE],
+        "config": config,
+        "keypads": {},
+    }
 
-    hass.data[DOMAIN] = elk_datas
     for component in SUPPORTED_DOMAINS:
         hass.async_create_task(
-            discovery.async_load_platform(hass, component, DOMAIN, {}, hass_config)
+            hass.config_entries.async_forward_entry_setup(entry, component)
         )
 
     return True
 
 
-async def _wait_for_device_to_sync(elk):
+def _included(ranges, set_to, values):
+    for rng in ranges:
+        if not rng[0] <= rng[1] <= len(values):
+            raise vol.Invalid(f"Invalid range {rng}")
+        values[rng[0] - 1 : rng[1]] = [set_to] * (rng[1] - rng[0] + 1)
+
+
+def _find_elk_by_prefix(hass, prefix):
+    """Search all config entries for a given prefix."""
+    for entry in hass.data[DOMAIN]:
+        if hass.data[DOMAIN][entry]["prefix"] == prefix:
+            return hass.data[DOMAIN][entry]["elk"]
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Unload a config entry."""
+    unload_ok = all(
+        await asyncio.gather(
+            *[
+                hass.config_entries.async_forward_entry_unload(entry, component)
+                for component in SUPPORTED_DOMAINS
+            ]
+        )
+    )
+    if unload_ok:
+        hass.data[DOMAIN].pop(entry.entry_id)
+
+    return unload_ok
+
+
+async def _wait_for_elk_to_sync(elk):
     try:
         with async_timeout.timeout(SYNC_TIMEOUT):
             await elk.sync_complete()
@@ -238,10 +276,10 @@ async def _wait_for_device_to_sync(elk):
     return False
 
 
-def _create_elk_services(hass, elks):
+def _create_elk_services(hass):
     def _speak_word_service(service):
         prefix = service.data["prefix"]
-        elk = elks.get(prefix)
+        elk = _find_elk_by_prefix(hass, prefix)
         if elk is None:
             _LOGGER.error("No elk m1 with prefix for speak_word: '%s'", prefix)
             return
@@ -249,7 +287,7 @@ def _create_elk_services(hass, elks):
 
     def _speak_phrase_service(service):
         prefix = service.data["prefix"]
-        elk = elks.get(prefix)
+        elk = _find_elk_by_prefix(hass, prefix)
         if elk is None:
             _LOGGER.error("No elk m1 with prefix for speak_phrase: '%s'", prefix)
             return
