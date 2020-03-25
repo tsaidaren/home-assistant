@@ -1,3 +1,16 @@
 """Support the ElkM1 Gold and ElkM1 EZ8 alarm/integration panels."""
 
 DOMAIN = "elkm1"
+
+CONF_AUTO_CONFIGURE = "auto_configure"
+CONF_AREA = "area"
+CONF_COUNTER = "counter"
+CONF_ENABLED = "enabled"
+CONF_KEYPAD = "keypad"
+CONF_OUTPUT = "output"
+CONF_PLC = "plc"
+CONF_SETTING = "setting"
+CONF_TASK = "task"
+CONF_THERMOSTAT = "thermostat"
+CONF_ZONE = "zone"
+CONF_PREFIX = "prefix"

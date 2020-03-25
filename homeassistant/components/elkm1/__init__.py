@@ -23,22 +23,23 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.typing import ConfigType
 
-from .const import DOMAIN
+from .const import (
+    CONF_AREA,
+    CONF_AUTO_CONFIGURE,
+    CONF_COUNTER,
+    CONF_ENABLED,
+    CONF_KEYPAD,
+    CONF_OUTPUT,
+    CONF_PLC,
+    CONF_PREFIX,
+    CONF_SETTING,
+    CONF_TASK,
+    CONF_THERMOSTAT,
+    CONF_ZONE,
+    DOMAIN,
+)
 
 SYNC_TIMEOUT = 55
-
-CONF_AUTO_CONFIGURE = "auto_configure"
-CONF_AREA = "area"
-CONF_COUNTER = "counter"
-CONF_ENABLED = "enabled"
-CONF_KEYPAD = "keypad"
-CONF_OUTPUT = "output"
-CONF_PLC = "plc"
-CONF_SETTING = "setting"
-CONF_TASK = "task"
-CONF_THERMOSTAT = "thermostat"
-CONF_ZONE = "zone"
-CONF_PREFIX = "prefix"
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -222,7 +223,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     )
     elk.connect()
 
-    if not _wait_for_elk_to_sync(elk):
+    if not await async_wait_for_elk_to_sync(elk):
         raise ConfigEntryNotReady
 
     hass.data[DOMAIN][entry.entry_id] = {
@@ -271,7 +272,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     return unload_ok
 
 
-async def _wait_for_elk_to_sync(elk):
+async def async_wait_for_elk_to_sync(elk):
+    """Wait until the elk system has finished sync."""
     try:
         with async_timeout.timeout(SYNC_TIMEOUT):
             await elk.sync_complete()
