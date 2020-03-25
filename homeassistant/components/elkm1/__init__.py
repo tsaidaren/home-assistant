@@ -225,6 +225,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     elk.connect()
 
     if not await async_wait_for_elk_to_sync(elk, SYNC_TIMEOUT):
+        elk.disconnect()
+        if elk.invalid_auth:
+            return False
         raise ConfigEntryNotReady
 
     hass.data[DOMAIN][entry.entry_id] = {

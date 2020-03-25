@@ -63,9 +63,7 @@ async def validate_input(data):
 
     if not await async_wait_for_elk_to_sync(elk, VALIDATE_TIMEOUT):
         elk.disconnect()
-        if requires_password:
-            raise InvalidAuth
-        raise CannotConnect
+        raise InvalidAuth if elk.invalid_auth else CannotConnect
 
     elk.disconnect()
     device_name = data[CONF_PREFIX] if data[CONF_PREFIX] else "ElkM1"
