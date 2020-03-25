@@ -358,8 +358,8 @@ class Recorder(threading.Thread):
                 if self.commit_interval:
                     self._timechanges_seen += 1
                     if self.commit_interval >= self._timechanges_seen:
+                        _LOGGER.info("DO COMMIT: %d", self._timechanges_seen)
                         self._timechanges_seen = 0
-                        _LOGGER.info("DO COMMIT")
                         self._commit_event_session_or_retry()
                 continue
             if event.event_type in self.exclude_t:
