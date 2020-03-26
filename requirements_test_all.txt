@@ -79,7 +79,7 @@ aiohomekit[IP]==0.2.35
 aiohttp_cors==0.7.0
 
 # homeassistant.components.hue
-aiohue==2.0.0
+aiohue==2.1.0
 
 # homeassistant.components.notion
 aionotion==1.1.0
@@ -243,7 +243,7 @@ georss_qld_bushfire_alert_client==0.3
 getmac==0.8.1
 
 # homeassistant.components.gios
-gios==0.0.4
+gios==0.0.5
 
 # homeassistant.components.glances
 glances_api==0.2.0
@@ -276,7 +276,7 @@ hdate==0.9.5
 herepy==2.0.0
 
 # homeassistant.components.pi_hole
-hole==0.5.0
+hole==0.5.1
 
 # homeassistant.components.workday
 holidays==0.10.1
@@ -357,7 +357,7 @@ nessclient==0.9.15
 netdisco==2.6.0
 
 # homeassistant.components.nexia
-nexia==0.7.1
+nexia==0.7.2
 
 # homeassistant.components.nsw_fuel_station
 nsw-fuel-api-client==1.0.10
@@ -638,7 +638,7 @@ pyvera==0.3.7
 pyvesync==1.1.0
 
 # homeassistant.components.vizio
-pyvizio==0.1.35
+pyvizio==0.1.44
 
 # homeassistant.components.html5
 pywebpush==1.9.2
@@ -686,7 +686,7 @@ simplisafe-python==9.0.5
 sleepyq==0.7
 
 # homeassistant.components.smhi
-smhi-pkg==1.0.10
+smhi-pkg==1.0.13
 
 # homeassistant.components.solaredge
 solaredge==0.0.2
