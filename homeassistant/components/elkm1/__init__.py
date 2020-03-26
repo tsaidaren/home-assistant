@@ -116,8 +116,7 @@ ELK_ELEMENTS = [
     "counters",
     "settings",
     "panel",
-    # Skip "user" as it takes a long time to setup
-    # and we do not use it
+    "user",
 ]
 
 DEVICE_SCHEMA_SUBDOMAIN = vol.Schema(
