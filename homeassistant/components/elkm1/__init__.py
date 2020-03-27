@@ -105,20 +105,6 @@ ELK_DOMAINS = {
     CONF_ZONE: Max.ZONES.value,
 }
 
-ELK_ELEMENTS = [
-    "zones",
-    "lights",
-    "areas",
-    "tasks",
-    "keypads",
-    "outputs",
-    "thermostats",
-    "counters",
-    "settings",
-    "panel",
-    "users",
-]
-
 DEVICE_SCHEMA_SUBDOMAIN = vol.Schema(
     {
         vol.Optional(CONF_ENABLED, default=True): cv.boolean,
@@ -218,7 +204,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             "url": conf[CONF_HOST],
             "userid": conf[CONF_USERNAME],
             "password": conf[CONF_PASSWORD],
-            "element_list": ELK_ELEMENTS,
         }
     )
     elk.connect()

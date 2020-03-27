@@ -210,9 +210,9 @@ async def test_form_import(hass):
     with patch(
         "homeassistant.components.elkm1.config_flow.elkm1.Elk", return_value=mocked_elk,
     ), patch(
-        "homeassistant.components.harmony.async_setup", return_value=True
+        "homeassistant.components.elkm1.async_setup", return_value=True
     ) as mock_setup, patch(
-        "homeassistant.components.harmony.async_setup_entry", return_value=True,
+        "homeassistant.components.elkm1.async_setup_entry", return_value=True,
     ) as mock_setup_entry:
         result = await hass.config_entries.flow.async_init(
             DOMAIN,
@@ -231,7 +231,6 @@ async def test_form_import(hass):
                 "output": {"enabled": False, "exclude": [], "include": []},
                 "counter": {"enabled": False, "exclude": [], "include": []},
                 "plc": {"enabled": False, "exclude": [], "include": []},
-                "panel": {"enabled": True, "exclude": [], "include": []},
                 "prefix": "ohana",
                 "setting": {"enabled": False, "exclude": [], "include": []},
                 "area": {"enabled": False, "exclude": [], "include": []},
@@ -260,10 +259,9 @@ async def test_form_import(hass):
         "area": {"enabled": False, "exclude": [], "include": []},
         "counter": {"enabled": False, "exclude": [], "include": []},
         "task": {"enabled": False, "exclude": [], "include": []},
-        "panel": {"enabled": True, "exclude": [], "include": []},
         "temperature_unit": "C",
         "thermostat": {"enabled": False, "exclude": [], "include": []},
-        "username": "isy",
+        "username": "friend",
         "zone": {"enabled": True, "exclude": [[15, 15], [28, 208]], "include": []},
     }
     await hass.async_block_till_done()
