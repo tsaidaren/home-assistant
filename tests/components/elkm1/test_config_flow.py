@@ -200,3 +200,72 @@ async def test_form_invalid_auth(hass):
 
     assert result2["type"] == "form"
     assert result2["errors"] == {"base": "invalid_auth"}
+
+
+async def test_form_import(hass):
+    """Test we get the form with import source."""
+    await setup.async_setup_component(hass, "persistent_notification", {})
+
+    mocked_elk = mock_elk(invalid_auth=False)
+    with patch(
+        "homeassistant.components.elkm1.config_flow.elkm1.Elk", return_value=mocked_elk,
+    ), patch(
+        "homeassistant.components.harmony.async_setup", return_value=True
+    ) as mock_setup, patch(
+        "homeassistant.components.harmony.async_setup_entry", return_value=True,
+    ) as mock_setup_entry:
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": config_entries.SOURCE_IMPORT},
+            data={
+                "host": "elks://1.2.3.4",
+                "username": "friend",
+                "password": "love",
+                "temperature_unit": "C",
+                "auto_configure": False,
+                "keypad": {
+                    "enabled": True,
+                    "exclude": [],
+                    "include": [[1, 1], [2, 2], [3, 3]],
+                },
+                "output": {"enabled": False, "exclude": [], "include": []},
+                "counter": {"enabled": False, "exclude": [], "include": []},
+                "plc": {"enabled": False, "exclude": [], "include": []},
+                "panel": {"enabled": True, "exclude": [], "include": []},
+                "prefix": "ohana",
+                "setting": {"enabled": False, "exclude": [], "include": []},
+                "area": {"enabled": False, "exclude": [], "include": []},
+                "task": {"enabled": False, "exclude": [], "include": []},
+                "thermostat": {"enabled": False, "exclude": [], "include": []},
+                "zone": {
+                    "enabled": True,
+                    "exclude": [[15, 15], [28, 208]],
+                    "include": [],
+                },
+            },
+        )
+
+    assert result["type"] == "create_entry"
+    assert result["title"] == "ohana"
+
+    assert result["data"] == {
+        "auto_configure": False,
+        "host": "elks://1.2.3.4",
+        "keypad": {"enabled": True, "exclude": [], "include": [[1, 1], [2, 2], [3, 3]]},
+        "output": {"enabled": False, "exclude": [], "include": []},
+        "password": "love",
+        "plc": {"enabled": False, "exclude": [], "include": []},
+        "prefix": "ohana",
+        "setting": {"enabled": False, "exclude": [], "include": []},
+        "area": {"enabled": False, "exclude": [], "include": []},
+        "counter": {"enabled": False, "exclude": [], "include": []},
+        "task": {"enabled": False, "exclude": [], "include": []},
+        "panel": {"enabled": True, "exclude": [], "include": []},
+        "temperature_unit": "C",
+        "thermostat": {"enabled": False, "exclude": [], "include": []},
+        "username": "isy",
+        "zone": {"enabled": True, "exclude": [[15, 15], [28, 208]], "include": []},
+    }
+    await hass.async_block_till_done()
+    assert len(mock_setup.mock_calls) == 1
+    assert len(mock_setup_entry.mock_calls) == 1
