@@ -88,7 +88,7 @@ async def test_form_user_with_non_secure_elk(hass):
         )
 
     assert result2["type"] == "create_entry"
-    assert result2["title"] == "ElkM1"
+    assert result2["title"] == "guest_house"
     assert result2["data"] == {
         "auto_configure": True,
         "host": "elk://1.2.3.4",
