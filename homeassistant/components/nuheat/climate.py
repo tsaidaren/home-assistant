@@ -16,9 +16,10 @@ from homeassistant.components.climate.const import (
     SUPPORT_TARGET_TEMPERATURE,
 )
 from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS, TEMP_FAHRENHEIT
+from homeassistant.helpers import event as event_helper
 from homeassistant.util import Throttle
 
-from .const import DOMAIN, MANUFACTURER
+from .const import DOMAIN, MANUFACTURER, NUHEAT_API_STATE_SHIFT_DELAY
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -227,7 +228,12 @@ class NuHeatThermostat(ClimateDevice):
     def _schedule_update(self):
         self._force_update = True
         if self.hass:
-            self.schedule_update_ha_state(True)
+            event_helper.call_later(
+                NUHEAT_API_STATE_SHIFT_DELAY, self._schedule_force_refresh
+            )
+
+    def _schedule_force_refresh(self):
+        self.schedule_update_ha_state(True)
 
     def update(self):
         """Get the latest state from the thermostat."""
