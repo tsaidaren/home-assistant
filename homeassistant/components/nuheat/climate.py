@@ -229,7 +229,7 @@ class NuHeatThermostat(ClimateDevice):
         self._force_update = True
         if self.hass:
             event_helper.call_later(
-                NUHEAT_API_STATE_SHIFT_DELAY, self._schedule_force_refresh
+                self.hass, NUHEAT_API_STATE_SHIFT_DELAY, self._schedule_force_refresh
             )
 
     def _schedule_force_refresh(self):
