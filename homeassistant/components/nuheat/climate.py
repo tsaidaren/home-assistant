@@ -3,7 +3,12 @@ from datetime import timedelta
 import logging
 
 from nuheat.config import SCHEDULE_HOLD, SCHEDULE_RUN, SCHEDULE_TEMPORARY_HOLD
-from nuheat.util import celsius_to_nuheat, fahrenheit_to_nuheat
+from nuheat.util import (
+    celsius_to_nuheat,
+    fahrenheit_to_nuheat,
+    nuheat_to_celsius,
+    nuheat_to_fahrenheit,
+)
 
 from homeassistant.components.climate import ClimateDevice
 from homeassistant.components.climate.const import (
@@ -69,6 +74,8 @@ class NuHeatThermostat(ClimateDevice):
         """Initialize the thermostat."""
         self._thermostat = thermostat
         self._temperature_unit = temperature_unit
+        self._schedule_mode = None
+        self._target_temperature = None
         self._force_update = False
 
     @property
@@ -113,15 +120,17 @@ class NuHeatThermostat(ClimateDevice):
         # This is the same as what res
         if hvac_mode == HVAC_MODE_AUTO:
             self._thermostat.schedule_mode = SCHEDULE_RUN
+            self._schedule_mode = SCHEDULE_RUN
         elif hvac_mode == HVAC_MODE_HEAT:
             self._thermostat.schedule_mode = SCHEDULE_HOLD
+            self._schedule_mode = SCHEDULE_HOLD
 
         self._schedule_update()
 
     @property
     def hvac_mode(self):
         """Return current setting heat or auto."""
-        if self._thermostat.schedule_mode in (SCHEDULE_TEMPORARY_HOLD, SCHEDULE_HOLD):
+        if self._schedule_mode in (SCHEDULE_TEMPORARY_HOLD, SCHEDULE_HOLD):
             return HVAC_MODE_HEAT
         return HVAC_MODE_AUTO
 
@@ -150,9 +159,9 @@ class NuHeatThermostat(ClimateDevice):
     def target_temperature(self):
         """Return the currently programmed temperature."""
         if self._temperature_unit == "C":
-            return self._thermostat.target_celsius
+            return nuheat_to_celsius(self._target_temperature)
 
-        return self._thermostat.target_fahrenheit
+        return nuheat_to_fahrenheit(self._target_temperature)
 
     @property
     def preset_mode(self):
@@ -189,9 +198,9 @@ class NuHeatThermostat(ClimateDevice):
     def _set_temperature_and_mode(self, temperature, hvac_mode=None, preset_mode=None):
         """Set temperature and hvac mode at the same time."""
         if self._temperature_unit == "C":
-            target_temp = celsius_to_nuheat(temperature)
+            target_temperature = celsius_to_nuheat(temperature)
         else:
-            target_temp = fahrenheit_to_nuheat(temperature)
+            target_temperature = fahrenheit_to_nuheat(temperature)
 
         # If they set a temperature without changing the mode
         # to heat, we behave like the device does locally
@@ -201,7 +210,7 @@ class NuHeatThermostat(ClimateDevice):
             target_schedule_mode = PRESET_MODE_TO_SCHEDULE_MODE_MAP.get(
                 preset_mode, SCHEDULE_RUN
             )
-        elif self._thermostat.schedule_mode == SCHEDULE_HOLD or (
+        elif self._schedule_mode == SCHEDULE_HOLD or (
             hvac_mode and hvac_mode == HVAC_MODE_HEAT
         ):
             target_schedule_mode = SCHEDULE_HOLD
@@ -213,7 +222,11 @@ class NuHeatThermostat(ClimateDevice):
             target_schedule_mode,
         )
 
-        self._thermostat.set_target_temperature(target_temp, target_schedule_mode)
+        self._thermostat.set_target_temperature(
+            target_temperature, target_schedule_mode
+        )
+        self._schedule_mode = target_schedule_mode
+        self._target_temperature = target_temperature
         self._schedule_update()
 
     def _schedule_update(self):
@@ -239,6 +252,8 @@ class NuHeatThermostat(ClimateDevice):
     def _throttled_update(self, **kwargs):
         """Get the latest state from the thermostat with a throttle."""
         self._thermostat.get_data()
+        self._schedule_mode = self._thermostat.schedule_mode
+        self._target_temperature = self._thermostat.target_temperature
 
     @property
     def device_info(self):
