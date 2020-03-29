@@ -110,15 +110,12 @@ class NuHeatThermostat(ClimateDevice):
     def set_hvac_mode(self, hvac_mode):
         """Set the system mode."""
 
-        _LOGGER.debug("CALL set_hvac_mode: %s", hvac_mode)
-
         # This is the same as what res
         if hvac_mode == HVAC_MODE_AUTO:
             self._thermostat.schedule_mode = SCHEDULE_RUN
         elif hvac_mode == HVAC_MODE_HEAT:
             self._thermostat.schedule_mode = SCHEDULE_HOLD
 
-        _LOGGER.debug("set hvac mode done: scheduling update")
         self._schedule_update()
 
     @property
@@ -152,12 +149,6 @@ class NuHeatThermostat(ClimateDevice):
     @property
     def target_temperature(self):
         """Return the currently programmed temperature."""
-        _LOGGER.debug(
-            "target_temp: %s and in F:%s",
-            self._thermostat.target_temperature,
-            self._thermostat.target_fahrenheit,
-        )
-
         if self._temperature_unit == "C":
             return self._thermostat.target_celsius
 
