@@ -116,6 +116,7 @@ class NuHeatThermostat(ClimateDevice):
         elif hvac_mode == HVAC_MODE_HEAT:
             self._thermostat.schedule_mode = SCHEDULE_HOLD
 
+        _LOGGER.debug("set hvac mode done: scheduling update")
         self._schedule_update()
 
     @property
@@ -237,6 +238,7 @@ class NuHeatThermostat(ClimateDevice):
 
     def update(self):
         """Get the latest state from the thermostat."""
+        _LOGGER.debug("update call -- self._force_update: %s", self._force_update)
         if self._force_update:
             self._throttled_update(no_throttle=True)
             self._force_update = False
@@ -246,6 +248,8 @@ class NuHeatThermostat(ClimateDevice):
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
     def _throttled_update(self, **kwargs):
         """Get the latest state from the thermostat with a throttle."""
+        _LOGGER.debug("_throttled_update")
+
         self._thermostat.get_data()
 
     @property
