@@ -116,16 +116,10 @@ class NuHeatThermostat(ClimateDevice):
 
     def set_hvac_mode(self, hvac_mode):
         """Set the system mode."""
-
-        # This is the same as what res
         if hvac_mode == HVAC_MODE_AUTO:
-            self._thermostat.schedule_mode = SCHEDULE_RUN
-            self._schedule_mode = SCHEDULE_RUN
+            self._set_schedule_mode(SCHEDULE_RUN)
         elif hvac_mode == HVAC_MODE_HEAT:
-            self._thermostat.schedule_mode = SCHEDULE_HOLD
-            self._schedule_mode = SCHEDULE_HOLD
-
-        self._schedule_update()
+            self._set_schedule_mode(SCHEDULE_HOLD)
 
     @property
     def hvac_mode(self):
@@ -180,12 +174,16 @@ class NuHeatThermostat(ClimateDevice):
 
     def set_preset_mode(self, preset_mode):
         """Update the hold mode of the thermostat."""
-        # If we do not pass the current target
-        # back to the api we end up with the default
-        # for that mode
-        self._set_temperature_and_mode(
-            self.target_temperature, preset_mode=preset_mode,
+        self._set_schedule_mode(
+            PRESET_MODE_TO_SCHEDULE_MODE_MAP.get(preset_mode, SCHEDULE_RUN)
         )
+
+    def _set_schedule_mode(self, schedule_mode):
+        """Set a schedule mode."""
+        self._schedule_mode = schedule_mode
+        # Changing the property here does the actual set
+        self._thermostat.schedule_mode = schedule_mode
+        self._schedule_update()
 
     def set_temperature(self, **kwargs):
         """Set a new target temperature."""
