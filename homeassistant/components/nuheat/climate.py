@@ -110,6 +110,8 @@ class NuHeatThermostat(ClimateDevice):
     def set_hvac_mode(self, hvac_mode):
         """Set the system mode."""
 
+        _LOGGER.debug("CALL set_hvac_mode: %s", hvac_mode)
+
         # This is the same as what res
         if hvac_mode == HVAC_MODE_AUTO:
             self._thermostat.resume_schedule()
@@ -181,12 +183,14 @@ class NuHeatThermostat(ClimateDevice):
         # If we do not pass the current target
         # back to the api we end up with the default
         # for that mode
+        _LOGGER.debug("CALL set_preset_mode: %s", preset_mode)
         self._set_temperature_and_mode(
             self.target_temperature, preset_mode=preset_mode,
         )
 
     def set_temperature(self, **kwargs):
         """Set a new target temperature."""
+        _LOGGER.debug("CALL set_temperature: %s", kwargs)
         self._set_temperature_and_mode(
             kwargs.get(ATTR_TEMPERATURE), hvac_mode=kwargs.get(ATTR_HVAC_MODE)
         )
