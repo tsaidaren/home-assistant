@@ -179,18 +179,17 @@ class NuHeatThermostat(ClimateDevice):
         # If we do not pass the current target
         # back to the api we end up with the default
         # for that mode
-        self._set_temperature_and_hvac_mode(
-            self.target_temperature,
-            PRESET_MODE_TO_SCHEDULE_MODE_MAP.get(preset_mode, SCHEDULE_RUN),
+        self._set_temperature_and_mode(
+            self.target_temperature, preset_mode=preset_mode,
         )
 
     def set_temperature(self, **kwargs):
         """Set a new target temperature."""
-        self._set_temperature_and_hvac_mode(
-            kwargs.get(ATTR_TEMPERATURE), kwargs.get(ATTR_HVAC_MODE)
+        self._set_temperature_and_mode(
+            kwargs.get(ATTR_TEMPERATURE), hvac_mode=kwargs.get(ATTR_HVAC_MODE)
         )
 
-    def _set_temperature_and_hvac_mode(self, temperature, hvac_mode):
+    def _set_temperature_and_mode(self, temperature, hvac_mode=None, preset_mode=None):
         """Set temperature and hvac mode at the same time."""
         if self._temperature_unit == "C":
             target_temp = celsius_to_nuheat(temperature)
@@ -201,7 +200,11 @@ class NuHeatThermostat(ClimateDevice):
         # to heat, we behave like the device does locally
         # and set a temp hold.
         target_schedule_mode = SCHEDULE_TEMPORARY_HOLD
-        if self._thermostat.schedule_mode == SCHEDULE_HOLD or (
+        if preset_mode:
+            target_schedule_mode = PRESET_MODE_TO_SCHEDULE_MODE_MAP.get(
+                preset_mode, SCHEDULE_RUN
+            )
+        elif self._thermostat.schedule_mode == SCHEDULE_HOLD or (
             hvac_mode and hvac_mode == HVAC_MODE_HEAT
         ):
             target_schedule_mode = SCHEDULE_HOLD
@@ -212,9 +215,13 @@ class NuHeatThermostat(ClimateDevice):
             self.temperature_unit,
             target_schedule_mode,
         )
-        # If we do not send schedule_mode we always get
-        # SCHEDULE_HOLD
-        self._thermostat.set_target_temperature(target_temp, target_schedule_mode)
+
+        if target_schedule_mode == SCHEDULE_RUN:
+            self._thermostat.resume_schedule()
+        else:
+            # If we do not send schedule_mode we always get
+            # SCHEDULE_HOLD
+            self._thermostat.set_target_temperature(target_temp, target_schedule_mode)
         self._schedule_update()
 
     def _schedule_update(self):
