@@ -232,6 +232,14 @@ class NuHeatThermostat(ClimateDevice):
     def _schedule_update(self):
         if not self.hass:
             return
+
+        # Update the new state
+        self.schedule_update_ha_state(False)
+
+        # nuheat has a delay switching state
+        # so we schedule a poll of the api
+        # in the future to make sure the change actually
+        # took effect
         event_helper.call_later(
             self.hass, NUHEAT_API_STATE_SHIFT_DELAY, self._schedule_force_refresh
         )
