@@ -114,7 +114,7 @@ class NuHeatThermostat(ClimateDevice):
 
         # This is the same as what res
         if hvac_mode == HVAC_MODE_AUTO:
-            self._thermostat.resume_schedule()
+            self._thermostat.schedule_mode = SCHEDULE_RUN
         elif hvac_mode == HVAC_MODE_HEAT:
             self._thermostat.schedule_mode = SCHEDULE_HOLD
 
@@ -152,6 +152,12 @@ class NuHeatThermostat(ClimateDevice):
     @property
     def target_temperature(self):
         """Return the currently programmed temperature."""
+        _LOGGER.debug(
+            "target_temp: %s and in F:%s",
+            self._thermostat.target_temperature,
+            self._thermostat.target_fahrenheit,
+        )
+
         if self._temperature_unit == "C":
             return self._thermostat.target_celsius
 
@@ -160,8 +166,9 @@ class NuHeatThermostat(ClimateDevice):
     @property
     def preset_mode(self):
         """Return current preset mode."""
-        schedule_mode = self._thermostat.schedule_mode
-        return SCHEDULE_MODE_TO_PRESET_MODE_MAP.get(schedule_mode, PRESET_RUN)
+        return SCHEDULE_MODE_TO_PRESET_MODE_MAP.get(
+            self._thermostat.schedule_mode, PRESET_RUN
+        )
 
     @property
     def preset_modes(self):
@@ -173,24 +180,17 @@ class NuHeatThermostat(ClimateDevice):
         """Return list of possible operation modes."""
         return OPERATION_LIST
 
-    def resume_program(self):
-        """Resume the thermostat's programmed schedule."""
-        self._thermostat.resume_schedule()
-        self._schedule_update()
-
     def set_preset_mode(self, preset_mode):
         """Update the hold mode of the thermostat."""
         # If we do not pass the current target
         # back to the api we end up with the default
         # for that mode
-        _LOGGER.debug("CALL set_preset_mode: %s", preset_mode)
         self._set_temperature_and_mode(
             self.target_temperature, preset_mode=preset_mode,
         )
 
     def set_temperature(self, **kwargs):
         """Set a new target temperature."""
-        _LOGGER.debug("CALL set_temperature: %s", kwargs)
         self._set_temperature_and_mode(
             kwargs.get(ATTR_TEMPERATURE), hvac_mode=kwargs.get(ATTR_HVAC_MODE)
         )
@@ -222,12 +222,7 @@ class NuHeatThermostat(ClimateDevice):
             target_schedule_mode,
         )
 
-        if target_schedule_mode == SCHEDULE_RUN:
-            self._thermostat.resume_schedule()
-        else:
-            # If we do not send schedule_mode we always get
-            # SCHEDULE_HOLD
-            self._thermostat.set_target_temperature(target_temp, target_schedule_mode)
+        self._thermostat.set_target_temperature(target_temp, target_schedule_mode)
         self._schedule_update()
 
     def _schedule_update(self):
@@ -243,7 +238,6 @@ class NuHeatThermostat(ClimateDevice):
 
     def update(self):
         """Get the latest state from the thermostat."""
-        _LOGGER.debug("update call -- self._force_update: %s", self._force_update)
         if self._force_update:
             self._throttled_update(no_throttle=True)
             self._force_update = False
@@ -253,10 +247,7 @@ class NuHeatThermostat(ClimateDevice):
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
     def _throttled_update(self, **kwargs):
         """Get the latest state from the thermostat with a throttle."""
-        _LOGGER.debug("_throttled_update")
-
         self._thermostat.get_data()
-        _LOGGER.debug("data is now: %s", self._thermostat._data)
 
     @property
     def device_info(self):
