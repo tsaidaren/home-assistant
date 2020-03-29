@@ -176,17 +176,22 @@ class NuHeatThermostat(ClimateDevice):
 
     def set_preset_mode(self, preset_mode):
         """Update the hold mode of the thermostat."""
-
-        self._thermostat.schedule_mode = PRESET_MODE_TO_SCHEDULE_MODE_MAP.get(
-            preset_mode, SCHEDULE_RUN
+        # If we do not pass the current target
+        # back to the api we end up with the default
+        # for that mode
+        self._set_temperature_and_hvac_mode(
+            self.target_temperature,
+            PRESET_MODE_TO_SCHEDULE_MODE_MAP.get(preset_mode, SCHEDULE_RUN),
         )
-        self._schedule_update()
 
     def set_temperature(self, **kwargs):
         """Set a new target temperature."""
-        self._set_temperature(kwargs.get(ATTR_TEMPERATURE), kwargs.get(ATTR_HVAC_MODE))
+        self._set_temperature_and_hvac_mode(
+            kwargs.get(ATTR_TEMPERATURE), kwargs.get(ATTR_HVAC_MODE)
+        )
 
-    def _set_temperature(self, temperature, hvac_mode):
+    def _set_temperature_and_hvac_mode(self, temperature, hvac_mode):
+        """Set temperature and hvac mode at the same time."""
         if self._temperature_unit == "C":
             target_temp = celsius_to_nuheat(temperature)
         else:
