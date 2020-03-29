@@ -241,5 +241,6 @@ class NuHeatThermostat(ClimateDevice):
         return {
             "identifiers": {(DOMAIN, self._thermostat.serial_number)},
             "name": self._thermostat.room,
+            "model": "nVent Signature",
             "manufacturer": MANUFACTURER,
         }
