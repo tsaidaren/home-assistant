@@ -166,9 +166,7 @@ class NuHeatThermostat(ClimateDevice):
     @property
     def preset_mode(self):
         """Return current preset mode."""
-        return SCHEDULE_MODE_TO_PRESET_MODE_MAP.get(
-            self._thermostat.schedule_mode, PRESET_RUN
-        )
+        return SCHEDULE_MODE_TO_PRESET_MODE_MAP.get(self._schedule_mode, PRESET_RUN)
 
     @property
     def preset_modes(self):
