@@ -144,6 +144,15 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_import(self, user_input):
         """Handle import."""
+        existing_entry = self._entry_for_prefix(user_input[CONF_PREFIX])
+        if existing_entry:
+            # If they alter the yaml config we import the changes
+            # since there currently is no practical way to do an options flow
+            # with the large amount of include/exclude/enabled options that elkm1 has.
+            self.hass.config_entries.async_update_entry(existing_entry, data=user_input)
+            await self.hass.config_entries.async_reload(existing_entry.entry_id)
+            return
+
         self.importing = True
         return await self.async_step_user(user_input)
 
@@ -154,6 +163,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             for entry in self._async_current_entries()
         }
         return urlparse(url).hostname in existing_hosts
+
+    def _entry_for_prefix(self, prefix):
+        """Find the a config entry matching a prefix."""
+        for entry in self._async_current_entries():
+            if entry.data[CONF_PREFIX] == prefix:
+                return entry
 
 
 class CannotConnect(exceptions.HomeAssistantError):
