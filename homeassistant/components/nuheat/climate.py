@@ -232,7 +232,7 @@ class NuHeatThermostat(ClimateDevice):
                 self.hass, NUHEAT_API_STATE_SHIFT_DELAY, self._schedule_force_refresh
             )
 
-    def _schedule_force_refresh(self):
+    def _schedule_force_refresh(self, _):
         self.schedule_update_ha_state(True)
 
     def update(self):
