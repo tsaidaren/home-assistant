@@ -7,6 +7,7 @@ from nuheat.util import celsius_to_nuheat, fahrenheit_to_nuheat
 
 from homeassistant.components.climate import ClimateDevice
 from homeassistant.components.climate.const import (
+    ATTR_HVAC_MODE,
     CURRENT_HVAC_HEAT,
     CURRENT_HVAC_IDLE,
     HVAC_MODE_AUTO,
@@ -183,9 +184,9 @@ class NuHeatThermostat(ClimateDevice):
 
     def set_temperature(self, **kwargs):
         """Set a new target temperature."""
-        self._set_temperature(kwargs.get(ATTR_TEMPERATURE))
+        self._set_temperature(kwargs.get(ATTR_TEMPERATURE), kwargs.get(ATTR_HVAC_MODE))
 
-    def _set_temperature(self, temperature):
+    def _set_temperature(self, temperature, hvac_mode):
         if self._temperature_unit == "C":
             target_temp = celsius_to_nuheat(temperature)
         else:
@@ -194,9 +195,11 @@ class NuHeatThermostat(ClimateDevice):
         # If they set a temperature without changing the mode
         # to heat, we behave like the device does locally
         # and set a temp hold.
-        target_schedule_mode = SCHEDULE_HOLD
-        if self._thermostat.schedule_mode in (SCHEDULE_RUN, SCHEDULE_TEMPORARY_HOLD):
-            target_schedule_mode = SCHEDULE_TEMPORARY_HOLD
+        target_schedule_mode = SCHEDULE_TEMPORARY_HOLD
+        if self._thermostat.schedule_mode == SCHEDULE_HOLD or (
+            hvac_mode and hvac_mode == HVAC_MODE_HEAT
+        ):
+            target_schedule_mode = SCHEDULE_HOLD
 
         _LOGGER.debug(
             "Setting NuHeat thermostat temperature to %s %s and schedule mode: %s",
