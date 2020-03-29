@@ -227,13 +227,14 @@ class NuHeatThermostat(ClimateDevice):
         self._schedule_update()
 
     def _schedule_update(self):
-        self._force_update = True
-        if self.hass:
-            event_helper.call_later(
-                self.hass, NUHEAT_API_STATE_SHIFT_DELAY, self._schedule_force_refresh
-            )
+        if not self.hass:
+            return
+        event_helper.call_later(
+            self.hass, NUHEAT_API_STATE_SHIFT_DELAY, self._schedule_force_refresh
+        )
 
     def _schedule_force_refresh(self, _):
+        self._force_update = True
         self.schedule_update_ha_state(True)
 
     def update(self):
