@@ -256,6 +256,7 @@ class NuHeatThermostat(ClimateDevice):
         _LOGGER.debug("_throttled_update")
 
         self._thermostat.get_data()
+        _LOGGER.debug("data is now: %s", self._thermostat._data)
 
     @property
     def device_info(self):
