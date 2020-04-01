@@ -166,7 +166,6 @@ class RachioZone(RachioSwitch):
     def __init__(self, person, controller, data, current_schedule):
         """Initialize a new Rachio Zone."""
         self._id = data[KEY_ID]
-        _LOGGER.debug("zone_data: %s", data)
         self._zone_name = data[KEY_NAME]
         self._zone_number = data[KEY_ZONE_NUMBER]
         self._zone_enabled = data[KEY_ENABLED]
@@ -215,7 +214,7 @@ class RachioZone(RachioSwitch):
         return self._entity_picture
 
     @property
-    def state_attributes(self) -> dict:
+    def device_state_attributes(self) -> dict:
         """Return the optional state attributes."""
         props = {ATTR_ZONE_NUMBER: self._zone_number, ATTR_ZONE_SUMMARY: self._summary}
         if self._shade_type:
