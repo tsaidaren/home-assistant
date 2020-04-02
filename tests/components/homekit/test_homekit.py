@@ -1,6 +1,7 @@
 """Tests for the HomeKit component."""
 from unittest.mock import ANY, Mock, patch
 
+from asynctest import CoroutineMock
 import pytest
 from zeroconf import InterfaceChoice
 
@@ -77,7 +78,7 @@ async def test_setup_min(hass):
     hass.bus.async_fire(EVENT_HOMEASSISTANT_START)
     await hass.async_block_till_done()
 
-    mock_homekit().start.assert_called_with(ANY)
+    mock_homekit().async_start.assert_called_with(ANY)
 
 
 async def test_setup_auto_start_disabled(hass):
@@ -94,6 +95,7 @@ async def test_setup_auto_start_disabled(hass):
 
     with patch(f"{PATH_HOMEKIT}.HomeKit") as mock_homekit:
         mock_homekit.return_value = homekit = Mock()
+        type(homekit).async_start = CoroutineMock()
         assert await setup.async_setup_component(hass, DOMAIN, config)
 
     mock_homekit.assert_any_call(
@@ -103,23 +105,26 @@ async def test_setup_auto_start_disabled(hass):
 
     # Test auto_start disabled
     homekit.reset_mock()
+    homekit.async_start.reset_mock()
     hass.bus.async_fire(EVENT_HOMEASSISTANT_START)
     await hass.async_block_till_done()
-    assert homekit.start.called is False
+    assert homekit.async_start.called is False
 
     # Test start call with driver is ready
     homekit.reset_mock()
+    homekit.async_start.reset_mock()
     homekit.status = STATUS_READY
 
     await hass.services.async_call(DOMAIN, SERVICE_HOMEKIT_START, blocking=True)
-    assert homekit.start.called is True
+    assert homekit.async_start.called is True
 
     # Test start call with driver started
     homekit.reset_mock()
+    homekit.async_start.reset_mock()
     homekit.status = STATUS_STOPPED
 
     await hass.services.async_call(DOMAIN, SERVICE_HOMEKIT_START, blocking=True)
-    assert homekit.start.called is False
+    assert homekit.async_start.called is False
 
 
 async def test_homekit_setup(hass, hk_driver):
@@ -284,6 +289,7 @@ async def test_homekit_start(hass, hk_driver, debounce_patcher):
     homekit.bridge = Mock()
     homekit.bridge.accessories = []
     homekit.driver = hk_driver
+    homekit._filter = Mock(return_value=True)
 
     hass.states.async_set("light.demo", "on")
     state = hass.states.async_all()[0]
@@ -295,7 +301,7 @@ async def test_homekit_start(hass, hk_driver, debounce_patcher):
     ) as hk_driver_add_acc, patch(
         "pyhap.accessory_driver.AccessoryDriver.start"
     ) as hk_driver_start:
-        await hass.async_add_executor_job(homekit.start)
+        await hass.async_add_job(homekit.async_start)
 
     mock_add_acc.assert_called_with(state)
     mock_setup_msg.assert_called_with(hass, pin)
@@ -305,7 +311,7 @@ async def test_homekit_start(hass, hk_driver, debounce_patcher):
 
     # Test start() if already started
     hk_driver_start.reset_mock()
-    await hass.async_add_executor_job(homekit.start)
+    await hass.async_add_job(homekit.async_start)
     assert not hk_driver_start.called
 
 
@@ -348,16 +354,16 @@ async def test_homekit_stop(hass):
     homekit.driver = Mock()
 
     assert homekit.status == STATUS_READY
-    await hass.async_add_executor_job(homekit.stop)
+    await hass.async_add_job(homekit.async_stop)
     homekit.status = STATUS_WAIT
-    await hass.async_add_executor_job(homekit.stop)
+    await hass.async_add_job(homekit.async_stop)
     homekit.status = STATUS_STOPPED
-    await hass.async_add_executor_job(homekit.stop)
+    await hass.async_add_job(homekit.async_stop)
     assert homekit.driver.stop.called is False
 
     # Test if driver is started
     homekit.status = STATUS_RUNNING
-    await hass.async_add_executor_job(homekit.stop)
+    await hass.async_add_job(homekit.async_stop)
     assert homekit.driver.stop.called is True
 
 
@@ -402,5 +408,5 @@ async def test_homekit_too_many_accessories(hass, hk_driver):
     with patch("pyhap.accessory_driver.AccessoryDriver.start"), patch(
         "pyhap.accessory_driver.AccessoryDriver.add_accessory"
     ), patch("homeassistant.components.homekit._LOGGER.warning") as mock_warn:
-        await hass.async_add_executor_job(homekit.start)
+        await hass.async_add_job(homekit.async_start)
         assert mock_warn.called is True
