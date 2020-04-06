@@ -1,4 +1,7 @@
 """Config flow to configure the Synology DSM integration."""
+import logging
+from urllib.parse import urlparse
+
 from synology_dsm import SynologyDSM
 from synology_dsm.api.core.utilization import SynoCoreUtilization
 from synology_dsm.api.dsm.information import SynoDSMInformation
@@ -6,6 +9,7 @@ from synology_dsm.api.storage.storage import SynoStorage
 import voluptuous as vol
 
 from homeassistant import config_entries
+from homeassistant.components import ssdp
 from homeassistant.const import (
     CONF_API_VERSION,
     CONF_DISKS,
@@ -26,6 +30,8 @@ from .const import (
     DEFAULT_SSL,
 )
 from .const import DOMAIN  # pylint: disable=unused-import
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class SynologyDSMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
@@ -74,7 +80,7 @@ class SynologyDSMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle a flow initiated by the user."""
         errors = {}
 
-        if user_input is None:
+        if user_input is None or CONF_USERNAME not in user_input:
             return await self._show_setup_form(user_input, None)
 
         name = user_input.get(CONF_NAME, DEFAULT_NAME)
@@ -136,6 +142,19 @@ class SynologyDSMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             config_data.update({CONF_VOLUMES: user_input[CONF_VOLUMES]})
 
         return self.async_create_entry(title=host, data=config_data,)
+
+    async def async_step_ssdp(self, discovery_info):
+        """Handle a discovered synology_dsm."""
+        parsed_url = urlparse(discovery_info[ssdp.ATTR_SSDP_LOCATION])
+        friendly_name = discovery_info[ssdp.ATTR_UPNP_FRIENDLY_NAME]
+
+        return await self.async_step_user(
+            {
+                CONF_HOST: parsed_url.hostname,
+                CONF_PORT: parsed_url.port,
+                CONF_NAME: friendly_name,
+            }
+        )
 
     async def async_step_import(self, user_input=None):
         """Import a config entry."""
