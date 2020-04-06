@@ -46,6 +46,7 @@ class SynologyDSMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is None:
             user_input = {}
 
+        _LOGGER.debug("_show_setup_form user_input: %s", user_input)
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema(
@@ -81,6 +82,7 @@ class SynologyDSMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
 
         if user_input is None or CONF_USERNAME not in user_input:
+            _LOGGER.debug("passing user_input to _show_setup_form: %s", user_input)
             return await self._show_setup_form(user_input, None)
 
         name = user_input.get(CONF_NAME, DEFAULT_NAME)
