@@ -92,8 +92,8 @@ class FlowManagerResourceView(_BaseFlowManagerView):
             result = await self._flow_mgr.async_configure(flow_id, data)
         except data_entry_flow.UnknownFlow:
             return self.json_message("Invalid flow specified", 404)
-        except vol.Invalid:
-            return self.json_message("User input malformed", 400)
+        except vol.Invalid as ex:
+            return self.json_message(f"User input malformed: {ex}", 400)
 
         result = self._prepare_result_json(result)
 

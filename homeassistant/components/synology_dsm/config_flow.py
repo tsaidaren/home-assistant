@@ -34,46 +34,46 @@ from .const import DOMAIN  # pylint: disable=unused-import
 _LOGGER = logging.getLogger(__name__)
 
 
+def _schema_with_defaults(user_input=None):
+    if user_input is None:
+        user_input = {}
+
+    return vol.Schema(
+        {
+            vol.Optional(
+                CONF_NAME, default=user_input.get(CONF_NAME, DEFAULT_NAME)
+            ): str,
+            vol.Required(CONF_HOST, default=user_input.get(CONF_HOST, "")): str,
+            vol.Optional(CONF_PORT, default=user_input.get(CONF_PORT, "")): str,
+            vol.Optional(CONF_SSL, default=user_input.get(CONF_SSL, DEFAULT_SSL)): bool,
+            vol.Optional(
+                CONF_API_VERSION,
+                default=user_input.get(CONF_API_VERSION, DEFAULT_DSM_VERSION),
+            ): vol.All(
+                vol.Coerce(int),
+                vol.In([5, 6]),  # DSM versions supported by the library
+            ),
+            vol.Required(CONF_USERNAME, default=user_input.get(CONF_USERNAME, "")): str,
+            vol.Required(CONF_PASSWORD, default=user_input.get(CONF_PASSWORD, "")): str,
+        }
+    )
+
+
 class SynologyDSMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow."""
 
     VERSION = 1
     CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_POLL
 
+    def __init__(self):
+        """Initialize the synology_dsm config flow."""
+        self.discovery_schema = {}
+
     async def _show_setup_form(self, user_input=None, errors=None):
         """Show the setup form to the user."""
-
-        if user_input is None:
-            user_input = {}
-
-        _LOGGER.debug("_show_setup_form user_input: %s", user_input)
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema(
-                {
-                    vol.Optional(
-                        CONF_NAME, default=user_input.get(CONF_NAME, DEFAULT_NAME)
-                    ): str,
-                    vol.Required(CONF_HOST, default=user_input.get(CONF_HOST, "")): str,
-                    vol.Optional(CONF_PORT, default=user_input.get(CONF_PORT, "")): str,
-                    vol.Optional(
-                        CONF_SSL, default=user_input.get(CONF_SSL, DEFAULT_SSL)
-                    ): bool,
-                    vol.Optional(
-                        CONF_API_VERSION,
-                        default=user_input.get(CONF_API_VERSION, DEFAULT_DSM_VERSION),
-                    ): vol.All(
-                        vol.Coerce(int),
-                        vol.In([5, 6]),  # DSM versions supported by the library
-                    ),
-                    vol.Required(
-                        CONF_USERNAME, default=user_input.get(CONF_USERNAME, "")
-                    ): str,
-                    vol.Required(
-                        CONF_PASSWORD, default=user_input.get(CONF_PASSWORD, "")
-                    ): str,
-                }
-            ),
+            data_schema=self.discovery_schema or _schema_with_defaults(),
             errors=errors or {},
         )
 
@@ -81,8 +81,9 @@ class SynologyDSMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle a flow initiated by the user."""
         errors = {}
 
-        if user_input is None or CONF_USERNAME not in user_input:
-            _LOGGER.debug("passing user_input to _show_setup_form: %s", user_input)
+        _LOGGER.debug("incoming user_input: %s", user_input)
+
+        if user_input is None:
             return await self._show_setup_form(user_input, None)
 
         name = user_input.get(CONF_NAME, DEFAULT_NAME)
@@ -159,13 +160,15 @@ class SynologyDSMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_HOST: parsed_url.hostname,
         }
 
-        return await self.async_step_user(
+        self.discovery_schema = _schema_with_defaults(
             {
                 CONF_HOST: parsed_url.hostname,
                 CONF_PORT: parsed_url.port,
                 CONF_NAME: friendly_name,
             }
         )
+
+        return await self.async_step_user()
 
     async def async_step_import(self, user_input=None):
         """Import a config entry."""
