@@ -148,6 +148,9 @@ class SynologyDSMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         parsed_url = urlparse(discovery_info[ssdp.ATTR_SSDP_LOCATION])
         friendly_name = discovery_info[ssdp.ATTR_UPNP_FRIENDLY_NAME]
 
+        if self._host_already_configured(parsed_url.hostname):
+            return self.async_abort(reason="already_configured")
+
         return await self.async_step_user(
             {
                 CONF_HOST: parsed_url.hostname,
@@ -159,3 +162,10 @@ class SynologyDSMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_import(self, user_input=None):
         """Import a config entry."""
         return await self.async_step_user(user_input)
+
+    def _host_already_configured(self, hostname):
+        """See if we already have a host matching user input configured."""
+        existing_hosts = {
+            entry.data[CONF_HOST] for entry in self._async_current_entries()
+        }
+        return hostname in existing_hosts
