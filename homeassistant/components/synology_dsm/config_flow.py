@@ -151,6 +151,12 @@ class SynologyDSMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         if self._host_already_configured(parsed_url.hostname):
             return self.async_abort(reason="already_configured")
 
+        # pylint: disable=no-member # https://github.com/PyCQA/pylint/issues/3167
+        self.context["title_placeholders"] = {
+            CONF_NAME: friendly_name,
+            CONF_HOST: parsed_url.hostname,
+        }
+
         return await self.async_step_user(
             {
                 CONF_HOST: parsed_url.hostname,
