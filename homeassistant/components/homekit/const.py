@@ -31,6 +31,8 @@ CONF_STREAM_SOURCE = "stream_source"
 CONF_SUPPORT_AUDIO = "support_audio"
 CONF_VIDEO_MAP = "video_map"
 CONF_VIDEO_PACKET_SIZE = "video_packet_size"
+CONF_ZEROCONF_DEFAULT_INTERFACE = "zeroconf_default_interface"
+
 
 # #### Config Defaults ####
 DEFAULT_AUDIO_MAP = "0:a:0"
@@ -44,6 +46,7 @@ DEFAULT_PORT = 51827
 DEFAULT_SAFE_MODE = False
 DEFAULT_VIDEO_MAP = "0:v:0"
 DEFAULT_VIDEO_PACKET_SIZE = 1316
+DEFAULT_ZEROCONF_DEFAULT_INTERFACE = False
 
 # #### Features ####
 FEATURE_ON_OFF = "on_off"
@@ -163,6 +166,7 @@ CHAR_TARGET_HUMIDITY = "TargetRelativeHumidity"
 CHAR_TARGET_SECURITY_STATE = "SecuritySystemTargetState"
 CHAR_TARGET_TEMPERATURE = "TargetTemperature"
 CHAR_TARGET_TILT_ANGLE = "TargetHorizontalTiltAngle"
+CHAR_HOLD_POSITION = "HoldPosition"
 CHAR_TEMP_DISPLAY_UNITS = "TemperatureDisplayUnits"
 CHAR_VALVE_TYPE = "ValveType"
 CHAR_VOLUME = "Volume"
@@ -197,3 +201,10 @@ THRESHOLD_CO2 = 1000
 # #### Default values ####
 DEFAULT_MIN_TEMP_WATER_HEATER = 40  # °C
 DEFAULT_MAX_TEMP_WATER_HEATER = 60  # °C
+
+# #### Door states ####
+HK_DOOR_OPEN = 0
+HK_DOOR_CLOSED = 1
+HK_DOOR_OPENING = 2
+HK_DOOR_CLOSING = 3
+HK_DOOR_STOPPED = 4
