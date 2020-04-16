@@ -92,12 +92,16 @@ class Fan(HomeAccessory):
 
     def _set_chars(self, char_values):
         _LOGGER.debug("Fan _set_chars: %s", char_values)
+        restore_state = False
         if CHAR_ACTIVE in char_values:
             if char_values[CHAR_ACTIVE]:
                 is_on = False
                 state = self.hass.states.get(self.entity_id)
-                if state and state.state == STATE_ON:
-                    is_on = True
+                if state:
+                    if state.state == STATE_ON:
+                        is_on = True
+                    else:
+                        restore_state = True
                 # Only set the state to active if we
                 # did not get a rotation speed or its off
                 if not is_on or CHAR_ROTATION_SPEED not in char_values:
@@ -118,6 +122,8 @@ class Fan(HomeAccessory):
         # get the speed they asked for
         if CHAR_ROTATION_SPEED in char_values:
             self.set_speed(char_values[CHAR_ROTATION_SPEED])
+        elif restore_state:
+            self.set_speed(self.char_speed.value)
 
     def set_state(self, value):
         """Set state if call came from HomeKit."""

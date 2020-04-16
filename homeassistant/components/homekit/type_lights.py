@@ -105,6 +105,7 @@ class Light(HomeAccessory):
         _LOGGER.debug("Light _set_chars: %s", char_values)
         service = SERVICE_TURN_ON
         params = {ATTR_ENTITY_ID: self.entity_id}
+        restore = {}
         restore_state = False
         if CHAR_ON in char_values:
             if char_values[CHAR_ON]:
@@ -121,15 +122,17 @@ class Light(HomeAccessory):
                 else:
                     params[ATTR_BRIGHTNESS_PCT] = char_values[CHAR_BRIGHTNESS]
             elif restore_state:
+                restore[CHAR_BRIGHTNESS] = self.char_brightness.value
                 params[ATTR_BRIGHTNESS_PCT] = self.char_brightness.value
 
         if CHAR_COLOR_TEMPERATURE in self.chars:
             if CHAR_COLOR_TEMPERATURE in char_values:
                 params[ATTR_COLOR_TEMP] = char_values[CHAR_COLOR_TEMPERATURE]
             elif restore_state:
+                restore[CHAR_COLOR_TEMPERATURE] = self.char_color_temperature.value
                 params[ATTR_COLOR_TEMP] = self.char_color_temperature.value
 
-        if CHAR_SATURATION in self.chars and CHAR_SATURATION in self.chars:
+        if CHAR_HUE in self.chars and CHAR_SATURATION in self.chars:
             hue = self.char_hue.value
             saturation = self.char_saturation.value
             if CHAR_HUE in char_values or CHAR_SATURATION in char_values:
@@ -137,14 +140,18 @@ class Light(HomeAccessory):
                     hue = char_values[CHAR_HUE]
                 if CHAR_SATURATION in char_values:
                     saturation = char_values[CHAR_SATURATION]
-                color = (hue, saturation)
-                params[ATTR_HS_COLOR] = color
+                params[ATTR_HS_COLOR] = (hue, saturation)
             elif restore_state:
-                color = (hue, saturation)
-                params[ATTR_HS_COLOR] = color
+                restore[CHAR_HUE] = hue
+                restore[CHAR_SATURATION] = saturation
+                params[ATTR_HS_COLOR] = (hue, saturation)
 
-        event_str = "Restore: " if restore_state else "Set: "
-        event_str += ", ".join(f"{k}: {v}" for k, v in char_values.items())
+        if restore_state:
+            event_str = "Set On: 1, " + ", ".join(
+                f"Restore {k}: {v}" for k, v in restore.items()
+            )
+        else:
+            event_str = ", ".join(f"Set {k}: {v}" for k, v in char_values.items())
         self.call_service(DOMAIN, service, params, event_str)
 
     def update_state(self, new_state):

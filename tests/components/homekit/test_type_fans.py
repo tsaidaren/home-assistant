@@ -185,7 +185,6 @@ async def test_fan_direction(hass, hk_driver, cls, events):
         },
         "mock_addr",
     )
-    await hass.async_add_executor_job(acc.char_direction.client_update_value, 1)
     await hass.async_block_till_done()
     assert call_set_direction[1]
     assert call_set_direction[1].data[ATTR_ENTITY_ID] == entity_id
@@ -234,7 +233,6 @@ async def test_fan_oscillate(hass, hk_driver, cls, events):
         },
         "mock_addr",
     )
-    await hass.async_add_executor_job(acc.char_swing.client_update_value, 0)
     await hass.async_block_till_done()
     assert call_oscillate[0]
     assert call_oscillate[0].data[ATTR_ENTITY_ID] == entity_id
@@ -254,7 +252,6 @@ async def test_fan_oscillate(hass, hk_driver, cls, events):
         },
         "mock_addr",
     )
-    await hass.async_add_executor_job(acc.char_swing.client_update_value, 1)
     await hass.async_block_till_done()
     assert call_oscillate[1]
     assert call_oscillate[1].data[ATTR_ENTITY_ID] == entity_id
@@ -315,7 +312,6 @@ async def test_fan_speed(hass, hk_driver, cls, events):
         },
         "mock_addr",
     )
-    await hass.async_add_executor_job(acc.char_speed.client_update_value, 42)
     await hass.async_block_till_done()
     acc.speed_mapping.speed_to_states.assert_called_with(42)
     assert call_set_speed[0]
@@ -565,3 +561,63 @@ async def test_fan_restore(hass, hk_driver, cls, events):
     assert acc.char_direction is not None
     assert acc.char_speed is not None
     assert acc.char_swing is not None
+
+
+async def test_fan_speed_restored_speed_off_on(hass, hk_driver, cls, events):
+    """Test fan with speed."""
+    entity_id = "fan.demo"
+    speed_list = [SPEED_OFF, SPEED_LOW, SPEED_HIGH]
+
+    hass.states.async_set(
+        entity_id,
+        STATE_OFF,
+        {
+            ATTR_SUPPORTED_FEATURES: SUPPORT_SET_SPEED,
+            ATTR_SPEED: SPEED_OFF,
+            ATTR_SPEED_LIST: speed_list,
+        },
+    )
+    await hass.async_block_till_done()
+    acc = cls.fan(hass, hk_driver, "Fan", entity_id, 1, None)
+    hk_driver.add_accessory(acc)
+
+    assert acc.char_speed.value == 0
+    acc.char_speed.set_value(42)
+
+    #   await acc.run_handler()
+    assert (
+        acc.speed_mapping.speed_ranges == HomeKitSpeedMapping(speed_list).speed_ranges
+    )
+
+    acc.speed_mapping.speed_to_homekit = Mock(return_value=42)
+    acc.speed_mapping.speed_to_states = Mock(return_value="ludicrous")
+
+    # Set from HomeKit
+    call_set_speed = async_mock_service(hass, DOMAIN, "set_speed")
+
+    char_active_iid = acc.char_active.to_HAP()[HAP_REPR_IID]
+    call_turn_on = async_mock_service(hass, DOMAIN, "turn_on")
+
+    hk_driver.set_characteristics(
+        {
+            HAP_REPR_CHARS: [
+                {
+                    HAP_REPR_AID: acc.aid,
+                    HAP_REPR_IID: char_active_iid,
+                    HAP_REPR_VALUE: 1,
+                },
+            ]
+        },
+        "mock_addr",
+    )
+    await hass.async_block_till_done()
+
+    acc.speed_mapping.speed_to_states.assert_called_with(42)
+    assert call_turn_on
+    assert call_turn_on[0].data[ATTR_ENTITY_ID] == entity_id
+    assert call_set_speed[0]
+    assert call_set_speed[0].data[ATTR_ENTITY_ID] == entity_id
+    assert call_set_speed[0].data[ATTR_SPEED] == "ludicrous"
+    assert len(events) == 2
+    assert events[0].data[ATTR_ENTITY_ID] == entity_id
+    assert events[1].data[ATTR_VALUE] == "ludicrous"
