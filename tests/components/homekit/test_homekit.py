@@ -335,7 +335,7 @@ async def test_homekit_start_with_a_broken_accessory(hass, hk_driver, debounce_p
     ) as hk_driver_add_acc, patch(
         "pyhap.accessory_driver.AccessoryDriver.start"
     ) as hk_driver_start:
-        await hass.async_add_executor_job(homekit.start)
+        await homekit.async_start()
 
     mock_setup_msg.assert_called_with(hass, pin)
     hk_driver_add_acc.assert_called_with(homekit.bridge)
@@ -344,7 +344,7 @@ async def test_homekit_start_with_a_broken_accessory(hass, hk_driver, debounce_p
 
     # Test start() if already started
     hk_driver_start.reset_mock()
-    await hass.async_add_executor_job(homekit.start)
+    await homekit.async_start()
     assert not hk_driver_start.called
 
 
