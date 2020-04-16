@@ -110,7 +110,7 @@ class Light(HomeAccessory):
         if CHAR_ON in char_values:
             if char_values[CHAR_ON]:
                 state = self.hass.states.get(self.entity_id)
-                if state.state == STATE_OFF:
+                if state and state.state == STATE_OFF:
                     restore_state = True
             else:
                 service = SERVICE_TURN_OFF
