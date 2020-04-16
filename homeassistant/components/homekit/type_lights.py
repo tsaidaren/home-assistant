@@ -10,6 +10,7 @@ from homeassistant.components.light import (
     ATTR_HS_COLOR,
     ATTR_MAX_MIREDS,
     ATTR_MIN_MIREDS,
+    ATTR_TRANSITION,
     DOMAIN,
     SUPPORT_BRIGHTNESS,
     SUPPORT_COLOR,
@@ -104,7 +105,7 @@ class Light(HomeAccessory):
     def _set_chars(self, char_values):
         _LOGGER.debug("Light _set_chars: %s", char_values)
         service = SERVICE_TURN_ON
-        params = {ATTR_ENTITY_ID: self.entity_id}
+        params = {ATTR_ENTITY_ID: self.entity_id, ATTR_TRANSITION: 0}
         restore = {}
         restore_state = False
         if CHAR_ON in char_values:
@@ -152,6 +153,7 @@ class Light(HomeAccessory):
             )
         else:
             event_str = ", ".join(f"Set {k}: {v}" for k, v in char_values.items())
+        _LOGGER.debug("Light _set_chars events: %s", event_str)
         self.call_service(DOMAIN, service, params, event_str)
 
     def update_state(self, new_state):
