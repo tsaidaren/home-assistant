@@ -109,8 +109,11 @@ class Light(HomeAccessory):
         restore_state = False
         if CHAR_ON in char_values:
             if char_values[CHAR_ON]:
-                if not self.char_on.value:
+                _LOGGER.debug("Got char on, current value is: %s", self.char_on.value)
+                state = self.hass.states.get(self.entity_id)
+                if state == STATE_OFF:
                     restore_state = True
+                    _LOGGER.debug("RESTORE STATE")
             else:
                 service = SERVICE_TURN_OFF
             events.append(f"Set state to {char_values[CHAR_ON]}")
