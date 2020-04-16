@@ -103,7 +103,6 @@ class Light(HomeAccessory):
 
     def _set_chars(self, char_values):
         _LOGGER.debug("Light _set_chars: %s", char_values)
-        events = []
         service = SERVICE_TURN_ON
         params = {ATTR_ENTITY_ID: self.entity_id}
         restore_state = False
@@ -114,29 +113,21 @@ class Light(HomeAccessory):
                     restore_state = True
             else:
                 service = SERVICE_TURN_OFF
-            events.append(f"Set state to {char_values[CHAR_ON]}")
 
         if CHAR_BRIGHTNESS in self.chars:
             if CHAR_BRIGHTNESS in char_values:
                 if char_values[CHAR_BRIGHTNESS] == 0:
-                    events[-1] = "Set state to 0"
                     service = SERVICE_TURN_OFF
                 else:
                     params[ATTR_BRIGHTNESS_PCT] = char_values[CHAR_BRIGHTNESS]
-                events.append(f"brightness at {char_values[CHAR_BRIGHTNESS]}%")
             elif restore_state:
                 params[ATTR_BRIGHTNESS_PCT] = self.char_brightness.value
-                events.append(f"restore brightness at {params[ATTR_BRIGHTNESS_PCT]}%")
 
         if CHAR_COLOR_TEMPERATURE in self.chars:
             if CHAR_COLOR_TEMPERATURE in char_values:
                 params[ATTR_COLOR_TEMP] = char_values[CHAR_COLOR_TEMPERATURE]
-                events.append(
-                    f"color temperature at {char_values[CHAR_COLOR_TEMPERATURE]}"
-                )
             elif restore_state:
                 params[ATTR_COLOR_TEMP] = self.char_color_temperature.value
-                events.append(f"restore color temperature at {params[ATTR_COLOR_TEMP]}")
 
         if CHAR_SATURATION in self.chars and CHAR_SATURATION in self.chars:
             hue = self.char_hue.value
@@ -148,13 +139,13 @@ class Light(HomeAccessory):
                     saturation = char_values[CHAR_SATURATION]
                 color = (hue, saturation)
                 params[ATTR_HS_COLOR] = color
-                events.append(f"set color at {color}")
             elif restore_state:
                 color = (hue, saturation)
                 params[ATTR_HS_COLOR] = color
-                events.append(f"restore color at {color}")
 
-        self.call_service(DOMAIN, service, params, ", ".join(events))
+        event_str = "Restore: " if restore_state else "Set: "
+        event_str += ", ".join(f"{k}: {v}" for k, v in char_values.items())
+        self.call_service(DOMAIN, service, params, event_str)
 
     def update_state(self, new_state):
         """Update light after state change."""
@@ -170,18 +161,8 @@ class Light(HomeAccessory):
             brightness = new_state.attributes.get(ATTR_BRIGHTNESS)
             if isinstance(brightness, (int, float)):
                 brightness = round(brightness / 255 * 100, 0)
-                # The homeassistant component might report its brightness as 0 but is
-                # not off. But 0 is a special value in homekit. When you turn on a
-                # homekit accessory it will try to restore the last brightness state
-                # which will be the last value saved by char_brightness.set_value.
-                # But if it is set to 0, HomeKit will update the brightness to 100 as
-                # it thinks 0 is off.
-                #
-                # Therefore, if the the brightness is 0 and the device is still on,
-                # the brightness is mapped to 1 otherwise the update is ignored in
-                # order to avoid this incorrect behavior.
-                # if brightness == 0 and state == STATE_ON:
-                #    brightness = 1
+                # We now support restoring state, and
+                # brightness of 0 in _set_chars
                 if self.char_brightness.value != brightness:
                     self.char_brightness.set_value(brightness)
 

@@ -216,7 +216,7 @@ async def test_light_brightness(hass, hk_driver, cls, events):
     # in update_state
     hass.states.async_set(entity_id, STATE_ON, {ATTR_BRIGHTNESS: 0})
     await hass.async_block_till_done()
-    assert acc.char_brightness.value == 1
+    assert acc.char_brightness.value == 0
     hass.states.async_set(entity_id, STATE_ON, {ATTR_BRIGHTNESS: 255})
     await hass.async_block_till_done()
     assert acc.char_brightness.value == 100
