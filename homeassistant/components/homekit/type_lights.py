@@ -109,7 +109,7 @@ class Light(HomeAccessory):
         restore_state = False
         if CHAR_ON in char_values:
             if char_values[CHAR_ON]:
-                if not self.char_on:
+                if not self.char_on.value:
                     restore_state = True
             else:
                 service = SERVICE_TURN_OFF
@@ -153,6 +153,7 @@ class Light(HomeAccessory):
                 params[ATTR_HS_COLOR] = color
                 events.append(f"restore color at {color}")
 
+        _LOGGER.debug("light events: %s", ", ".join(events))
         self.call_service(DOMAIN, service, params, ", ".join(events))
 
     def update_state(self, new_state):
