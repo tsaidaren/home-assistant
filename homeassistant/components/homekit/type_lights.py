@@ -162,7 +162,7 @@ class Light(HomeAccessory):
             if isinstance(brightness, (int, float)):
                 brightness = round(brightness / 255 * 100, 0)
                 # We now support restoring state, and
-                # brightness of 0 in _set_chars
+                # handle a brightness of 0 in _set_chars
                 if self.char_brightness.value != brightness:
                     self.char_brightness.set_value(brightness)
 
