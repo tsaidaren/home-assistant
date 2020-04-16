@@ -301,7 +301,7 @@ async def test_homekit_start(hass, hk_driver, debounce_patcher):
     ) as hk_driver_add_acc, patch(
         "pyhap.accessory_driver.AccessoryDriver.start"
     ) as hk_driver_start:
-        await hass.async_add_job(homekit.async_start)
+        await homekit.async_start()
 
     mock_add_acc.assert_called_with(state)
     mock_setup_msg.assert_called_with(hass, pin)
@@ -311,7 +311,7 @@ async def test_homekit_start(hass, hk_driver, debounce_patcher):
 
     # Test start() if already started
     hk_driver_start.reset_mock()
-    await hass.async_add_job(homekit.async_start)
+    await homekit.async_start()
     assert not hk_driver_start.called
 
 
@@ -354,16 +354,16 @@ async def test_homekit_stop(hass):
     homekit.driver = Mock()
 
     assert homekit.status == STATUS_READY
-    await hass.async_add_job(homekit.async_stop)
+    await homekit.async_stop()
     homekit.status = STATUS_WAIT
-    await hass.async_add_job(homekit.async_stop)
+    await homekit.async_stop()
     homekit.status = STATUS_STOPPED
-    await hass.async_add_job(homekit.async_stop)
+    await homekit.async_stop()
     assert homekit.driver.stop.called is False
 
     # Test if driver is started
     homekit.status = STATUS_RUNNING
-    await hass.async_add_job(homekit.async_stop)
+    await homekit.async_stop()
     assert homekit.driver.stop.called is True
 
 
@@ -408,5 +408,5 @@ async def test_homekit_too_many_accessories(hass, hk_driver):
     with patch("pyhap.accessory_driver.AccessoryDriver.start"), patch(
         "pyhap.accessory_driver.AccessoryDriver.add_accessory"
     ), patch("homeassistant.components.homekit._LOGGER.warning") as mock_warn:
-        await hass.async_add_job(homekit.async_start)
+        await homekit.async_start()
         assert mock_warn.called is True
