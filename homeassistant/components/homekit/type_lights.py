@@ -83,12 +83,8 @@ class Light(HomeAccessory):
             self.char_brightness = serv_light.configure_char(CHAR_BRIGHTNESS, value=100)
 
         if CHAR_COLOR_TEMPERATURE in self.chars:
-            min_mireds = self.hass.states.get(self.entity_id).attributes.get(
-                ATTR_MIN_MIREDS, 153
-            )
-            max_mireds = self.hass.states.get(self.entity_id).attributes.get(
-                ATTR_MAX_MIREDS, 500
-            )
+            min_mireds = state.attributes.get(ATTR_MIN_MIREDS, 153)
+            max_mireds = state.attributes.get(ATTR_MAX_MIREDS, 500)
             self.char_color_temperature = serv_light.configure_char(
                 CHAR_COLOR_TEMPERATURE,
                 value=min_mireds,
@@ -110,32 +106,52 @@ class Light(HomeAccessory):
         events = []
         service = SERVICE_TURN_ON
         params = {ATTR_ENTITY_ID: self.entity_id}
+        restore_state = False
         if CHAR_ON in char_values:
-            if not char_values[CHAR_ON]:
+            if char_values[CHAR_ON]:
+                if not self.char_on:
+                    restore_state = True
+            else:
                 service = SERVICE_TURN_OFF
             events.append(f"Set state to {char_values[CHAR_ON]}")
 
-        if CHAR_BRIGHTNESS in char_values:
-            if char_values[CHAR_BRIGHTNESS] == 0:
-                events[-1] = "Set state to 0"
-                service = SERVICE_TURN_OFF
-            else:
-                params[ATTR_BRIGHTNESS_PCT] = char_values[CHAR_BRIGHTNESS]
-            events.append(f"brightness at {char_values[CHAR_BRIGHTNESS]}%")
+        if CHAR_BRIGHTNESS in self.chars:
+            if CHAR_BRIGHTNESS in char_values:
+                if char_values[CHAR_BRIGHTNESS] == 0:
+                    events[-1] = "Set state to 0"
+                    service = SERVICE_TURN_OFF
+                else:
+                    params[ATTR_BRIGHTNESS_PCT] = char_values[CHAR_BRIGHTNESS]
+                events.append(f"brightness at {char_values[CHAR_BRIGHTNESS]}%")
+            elif restore_state:
+                params[ATTR_BRIGHTNESS_PCT] = self.char_brightness.value
+                events.append(f"restore brightness at {params[ATTR_BRIGHTNESS_PCT]}%")
 
-        if CHAR_COLOR_TEMPERATURE in char_values:
-            params[ATTR_COLOR_TEMP] = char_values[CHAR_COLOR_TEMPERATURE]
-            events.append(f"color temperature at {char_values[CHAR_COLOR_TEMPERATURE]}")
+        if CHAR_COLOR_TEMPERATURE in self.chars:
+            if CHAR_COLOR_TEMPERATURE in char_values:
+                params[ATTR_COLOR_TEMP] = char_values[CHAR_COLOR_TEMPERATURE]
+                events.append(
+                    f"color temperature at {char_values[CHAR_COLOR_TEMPERATURE]}"
+                )
+            elif restore_state:
+                params[ATTR_COLOR_TEMP] = self.char_color_temperature.value
+                events.append(f"restore color temperature at {params[ATTR_COLOR_TEMP]}")
 
-        if (
-            self._features & SUPPORT_COLOR
-            and CHAR_HUE in char_values
-            and CHAR_SATURATION in char_values
-        ):
-            color = (char_values[CHAR_HUE], char_values[CHAR_SATURATION])
-            _LOGGER.debug("%s: Set hs_color to %s", self.entity_id, color)
-            params[ATTR_HS_COLOR] = color
-            events.append(f"set color at {color}")
+        if CHAR_SATURATION in self.chars and CHAR_SATURATION in self.chars:
+            hue = self.char_hue.value
+            saturation = self.char_saturation.value
+            if CHAR_HUE in char_values or CHAR_SATURATION in char_values:
+                if CHAR_HUE in char_values:
+                    hue = char_values[CHAR_HUE]
+                if CHAR_SATURATION in char_values:
+                    saturation = char_values[CHAR_SATURATION]
+                color = (hue, saturation)
+                params[ATTR_HS_COLOR] = color
+                events.append(f"set color at {color}")
+            elif restore_state:
+                color = (hue, saturation)
+                params[ATTR_HS_COLOR] = color
+                events.append(f"restore color at {color}")
 
         self.call_service(DOMAIN, service, params, ", ".join(events))
 
@@ -163,8 +179,8 @@ class Light(HomeAccessory):
                 # Therefore, if the the brightness is 0 and the device is still on,
                 # the brightness is mapped to 1 otherwise the update is ignored in
                 # order to avoid this incorrect behavior.
-                if brightness == 0 and state == STATE_ON:
-                    brightness = 1
+                # if brightness == 0 and state == STATE_ON:
+                #    brightness = 1
                 if self.char_brightness.value != brightness:
                     self.char_brightness.set_value(brightness)
 
