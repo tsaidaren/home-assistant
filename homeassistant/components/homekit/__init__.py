@@ -365,7 +365,7 @@ class HomeKit:
 
     def add_bridge_accessory(self, state):
         """Try adding accessory to bridge if configured beforehand."""
-        if not state or not self._filter(state.entity_id):
+        if not self._filter(state.entity_id):
             return
         aid = generate_aid(state.entity_id)
         conf = self._config.pop(state.entity_id, {})
