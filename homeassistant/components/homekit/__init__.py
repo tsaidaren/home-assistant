@@ -396,14 +396,12 @@ class HomeKit:
 
         ent_reg = await entity_registry.async_get_registry(self.hass)
 
-        domain_device_classes = {
-            ("binary_sensor", DEVICE_CLASS_BATTERY_CHARGING),
-            ("sensor", DEVICE_CLASS_BATTERY),
-        }
-
-        device_lookup = ent_reg.async_get_device_class_lookup(domain_device_classes)
-
-        _LOGGER.debug("device_lookup: %s", device_lookup)
+        device_lookup = ent_reg.async_get_device_class_lookup(
+            {
+                ("binary_sensor", DEVICE_CLASS_BATTERY_CHARGING),
+                ("sensor", DEVICE_CLASS_BATTERY),
+            }
+        )
 
         bridged_states = []
         for state in self.hass.states.async_all():
@@ -473,11 +471,6 @@ class HomeKit:
                 entry.device_id
             ].get(("binary_sensor", DEVICE_CLASS_BATTERY_CHARGING))
             if battery_charging_binary_sensor_entity_id:
-                _LOGGER.debug(
-                    "Found linked charging sensor for: %s: %s",
-                    state.entity_id,
-                    battery_charging_binary_sensor_entity_id,
-                )
                 self._config.setdefault(state.entity_id, {}).setdefault(
                     CONF_LINKED_BATTERY_CHARGING_SENSOR,
                     battery_charging_binary_sensor_entity_id,
@@ -488,11 +481,6 @@ class HomeKit:
                 ("sensor", DEVICE_CLASS_BATTERY)
             )
             if battery_sensor_entity_id:
-                _LOGGER.debug(
-                    "Found linked battery sensor for: %s: %s",
-                    state.entity_id,
-                    battery_sensor_entity_id,
-                )
                 self._config.setdefault(state.entity_id, {}).setdefault(
                     CONF_LINKED_BATTERY_SENSOR, battery_sensor_entity_id
                 )
