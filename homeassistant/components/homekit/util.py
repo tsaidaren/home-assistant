@@ -1,10 +1,8 @@
 """Collection of useful functions for the HomeKit component."""
 from collections import OrderedDict, namedtuple
-import io
+from io import BytesIO
 import logging
-import secrets
 
-import pyqrcode
 import voluptuous as vol
 
 from homeassistant.components import fan, media_player, sensor
@@ -30,8 +28,6 @@ from .const import (
     FEATURE_PLAY_STOP,
     FEATURE_TOGGLE_MUTE,
     HOMEKIT_NOTIFY_ID,
-    HOMEKIT_PAIRING_QR,
-    HOMEKIT_PAIRING_QR_SECRET,
     TYPE_FAUCET,
     TYPE_OUTLET,
     TYPE_SHOWER,
@@ -214,24 +210,37 @@ def show_setup_message(hass, pincode, uri):
     """Display persistent notification with setup information."""
     pin = pincode.decode()
     _LOGGER.info("Pincode: %s", pin)
-
-    buffer = io.BytesIO()
-    url = pyqrcode.create(uri)
-    url.svg(buffer, scale=5)
-    paring_secret = secrets.token_hex(32)
-
-    hass.data[HOMEKIT_PAIRING_QR] = buffer.getvalue()
-    hass.data[HOMEKIT_PAIRING_QR_SECRET] = paring_secret
-
+    qr_code_svg = _generate_qr_code_svg(uri)
     message = (
         f"To set up Home Assistant in the Home App, "
         f"scan the QR code or enter the following code:\n"
-        f"### {pin}\n"
-        f"![image](/api/homekit/paringqr?{paring_secret})"
+        f"### {pin}\n{qr_code_svg}\n"
     )
     hass.components.persistent_notification.create(
         message, "HomeKit Setup", HOMEKIT_NOTIFY_ID
     )
+
+
+def _generate_qr_code_svg(data: str) -> str:
+    """Generate a svg to represent QR Code image of data."""
+
+    # Rarely needed so don't import right away
+    import pyqrcode  # pylint: disable=import-outside-toplevel
+
+    qr_code = pyqrcode.create(data)
+
+    with BytesIO() as buffer:
+        qr_code.svg(file=buffer, scale=5)
+        return str(
+            buffer.getvalue()
+            .decode("ascii")
+            .replace("\n", "")
+            .replace(
+                '<?xml version="1.0" encoding="UTF-8"?>'
+                '<svg xmlns="http://www.w3.org/2000/svg"',
+                "<svg",
+            )
+        )
 
 
 def dismiss_setup_message(hass):

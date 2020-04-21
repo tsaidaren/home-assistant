@@ -2,13 +2,11 @@
 import ipaddress
 import logging
 
-from aiohttp import web
 import voluptuous as vol
 from zeroconf import InterfaceChoice
 
 from homeassistant.components import cover, vacuum
 from homeassistant.components.cover import DEVICE_CLASS_GARAGE, DEVICE_CLASS_GATE
-from homeassistant.components.http import HomeAssistantView
 from homeassistant.components.media_player import DEVICE_CLASS_TV
 from homeassistant.const import (
     ATTR_DEVICE_CLASS,
@@ -30,7 +28,6 @@ from homeassistant.const import (
     UNIT_PERCENTAGE,
 )
 from homeassistant.core import callback
-from homeassistant.exceptions import Unauthorized
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entityfilter import FILTER_SCHEMA
 from homeassistant.util import get_local_ip
@@ -59,8 +56,6 @@ from .const import (
     DOMAIN,
     EVENT_HOMEKIT_CHANGED,
     HOMEKIT_FILE,
-    HOMEKIT_PAIRING_QR,
-    HOMEKIT_PAIRING_QR_SECRET,
     SERVICE_HOMEKIT_RESET_ACCESSORY,
     SERVICE_HOMEKIT_START,
     TYPE_FAUCET,
@@ -133,8 +128,6 @@ async def async_setup(hass, config):
 
     aid_storage = hass.data[AID_STORAGE] = AccessoryAidStorage(hass)
     await aid_storage.async_initialize()
-
-    hass.http.register_view(HomeKitParingQRView)
 
     conf = config[DOMAIN]
     name = conf[CONF_NAME]
@@ -468,21 +461,3 @@ class HomeKit:
 
         _LOGGER.debug("Driver stop")
         self.hass.add_job(self.driver.stop)
-
-
-class HomeKitParingQRView(HomeAssistantView):
-    """Display the homekit pairing code at a protected url."""
-
-    url = "/api/homekit/paringqr"
-    name = "api:homekit:paringqr"
-    requires_auth = False
-
-    # pylint: disable=no-self-use
-    async def get(self, request):
-        """Retrieve the pairing QRCode image."""
-        if request.query_string != request.app["hass"].data[HOMEKIT_PAIRING_QR_SECRET]:
-            raise Unauthorized()
-        return web.Response(
-            body=request.app["hass"].data[HOMEKIT_PAIRING_QR],
-            content_type="image/svg+xml",
-        )
