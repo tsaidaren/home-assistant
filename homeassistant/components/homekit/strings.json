@@ -1,0 +1,53 @@
+{
+   "title" : "HomeKit Bridge",
+   "config" : {
+      "abort" : {
+         "already_configured" : "Device is already configured"
+      },
+      "error" : {
+         "unknown" : "Unexpected error",
+         "invalid_auth" : "The port is in use, please select a new port.",
+         "name_in_use" : "The name is in use, please select a new name."
+      },
+      "step" : {
+         "pairing" : {
+            "title" : "Pair HomeKit Bridge",
+            "description" : "As soon as the {name} bridge is ready, pairing will be available in “Notifications” as “HomeKit Bridge Setup”."
+         },
+         "user" : {
+            "data" : {
+               "include_domains" : "Domains to include",
+               "port" : "Bridge Port",
+               "auto_start" : "Autostart"
+            },
+            "title" : "Activate HomeKit Bridge",
+            "description" : "A HomeKit Bridge will allow you to access your Home Assistant entities in HomeKit. HomeKit Bridges are limited to 150 accessories per instance including the bridge itself. If you wish to bridge more than the maximum number of accessories, it is recommended that you use multiple HomeKit bridges for different domains. Detailed entity configuration is only available via YAML for the primary bridge."
+         }
+      }
+   },
+   "options" : {
+      "step" : {
+         "init" : {
+            "description" : "Entities in the “Domains to include” will be bridged to HomeKit. You will be able to select which entities to exclude from this list on the next screen.",
+            "title" : "Adjust HomeKit Bridge Options.",
+            "data" : {
+               "zeroconf_default_interface" : "Use default zeroconf interface",
+               "include_domains" : "Domains to include",
+               "auto_start" : "Autostart",
+               "safe_mode" : "Safe Mode"
+            }
+         },
+         "exclude" : {
+            "title" : "Exclude entities from HomeKit",
+            "description" : "Choose the entities that you do NOT want to be bridged.",
+            "data" : {
+               "exclude_entities" : "Entities to exclude"
+            }
+         },
+         "yaml" : {
+            "title" : "Adjust HomeKit Bridge Options.",
+            "description" : "This entry is controlled via YAML."
+         }
+      }
+   }
+}
