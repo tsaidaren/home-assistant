@@ -1,4 +1,5 @@
 """Constants used be the HomeKit component."""
+
 # #### Misc ####
 DEBOUNCE_TIMEOUT = 0.5
 DEVICE_PRECISION_LEEWAY = 6
@@ -10,6 +11,7 @@ HOMEKIT_PAIRING_QR_SECRET = "homekit-pairing-qr-secret"
 HOMEKIT = "homekit"
 UNDO_UPDATE_LISTENER = "undo_update_listener"
 SHUTDOWN_TIMEOUT = 30
+CONF_ENTRY_INDEX = "index"
 
 # #### Attributes ####
 ATTR_DISPLAY_NAME = "display_name"

@@ -7,7 +7,7 @@ import pytest
 
 from homeassistant.components.homekit.aidmanager import (
     AccessoryAidStorage,
-    get_aid_storage_filename_for_entry,
+    get_aid_storage_filename_for_entry_id,
     get_system_unique_id,
 )
 from homeassistant.helpers import device_registry
@@ -620,7 +620,7 @@ async def test_aid_generation_no_unique_ids_handles_collision(
         "light.light99": 596247761,
     }
 
-    aidstore = get_aid_storage_filename_for_entry(config_entry)
+    aidstore = get_aid_storage_filename_for_entry_id(config_entry.entry_id)
     aid_storage_path = hass.config.path(STORAGE_DIR, aidstore)
     if await hass.async_add_executor_job(os.path.exists, aid_storage_path):
         await hass.async_add_executor_job(os.unlink, aid_storage_path)
