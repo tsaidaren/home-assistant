@@ -19,7 +19,7 @@ from homeassistant.const import (
     CONF_NAME,
     CONF_PORT,
     DEVICE_CLASS_BATTERY,
-    EVENT_HOMEASSISTANT_START,
+    EVENT_HOMEASSISTANT_STARTED,
     EVENT_HOMEASSISTANT_STOP,
 )
 from homeassistant.core import CoreState, HomeAssistant, callback
@@ -246,7 +246,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     if hass.state == CoreState.running:
         await homekit.async_start()
     elif auto_start:
-        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, homekit.async_start)
+        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, homekit.async_start)
 
     return True
 
