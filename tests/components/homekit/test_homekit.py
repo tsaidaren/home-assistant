@@ -1,4 +1,6 @@
 """Tests for the HomeKit component."""
+import os
+from typing import Dict
 from unittest.mock import ANY, Mock, patch
 
 from asynctest import CoroutineMock
@@ -19,6 +21,7 @@ from homeassistant.components.homekit.const import (
     AID_STORAGE,
     BRIDGE_NAME,
     CONF_AUTO_START,
+    CONF_ENTRY_INDEX,
     CONF_SAFE_MODE,
     CONF_ZEROCONF_DEFAULT_INTERFACE,
     DEFAULT_PORT,
@@ -27,6 +30,10 @@ from homeassistant.components.homekit.const import (
     HOMEKIT_FILE,
     SERVICE_HOMEKIT_RESET_ACCESSORY,
     SERVICE_HOMEKIT_START,
+)
+from homeassistant.components.homekit.util import (
+    get_aid_storage_fullpath_for_entry_id,
+    get_persist_fullpath_for_entry_id,
 )
 from homeassistant.config_entries import SOURCE_IMPORT
 from homeassistant.const import (
@@ -43,7 +50,9 @@ from homeassistant.const import (
 from homeassistant.core import State
 from homeassistant.helpers import device_registry
 from homeassistant.helpers.entityfilter import generate_filter
+from homeassistant.helpers.storage import STORAGE_DIR
 from homeassistant.setup import async_setup_component
+from homeassistant.util import json as json_util
 
 from .util import PATH_HOMEKIT, async_init_entry, async_init_integration
 
@@ -99,7 +108,6 @@ async def test_setup_min(hass):
         DEFAULT_SAFE_MODE,
         None,
         None,
-        f".{entry.entry_id}.homekit.state",
         entry.entry_id,
     )
     assert mock_homekit().setup.called is True
@@ -141,7 +149,6 @@ async def test_setup_auto_start_disabled(hass):
         DEFAULT_SAFE_MODE,
         None,
         InterfaceChoice.Default,
-        f".{entry.entry_id}.homekit.state",
         entry.entry_id,
     )
     assert mock_homekit().setup.called is True
@@ -187,7 +194,6 @@ async def test_homekit_setup(hass, hk_driver):
         DEFAULT_SAFE_MODE,
         advertise_ip=None,
         interface_choice=None,
-        persist_file=HOMEKIT_FILE,
         entry_id=entry.entry_id,
     )
 
@@ -197,7 +203,7 @@ async def test_homekit_setup(hass, hk_driver):
         mock_ip.return_value = IP_ADDRESS
         await hass.async_add_executor_job(homekit.setup)
 
-    path = hass.config.path(HOMEKIT_FILE)
+    path = get_persist_fullpath_for_entry_id(hass, entry.entry_id)
     assert isinstance(homekit.bridge, HomeBridge)
     mock_driver.assert_called_with(
         hass,
@@ -232,10 +238,10 @@ async def test_homekit_setup_ip_address(hass, hk_driver):
         None,
         None,
         interface_choice=None,
-        persist_file="persist_file",
         entry_id=entry.entry_id,
     )
 
+    path = get_persist_fullpath_for_entry_id(hass, entry.entry_id)
     with patch(
         f"{PATH_HOMEKIT}.accessories.HomeDriver", return_value=hk_driver
     ) as mock_driver:
@@ -246,7 +252,7 @@ async def test_homekit_setup_ip_address(hass, hk_driver):
         BRIDGE_NAME,
         address="172.0.0.0",
         port=DEFAULT_PORT,
-        persist_file=ANY,
+        persist_file=path,
         advertised_address=None,
         interface_choice=None,
     )
@@ -269,10 +275,10 @@ async def test_homekit_setup_advertise_ip(hass, hk_driver):
         None,
         "192.168.1.100",
         interface_choice=None,
-        persist_file="persist_file",
         entry_id=entry.entry_id,
     )
 
+    path = get_persist_fullpath_for_entry_id(hass, entry.entry_id)
     with patch(
         f"{PATH_HOMEKIT}.accessories.HomeDriver", return_value=hk_driver
     ) as mock_driver:
@@ -283,7 +289,7 @@ async def test_homekit_setup_advertise_ip(hass, hk_driver):
         BRIDGE_NAME,
         address="0.0.0.0",
         port=DEFAULT_PORT,
-        persist_file=ANY,
+        persist_file=path,
         advertised_address="192.168.1.100",
         interface_choice=None,
     )
@@ -306,10 +312,10 @@ async def test_homekit_setup_interface_choice(hass, hk_driver):
         None,
         None,
         InterfaceChoice.Default,
-        persist_file="persist_file",
         entry_id=entry.entry_id,
     )
 
+    path = get_persist_fullpath_for_entry_id(hass, entry.entry_id)
     with patch(
         f"{PATH_HOMEKIT}.accessories.HomeDriver", return_value=hk_driver
     ) as mock_driver:
@@ -320,7 +326,7 @@ async def test_homekit_setup_interface_choice(hass, hk_driver):
         BRIDGE_NAME,
         address="0.0.0.0",
         port=DEFAULT_PORT,
-        persist_file=ANY,
+        persist_file=path,
         advertised_address=None,
         interface_choice=InterfaceChoice.Default,
     )
@@ -343,7 +349,6 @@ async def test_homekit_setup_safe_mode(hass, hk_driver):
         True,
         advertise_ip=None,
         interface_choice=None,
-        persist_file="persist_file",
         entry_id=entry.entry_id,
     )
 
@@ -366,7 +371,6 @@ async def test_homekit_add_accessory(hass):
         DEFAULT_SAFE_MODE,
         advertise_ip=None,
         interface_choice=None,
-        persist_file="persist_file",
         entry_id=entry.entry_id,
     )
     homekit.driver = "driver"
@@ -404,7 +408,6 @@ async def test_homekit_remove_accessory(hass):
         DEFAULT_SAFE_MODE,
         advertise_ip=None,
         interface_choice=None,
-        persist_file="persist_file",
         entry_id=entry.entry_id,
     )
     homekit.driver = "driver"
@@ -431,7 +434,6 @@ async def test_homekit_entity_filter(hass):
         DEFAULT_SAFE_MODE,
         advertise_ip=None,
         interface_choice=None,
-        persist_file="persist_file",
         entry_id=entry.entry_id,
     )
     homekit.bridge = Mock()
@@ -467,7 +469,6 @@ async def test_homekit_start(hass, hk_driver, debounce_patcher):
         DEFAULT_SAFE_MODE,
         advertise_ip=None,
         interface_choice=None,
-        persist_file="persist_file",
         entry_id=entry.entry_id,
     )
     homekit.bridge = Mock()
@@ -518,7 +519,6 @@ async def test_homekit_start_with_a_broken_accessory(hass, hk_driver, debounce_p
         DEFAULT_SAFE_MODE,
         advertise_ip=None,
         interface_choice=None,
-        persist_file="persist_file",
         entry_id=entry.entry_id,
     )
 
@@ -563,7 +563,6 @@ async def test_homekit_stop(hass):
         DEFAULT_SAFE_MODE,
         advertise_ip=None,
         interface_choice=None,
-        persist_file="persist_file",
         entry_id=entry.entry_id,
     )
     homekit.driver = Mock()
@@ -605,7 +604,6 @@ async def test_homekit_reset_accessories(hass):
         DEFAULT_SAFE_MODE,
         advertise_ip=None,
         interface_choice=None,
-        persist_file="persist_file",
         entry_id=entry.entry_id,
     )
     homekit.bridge = Mock()
@@ -655,7 +653,6 @@ async def test_homekit_too_many_accessories(hass, hk_driver):
         DEFAULT_SAFE_MODE,
         advertise_ip=None,
         interface_choice=None,
-        persist_file="persist_file",
         entry_id=entry.entry_id,
     )
     homekit.bridge = Mock()
@@ -691,7 +688,6 @@ async def test_homekit_finds_linked_batteries(
         DEFAULT_SAFE_MODE,
         advertise_ip=None,
         interface_choice=None,
-        persist_file="persist_file",
         entry_id=entry.entry_id,
     )
     homekit.driver = hk_driver
@@ -757,11 +753,21 @@ async def test_homekit_finds_linked_batteries(
 
 async def test_setup_imported(hass):
     """Test async_setup with imported config options."""
+    legacy_persist_file_path = hass.config.path(HOMEKIT_FILE)
+    legacy_aid_storage_path = hass.config.path(STORAGE_DIR, "homekit.aids")
+    legacy_homekit_state_contents = {"homekit.state": 1}
+    legacy_homekit_aids_contents = {"homekit.aids": 1}
+    await hass.async_add_executor_job(
+        _write_data, legacy_persist_file_path, legacy_homekit_state_contents
+    )
+    await hass.async_add_executor_job(
+        _write_data, legacy_aid_storage_path, legacy_homekit_aids_contents
+    )
 
     entry = MockConfigEntry(
         domain=DOMAIN,
         source=SOURCE_IMPORT,
-        data={CONF_NAME: BRIDGE_NAME, CONF_PORT: DEFAULT_PORT},
+        data={CONF_NAME: BRIDGE_NAME, CONF_PORT: DEFAULT_PORT, CONF_ENTRY_INDEX: 0},
         options={},
     )
     entry.add_to_hass(hass)
@@ -782,7 +788,6 @@ async def test_setup_imported(hass):
         DEFAULT_SAFE_MODE,
         None,
         None,
-        ".homekit.state",
         entry.entry_id,
     )
     assert mock_homekit().setup.called is True
@@ -794,8 +799,22 @@ async def test_setup_imported(hass):
 
     mock_homekit().async_start.assert_called()
 
+    assert (
+        await hass.async_add_executor_job(
+            json_util.load_json, get_persist_fullpath_for_entry_id(hass, entry.entry_id)
+        )
+        == legacy_homekit_state_contents
+    )
+    assert (
+        await hass.async_add_executor_job(
+            json_util.load_json,
+            get_aid_storage_fullpath_for_entry_id(hass, entry.entry_id),
+        )
+        == legacy_homekit_aids_contents
+    )
 
-async def test_yaml_updates_update_config_entry(hass):
+
+async def test_yaml_updates_update_config_entry_for_name(hass):
     """Test async_setup with imported config."""
 
     entry = MockConfigEntry(
@@ -810,21 +829,20 @@ async def test_yaml_updates_update_config_entry(hass):
         mock_homekit.return_value = homekit = Mock()
         type(homekit).async_start = CoroutineMock()
         assert await async_setup_component(
-            hass, "homekit", {"homekit": {CONF_NAME: "YAMLUPDATED"}}
+            hass, "homekit", {"homekit": {CONF_NAME: BRIDGE_NAME, CONF_PORT: 12345}}
         )
         await hass.async_block_till_done()
 
     mock_homekit.assert_any_call(
         hass,
-        "YAMLUPDATED",
-        DEFAULT_PORT,
+        BRIDGE_NAME,
+        12345,
         None,
         ANY,
         {},
         DEFAULT_SAFE_MODE,
         None,
         None,
-        ".homekit.state",
         entry.entry_id,
     )
     assert mock_homekit().setup.called is True
@@ -852,3 +870,10 @@ async def test_raise_config_entry_not_ready(hass):
     ):
         assert not await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
+
+
+def _write_data(path: str, data: Dict) -> None:
+    """Write the data."""
+    if not os.path.isdir(os.path.dirname(path)):
+        os.makedirs(os.path.dirname(path))
+    json_util.save_json(path, data)

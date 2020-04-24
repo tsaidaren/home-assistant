@@ -8,7 +8,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.config_entries import SOURCE_IMPORT
 from homeassistant.const import CONF_NAME, CONF_PORT
-from homeassistant.core import callback
+from homeassistant.core import callback, split_entity_id
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entityfilter import (
     CONF_EXCLUDE_DOMAINS,
@@ -192,21 +192,52 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
         return self.async_show_form(step_id="yaml")
 
+    async def async_step_advanced(self, user_input=None):
+        """Choose advanced options."""
+        if user_input is not None:
+            self.homekit_options.update(user_input)
+            del self.homekit_options[CONF_INCLUDE_DOMAINS]
+            return self.async_create_entry(title="", data=self.homekit_options)
+
+        data_schema = vol.Schema(
+            {
+                vol.Optional(
+                    CONF_AUTO_START,
+                    default=self.homekit_options.get(
+                        CONF_AUTO_START, DEFAULT_AUTO_START
+                    ),
+                ): bool,
+                vol.Optional(
+                    CONF_SAFE_MODE,
+                    default=self.homekit_options.get(CONF_SAFE_MODE, DEFAULT_SAFE_MODE),
+                ): bool,
+                vol.Optional(
+                    CONF_ZEROCONF_DEFAULT_INTERFACE,
+                    default=self.homekit_options.get(
+                        CONF_ZEROCONF_DEFAULT_INTERFACE,
+                        DEFAULT_ZEROCONF_DEFAULT_INTERFACE,
+                    ),
+                ): bool,
+            }
+        )
+        return self.async_show_form(step_id="advanced", data_schema=data_schema)
+
     async def async_step_exclude(self, user_input=None):
         """Choose entities to exclude from the domain."""
         if user_input is not None:
-            options = self.homekit_options
-            options[CONF_FILTER] = {
-                CONF_INCLUDE_DOMAINS: options.get(CONF_INCLUDE_DOMAINS, []),
-                CONF_EXCLUDE_DOMAINS: options.get(CONF_EXCLUDE_DOMAINS, []),
-                CONF_INCLUDE_ENTITIES: options.get(CONF_INCLUDE_ENTITIES, []),
-                CONF_EXCLUDE_ENTITIES: user_input.get(CONF_EXCLUDE_ENTITIES, []),
+            self.homekit_options[CONF_FILTER] = {
+                CONF_INCLUDE_DOMAINS: self.homekit_options[CONF_INCLUDE_DOMAINS],
+                CONF_EXCLUDE_DOMAINS: self.homekit_options.get(
+                    CONF_EXCLUDE_DOMAINS, []
+                ),
+                CONF_INCLUDE_ENTITIES: self.homekit_options.get(
+                    CONF_INCLUDE_ENTITIES, []
+                ),
+                CONF_EXCLUDE_ENTITIES: user_input[CONF_EXCLUDE_ENTITIES],
             }
-            del options[CONF_INCLUDE_DOMAINS]
-            return self.async_create_entry(title="", data=options)
+            return await self.async_step_advanced()
 
-        options = self.config_entry.options
-        entity_filter = options.get(CONF_FILTER, {})
+        entity_filter = self.homekit_options.get(CONF_FILTER, {})
         all_supported_entities = await self.hass.async_add_executor_job(
             _get_entities_matching_domains,
             self.hass,
@@ -228,33 +259,18 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             return await self.async_step_yaml(user_input)
 
         if user_input is not None:
-            self.homekit_options = user_input
+            self.homekit_options.update(user_input)
             return await self.async_step_exclude()
 
-        options = self.config_entry.options
-        entity_filter = options.get(CONF_FILTER, {})
+        self.homekit_options = dict(self.config_entry.options)
+        entity_filter = self.homekit_options.get(CONF_FILTER, {})
 
         data_schema = vol.Schema(
             {
                 vol.Optional(
                     CONF_INCLUDE_DOMAINS,
                     default=entity_filter.get(CONF_INCLUDE_DOMAINS, []),
-                ): cv.multi_select(SUPPORTED_DOMAINS),
-                vol.Optional(
-                    CONF_AUTO_START,
-                    default=options.get(CONF_AUTO_START, DEFAULT_AUTO_START),
-                ): bool,
-                vol.Optional(
-                    CONF_SAFE_MODE,
-                    default=options.get(CONF_SAFE_MODE, DEFAULT_SAFE_MODE),
-                ): bool,
-                vol.Optional(
-                    CONF_ZEROCONF_DEFAULT_INTERFACE,
-                    default=options.get(
-                        CONF_ZEROCONF_DEFAULT_INTERFACE,
-                        DEFAULT_ZEROCONF_DEFAULT_INTERFACE,
-                    ),
-                ): bool,
+                ): cv.multi_select(SUPPORTED_DOMAINS)
             }
         )
         return self.async_show_form(step_id="init", data_schema=data_schema)
@@ -266,7 +282,7 @@ def _get_entities_matching_domains(hass, domains):
     entity_ids = [
         state.entity_id
         for state in hass.states.all()
-        if (state.entity_id.split("."))[0] in included_domains
+        if (split_entity_id(state.entity_id))[0] in included_domains
     ]
     entity_ids.sort()
     return entity_ids

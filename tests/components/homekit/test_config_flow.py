@@ -102,7 +102,6 @@ async def test_options_flow(hass):
         domain=DOMAIN,
         data={CONF_NAME: "mock_name", CONF_PORT: 12345},
         options={
-            "auto_start": True,
             "filter": {
                 "include_domains": [
                     "fan",
@@ -113,6 +112,7 @@ async def test_options_flow(hass):
                 ],
                 "exclude_entities": ["climate.front_gate"],
             },
+            "auto_start": True,
             "safe_mode": False,
             "zeroconf_default_interface": True,
         },
@@ -128,35 +128,40 @@ async def test_options_flow(hass):
     assert result["step_id"] == "init"
 
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"],
-        user_input={
-            "include_domains": ["fan", "vacuum", "climate"],
-            "auto_start": False,
-            "safe_mode": True,
-            "zeroconf_default_interface": False,
-        },
+        result["flow_id"], user_input={"include_domains": ["fan", "vacuum", "climate"]},
     )
 
     assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
     assert result["step_id"] == "exclude"
 
+    result2 = await hass.config_entries.options.async_configure(
+        result["flow_id"], user_input={"exclude_entities": ["climate.old"]},
+    )
+    assert result2["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result2["step_id"] == "advanced"
+
     with patch("homeassistant.components.homekit.async_setup_entry", return_value=True):
-        result2 = await hass.config_entries.options.async_configure(
-            result["flow_id"], user_input={"exclude_entities": ["climate.old"]},
+        result3 = await hass.config_entries.options.async_configure(
+            result2["flow_id"],
+            user_input={
+                "auto_start": False,
+                "safe_mode": True,
+                "zeroconf_default_interface": False,
+            },
         )
 
-        assert result2["type"] == data_entry_flow.RESULT_TYPE_CREATE_ENTRY
-        assert config_entry.options == {
-            "auto_start": False,
-            "filter": {
-                "exclude_domains": [],
-                "exclude_entities": ["climate.old"],
-                "include_domains": ["fan", "vacuum", "climate"],
-                "include_entities": [],
-            },
-            "safe_mode": True,
-            "zeroconf_default_interface": False,
-        }
+    assert result3["type"] == data_entry_flow.RESULT_TYPE_CREATE_ENTRY
+    assert config_entry.options == {
+        "auto_start": False,
+        "filter": {
+            "exclude_domains": [],
+            "exclude_entities": ["climate.old"],
+            "include_domains": ["fan", "vacuum", "climate"],
+            "include_entities": [],
+        },
+        "safe_mode": True,
+        "zeroconf_default_interface": False,
+    }
 
 
 async def test_options_flow_blocked_when_from_yaml(hass):
