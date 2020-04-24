@@ -806,19 +806,20 @@ async def test_setup_imported(hass):
 
     mock_homekit().async_start.assert_called()
 
+    migrated_persist_file_path = get_persist_fullpath_for_entry_id(hass, entry.entry_id)
     assert (
         await hass.async_add_executor_job(
-            json_util.load_json, get_persist_fullpath_for_entry_id(hass, entry.entry_id)
+            json_util.load_json, migrated_persist_file_path
         )
         == legacy_homekit_state_contents
     )
+    os.unlink(migrated_persist_file_path)
+    migrated_aid_file_path = get_aid_storage_fullpath_for_entry_id(hass, entry.entry_id)
     assert (
-        await hass.async_add_executor_job(
-            json_util.load_json,
-            get_aid_storage_fullpath_for_entry_id(hass, entry.entry_id),
-        )
+        await hass.async_add_executor_job(json_util.load_json, migrated_aid_file_path)
         == legacy_homekit_aids_contents
     )
+    os.unlink(migrated_aid_file_path)
 
 
 async def test_yaml_updates_update_config_entry_for_name(hass):
