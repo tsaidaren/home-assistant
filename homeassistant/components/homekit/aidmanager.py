@@ -20,7 +20,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_registry import RegistryEntry
 from homeassistant.helpers.storage import Store
 
-from .util import get_aid_storage_filename_for_entry
+from .util import get_aid_storage_filename_for_entry_id
 
 AID_MANAGER_STORAGE_VERSION = 1
 AID_MANAGER_SAVE_DELAY = 2
@@ -88,7 +88,7 @@ class AccessoryAidStorage:
         self._entity_registry = (
             await self.hass.helpers.entity_registry.async_get_registry()
         )
-        aidstore = get_aid_storage_filename_for_entry(self._entry)
+        aidstore = get_aid_storage_filename_for_entry_id(self._entry)
         self.store = Store(self.hass, AID_MANAGER_STORAGE_VERSION, aidstore)
 
         raw_storage = await self.store.async_load()

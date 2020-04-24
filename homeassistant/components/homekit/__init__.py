@@ -2,7 +2,6 @@
 import asyncio
 import ipaddress
 import logging
-import os
 
 from aiohttp import web
 import voluptuous as vol
@@ -35,7 +34,6 @@ from homeassistant.helpers.entityfilter import (
     CONF_INCLUDE_ENTITIES,
     convert_filter,
 )
-from homeassistant.helpers.storage import STORAGE_DIR
 from homeassistant.util import get_local_ip
 
 from .accessories import get_accessory
@@ -48,6 +46,7 @@ from .const import (
     CONF_ADVERTISE_IP,
     CONF_AUTO_START,
     CONF_ENTITY_CONFIG,
+    CONF_ENTRY_INDEX,
     CONF_FILTER,
     CONF_LINKED_BATTERY_CHARGING_SENSOR,
     CONF_LINKED_BATTERY_SENSOR,
@@ -71,9 +70,10 @@ from .const import (
 )
 from .util import (
     dismiss_setup_message,
-    get_aid_storage_filename_for_entry,
-    get_persist_filename_for_entry,
+    get_persist_fullpath_for_entry_id,
+    migrate_filesystem_state_data_for_primary_imported_entry_id,
     port_is_available,
+    remove_state_files_for_entry_id,
     show_setup_message,
     validate_entity_config,
 )
@@ -89,31 +89,39 @@ STATUS_STOPPED = 2
 STATUS_WAIT = 3
 
 
-CONFIG_SCHEMA = vol.Schema(
+def _has_all_unique_names_and_ports(bridges):
+    """Validate that each homekit bridge configured has a unique name."""
+    names = [bridge[CONF_NAME] for bridge in bridges]
+    ports = [bridge[CONF_PORT] for bridge in bridges]
+    vol.Schema(vol.Unique())(names)
+    vol.Schema(vol.Unique())(ports)
+    return bridges
+
+
+BRIDGE_SCHEMA = vol.Schema(
     {
-        DOMAIN: vol.All(
-            {
-                vol.Optional(CONF_NAME, default=BRIDGE_NAME): vol.All(
-                    cv.string, vol.Length(min=3, max=25)
-                ),
-                vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
-                vol.Optional(CONF_IP_ADDRESS): vol.All(ipaddress.ip_address, cv.string),
-                vol.Optional(CONF_ADVERTISE_IP): vol.All(
-                    ipaddress.ip_address, cv.string
-                ),
-                vol.Optional(CONF_AUTO_START, default=DEFAULT_AUTO_START): cv.boolean,
-                vol.Optional(CONF_SAFE_MODE, default=DEFAULT_SAFE_MODE): cv.boolean,
-                vol.Optional(CONF_FILTER, default={}): BASE_FILTER_SCHEMA,
-                vol.Optional(CONF_ENTITY_CONFIG, default={}): validate_entity_config,
-                vol.Optional(
-                    CONF_ZEROCONF_DEFAULT_INTERFACE,
-                    default=DEFAULT_ZEROCONF_DEFAULT_INTERFACE,
-                ): cv.boolean,
-            }
-        )
+        vol.Optional(CONF_NAME, default=BRIDGE_NAME): vol.All(
+            cv.string, vol.Length(min=3, max=25)
+        ),
+        vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
+        vol.Optional(CONF_IP_ADDRESS): vol.All(ipaddress.ip_address, cv.string),
+        vol.Optional(CONF_ADVERTISE_IP): vol.All(ipaddress.ip_address, cv.string),
+        vol.Optional(CONF_AUTO_START, default=DEFAULT_AUTO_START): cv.boolean,
+        vol.Optional(CONF_SAFE_MODE, default=DEFAULT_SAFE_MODE): cv.boolean,
+        vol.Optional(CONF_FILTER, default={}): BASE_FILTER_SCHEMA,
+        vol.Optional(CONF_ENTITY_CONFIG, default={}): validate_entity_config,
+        vol.Optional(
+            CONF_ZEROCONF_DEFAULT_INTERFACE, default=DEFAULT_ZEROCONF_DEFAULT_INTERFACE,
+        ): cv.boolean,
     },
     extra=vol.ALLOW_EXTRA,
 )
+
+CONFIG_SCHEMA = vol.Schema(
+    {DOMAIN: vol.All(cv.ensure_list, [BRIDGE_SCHEMA], _has_all_unique_names_and_ports)},
+    extra=vol.ALLOW_EXTRA,
+)
+
 
 RESET_ACCESSORY_SERVICE_SCHEMA = vol.Schema(
     {vol.Required(ATTR_ENTITY_ID): cv.entity_ids}
@@ -127,15 +135,21 @@ async def async_setup(hass: HomeAssistant, config: dict):
 
     _async_register_events_and_services(hass)
 
-    if not config:
+    if DOMAIN not in config:
         return True
 
     current_entries = hass.config_entries.async_entries(DOMAIN)
 
-    conf = config.get(DOMAIN)
+    entries_by_name = {entry.data[CONF_NAME]: entry for entry in current_entries}
 
-    for entry in current_entries:
-        if entry.source == SOURCE_IMPORT:
+    for index, conf in enumerate(config[DOMAIN]):
+        bridge_name = conf[CONF_NAME]
+
+        if (
+            bridge_name in entries_by_name
+            and entries_by_name[bridge_name].source == SOURCE_IMPORT
+        ):
+            entry = entries_by_name[bridge_name]
             # If they alter the yaml config we import the changes
             # since there currently is no practical way to support
             # all the options in the UI at this time.
@@ -146,13 +160,15 @@ async def async_setup(hass: HomeAssistant, config: dict):
                 del data[key]
 
             hass.config_entries.async_update_entry(entry, data=data, options=options)
-            return True
+            continue
 
-    hass.async_create_task(
-        hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": SOURCE_IMPORT}, data=conf,
+        conf[CONF_ENTRY_INDEX] = index
+        hass.async_create_task(
+            hass.config_entries.flow.async_init(
+                DOMAIN, context={"source": SOURCE_IMPORT}, data=conf,
+            )
         )
-    )
+
     return True
 
 
@@ -171,6 +187,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # we need to wait a bit
     if not await hass.async_add_executor_job(port_is_available, port):
         raise ConfigEntryNotReady
+
+    if CONF_ENTRY_INDEX in conf and conf[CONF_ENTRY_INDEX] == 0:
+        _LOGGER.debug("Migrating legacy HomeKit data for %s", name)
+        migrate_filesystem_state_data_for_primary_imported_entry_id(
+            hass, entry.entry_id
+        )
 
     aid_storage = AccessoryAidStorage(hass, entry)
 
@@ -199,8 +221,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         else None
     )
 
-    persist_file = get_persist_filename_for_entry(entry)
-
     homekit = HomeKit(
         hass,
         name,
@@ -211,7 +231,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         safe_mode,
         advertise_ip,
         interface_choice,
-        persist_file,
         entry.entry_id,
     )
     await hass.async_add_executor_job(homekit.setup)
@@ -265,19 +284,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
 
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Remove a config entry."""
-    return await hass.async_add_executor_job(_remove_state_files, hass, entry)
-
-
-async def _remove_state_files(hass: HomeAssistant, entry: ConfigEntry):
-    """Remve the state files from disk."""
-    persist_file = get_persist_filename_for_entry(entry)
-    persist_file_path = hass.config.path(persist_file)
-    aid_storage_file = get_aid_storage_filename_for_entry(entry)
-    aid_storage_path = hass.config.path(STORAGE_DIR, aid_storage_file)
-    os.unlink(persist_file_path)
-    if os.path.exists(aid_storage_path):
-        os.unlink(aid_storage_path)
-    return True
+    return await hass.async_add_executor_job(
+        remove_state_files_for_entry_id, hass, entry.entry_id
+    )
 
 
 @callback
@@ -377,7 +386,6 @@ class HomeKit:
         safe_mode,
         advertise_ip=None,
         interface_choice=None,
-        persist_file=None,
         entry_id=None,
     ):
         """Initialize a HomeKit object."""
@@ -390,7 +398,6 @@ class HomeKit:
         self._safe_mode = safe_mode
         self._advertise_ip = advertise_ip
         self._interface_choice = interface_choice
-        self._persist_file = persist_file
         self._entry_id = entry_id
         self.status = STATUS_READY
 
@@ -403,16 +410,15 @@ class HomeKit:
         from .accessories import HomeBridge, HomeDriver
 
         self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, self.async_stop)
-
         ip_addr = self._ip_address or get_local_ip()
-        path = self.hass.config.path(self._persist_file)
+        persist_file = get_persist_fullpath_for_entry_id(self.hass, self._entry_id)
         self.driver = HomeDriver(
             self.hass,
             self._entry_id,
             self._name,
             address=ip_addr,
             port=self._port,
-            persist_file=path,
+            persist_file=persist_file,
             advertised_address=self._advertise_ip,
             interface_choice=self._interface_choice,
         )
