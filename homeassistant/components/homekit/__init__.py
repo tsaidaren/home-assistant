@@ -194,7 +194,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             hass, entry.entry_id
         )
 
-    aid_storage = AccessoryAidStorage(hass, entry)
+    aid_storage = AccessoryAidStorage(hass, entry.entry_id)
 
     await aid_storage.async_initialize()
     # These are yaml only
