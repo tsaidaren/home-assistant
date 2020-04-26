@@ -1,13 +1,20 @@
 """Helpers for data entry flows for config entries."""
 from typing import Awaitable, Callable, Union
 
+import voluptuous as vol
+
 from homeassistant import config_entries
+from homeassistant.components import ssdp
+import homeassistant.helpers.config_validation as cv
 
 from .typing import HomeAssistantType
 
 # mypy: allow-untyped-defs, no-check-untyped-defs
 
 DiscoveryFunctionType = Callable[[], Union[Awaitable[bool], bool]]
+
+HOMEKIT_PROPERTIES = "properties"
+HOMEKIT_ID = "id"
 
 
 class DiscoveryFlowHandler(config_entries.ConfigFlow):
@@ -67,11 +74,52 @@ class DiscoveryFlowHandler(config_entries.ConfigFlow):
         if self._async_in_progress() or self._async_current_entries():
             return self.async_abort(reason="single_instance_allowed")
 
-        return await self.async_step_confirm()
+    async def async_step_ssdp(self, discovery_info):
+        """Handle a flow initialized by ssdp."""
+
+        # The unique_id is set here to allow ignoring devices
+        # discovered via ssdp. The integration may choose to use
+        # a different unique_id unique_id and overwrite.
+
+        # Serial numbers are typically more stable between firmwares
+        # than UDNs but some mfrs do not implement these so we check
+        # to make sure they are valid.
+        set_unique_id = False
+        if ssdp.ATTR_UPNP_SERIAL in discovery_info:
+            try:
+                await self.async_set_unique_id(
+                    cv.serial_number(discovery_info[ssdp.ATTR_UPNP_SERIAL])
+                )
+                set_unique_id = True
+            except vol.Invalid:
+                pass
+
+        if not set_unique_id and ssdp.ATTR_UPNP_UDN in discovery_info:
+            await self.async_set_unique_id(discovery_info[ssdp.ATTR_UPNP_UDN])
+
+        return await self.async_step_discovery(discovery_info)
+
+    async def async_step_homekit(self, discovery_info):
+        """Handle a flow initialized by homekit."""
+
+        # The unique_id is set here to allow ignoring devices
+        # discovered via homekit. The integration may choose to use
+        # a different unique_id and overwrite.
+
+        # The homekit id should always be a mac address.
+        if (
+            HOMEKIT_PROPERTIES in discovery_info
+            and HOMEKIT_ID in discovery_info[HOMEKIT_PROPERTIES]
+        ):
+            try:
+                await self.async_set_unique_id(
+                    cv.mac_address(discovery_info[HOMEKIT_PROPERTIES][HOMEKIT_ID])
+                )
+            except vol.Invalid:
+                pass
+        return await self.async_step_discovery(discovery_info)
 
     async_step_zeroconf = async_step_discovery
-    async_step_ssdp = async_step_discovery
-    async_step_homekit = async_step_discovery
 
     async def async_step_import(self, _):
         """Handle a flow initialized by import."""

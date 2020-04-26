@@ -288,6 +288,30 @@ def icon(value: Any) -> str:
     raise vol.Invalid('Icons should be specified in the form "prefix:name"')
 
 
+def mac_address(value: Any) -> str:
+    """Validate mac address."""
+    str_value = str(value).upper()
+
+    if re.match("[0-9A-F]{2}([-:])[0-9A-F]{2}(\\1[0-9A-F]{2}){4}$", str_value):
+        return str_value
+
+    raise vol.Invalid("Not a valid mac address")
+
+
+def serial_number(value: Any) -> str:
+    """Validate mac address."""
+    try:
+        return mac_address(value)
+    except vol.Invalid:
+        pass
+
+    str_value = str(value)
+    if re.match("^[0-9]+$", str_value) and int(str_value) > 100:
+        return str_value
+
+    raise vol.Invalid("Not a valid serial number")
+
+
 time_period_dict = vol.All(
     dict,
     vol.Schema(
