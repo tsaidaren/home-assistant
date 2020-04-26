@@ -22,6 +22,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .const import (
     DOMAIN,
+    POWERWALL_API_CHANGED,
     POWERWALL_API_CHARGE,
     POWERWALL_API_DEVICE_TYPE,
     POWERWALL_API_GRID_STATUS,
@@ -128,17 +129,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     try:
         await hass.async_add_executor_job(power_wall.detect_and_pin_version)
         powerwall_data = await hass.async_add_executor_job(call_base_info, power_wall)
+    except PowerwallUnreachableError:
+        http_session.close()
+        raise ConfigEntryNotReady
     except PowerwallError as err:
         http_session.close()
         await handle_setup_error(hass, entry, err)
-        raise ConfigEntryNotReady
+        return False
 
     await _migrate_old_unique_ids(hass, entry_id, powerwall_data)
 
     async def async_update_data():
         """Fetch data from API endpoint."""
+        if hass.data[DOMAIN][entry.entry_id][POWERWALL_API_CHANGED]:
+            raise UpdateFailed("Powerwall api has changed")
         try:
             return await hass.async_add_executor_job(_fetch_powerwall_data, power_wall)
+        except APIChangedError as err:
+            hass.data[DOMAIN][entry.entry_id][POWERWALL_API_CHANGED] = True
+            await handle_setup_error(hass, entry, err)
         except PowerwallUnreachableError:
             raise UpdateFailed("Unable to fetch data from powerwall")
 
@@ -157,6 +166,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             POWERWALL_COORDINATOR: coordinator,
             POWERWALL_HTTP_SESSION: http_session,
             POWERWALL_ERROR: None,
+            POWERWALL_API_CHANGED: False,
         }
     )
 

@@ -28,6 +28,7 @@ POWERWALL_API_STATUS = "status"
 POWERWALL_API_DEVICE_TYPE = "device_type"
 POWERWALL_API_SITE_INFO = "site_info"
 POWERWALL_API_SERIAL_NUMBERS = "serial_numbers"
+POWERWALL_API_CHANGED = "powerwall_api_changed"
 
 POWERWALL_HTTP_SESSION = "http_session"
 
