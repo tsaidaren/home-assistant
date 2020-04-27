@@ -4,12 +4,15 @@ import homeassistant.helpers.device_registry as dr
 from homeassistant.helpers.entity import Entity
 
 from .const import (
+    DEVICE_FIRMWARE,
     DEVICE_MAC_ADDRESS,
     DEVICE_MODEL,
     DEVICE_NAME,
-    DEVICE_REVISION,
     DEVICE_SERIAL_NUMBER,
     DOMAIN,
+    FIRMWARE_BUILD,
+    FIRMWARE_REVISION,
+    FIRMWARE_SUB_REVISION,
     MANUFACTURER,
 )
 
@@ -42,6 +45,8 @@ class HDEntity(Entity):
     @property
     def device_info(self):
         """Return the device_info of the device."""
+        firmware = self._device_info[DEVICE_FIRMWARE]
+        sw_version = f"{firmware[FIRMWARE_REVISION]}.{firmware[FIRMWARE_SUB_REVISION]}.{firmware[FIRMWARE_BUILD]}"
         return {
             "identifiers": {(DOMAIN, self._device_info[DEVICE_SERIAL_NUMBER])},
             "connections": {
@@ -49,6 +54,6 @@ class HDEntity(Entity):
             },
             "name": self._device_info[DEVICE_NAME],
             "model": self._device_info[DEVICE_MODEL],
-            "sw_version": self._device_info[DEVICE_REVISION],
+            "sw_version": sw_version,
             "manufacturer": MANUFACTURER,
         }

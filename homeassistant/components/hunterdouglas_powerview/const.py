@@ -19,12 +19,19 @@ MAINPROCESSOR_IN_USERDATA_FIRMWARE = "mainProcessor"
 REVISION_IN_MAINPROCESSOR = "revision"
 MODEL_IN_MAINPROCESSOR = "name"
 
+FIRMWARE_IN_SHADE = "firmware"
+
+FIRMWARE_REVISION = "revision"
+FIRMWARE_SUB_REVISION = "subRevision"
+FIRMWARE_BUILD = "build"
+
 DEVICE_NAME = "device_name"
 DEVICE_MAC_ADDRESS = "device_mac_address"
 DEVICE_SERIAL_NUMBER = "device_serial_number"
 DEVICE_REVISION = "device_revision"
 DEVICE_INFO = "device_info"
 DEVICE_MODEL = "device_model"
+DEVICE_FIRMWARE = "device_firmware"
 
 SHADE_NAME = "name"
 SCENE_NAME = "name"

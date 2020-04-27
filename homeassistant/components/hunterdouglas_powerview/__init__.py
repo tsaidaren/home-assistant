@@ -22,6 +22,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .const import (
     COORDINATOR,
+    DEVICE_FIRMWARE,
     DEVICE_INFO,
     DEVICE_MAC_ADDRESS,
     DEVICE_MODEL,
@@ -137,6 +138,7 @@ async def _async_get_device_info(hub, pv_request):
         DEVICE_MAC_ADDRESS: userdata_data[MAC_ADDRESS_IN_USERDATA],
         DEVICE_SERIAL_NUMBER: userdata_data[SERIAL_NUMBER_IN_USERDATA],
         DEVICE_REVISION: main_processor_info[REVISION_IN_MAINPROCESSOR],
+        DEVICE_FIRMWARE: main_processor_info,
         DEVICE_MODEL: main_processor_info[MODEL_IN_MAINPROCESSOR],
     }
 

@@ -18,7 +18,13 @@ from .const import (
     COORDINATOR,
     DEVICE_INFO,
     DEVICE_MODEL,
+    DEVICE_SERIAL_NUMBER,
     DOMAIN,
+    FIRMWARE_BUILD,
+    FIRMWARE_IN_SHADE,
+    FIRMWARE_REVISION,
+    FIRMWARE_SUB_REVISION,
+    MANUFACTURER,
     PV_API,
     PV_ROOM_DATA,
     PV_SHADE_DATA,
@@ -69,6 +75,7 @@ class PowerViewShade(HDEntity, CoverEntity):
         self._shade = shade
         self._device_info = device_info
         self._room_name = None
+        self._name = self._shade.name
         room_id = shade.raw_data.get(ROOM_ID_IN_SHADE)
         self._room_name = room_data.get(room_id, {}).get(ROOM_NAME, "")
         self._current_cover_position = MIN_POSITION
@@ -100,7 +107,7 @@ class PowerViewShade(HDEntity, CoverEntity):
     @property
     def name(self):
         """Return the name of the shade."""
-        return self._shade.name
+        return self._name
 
     async def async_close_cover(self, **kwargs):
         """Close the cover."""
@@ -129,11 +136,13 @@ class PowerViewShade(HDEntity, CoverEntity):
     def _async_update_shade(self):
         """Update with new data from the coordinator."""
         self._shade.raw_data = self._coordinator.data[self._shade.id]
+        self._async_update_current_cover_position()
         self.async_write_ha_state()
 
     @callback
     def _async_update_current_cover_position(self):
         """Update the current cover position from the data."""
+        _LOGGER.debug("Raw data update: %s", self._shade.raw_data)
         position_data = self._shade.raw_data[ATTR_POSITION_DATA]
         if ATTR_POSITION1 in position_data:
             self._current_cover_position = position_data[ATTR_POSITION1]
@@ -144,3 +153,17 @@ class PowerViewShade(HDEntity, CoverEntity):
         self.async_on_remove(
             self._coordinator.async_add_listener(self._async_update_shade)
         )
+
+    @property
+    def device_info(self):
+        """Return the device_info of the device."""
+        firmware = self._shade.raw_data[FIRMWARE_IN_SHADE]
+        sw_version = f"{firmware[FIRMWARE_REVISION]}.{firmware[FIRMWARE_SUB_REVISION]}.{firmware[FIRMWARE_BUILD]}"
+        return {
+            "identifiers": {(DOMAIN, self.unique_id)},
+            "name": self.name,
+            "model": str(self._shade),
+            "sw_version": sw_version,
+            "manufacturer": MANUFACTURER,
+            "via_device": (DOMAIN, self._device_info[DEVICE_SERIAL_NUMBER]),
+        }
