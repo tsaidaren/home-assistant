@@ -103,7 +103,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     coordinator = DataUpdateCoordinator(
         hass,
         _LOGGER,
-        name="powerview shades",
+        name="powerview hub",
         update_method=async_update_data,
         update_interval=timedelta(seconds=10),
     )
