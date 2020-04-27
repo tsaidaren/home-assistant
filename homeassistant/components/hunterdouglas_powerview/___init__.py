@@ -1,19 +1,18 @@
 """The Hunter Douglas PowerView integration."""
 import asyncio
+from datetime import timedelta
+import logging
 
 from aiopvapi.helpers.aiorequest import AioRequest
-from aiopvapi.resources.scene import Scene as PvScene
 from aiopvapi.rooms import Rooms
 from aiopvapi.scenes import Scenes
 from aiopvapi.shades import Shades
 import async_timeout
-from datatime import timedelta
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers import entity
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -29,16 +28,10 @@ from .const import (
     PV_SCENES,
     PV_SHADE_DATA,
     PV_SHADES,
-    ROOM_DATA,
-    ROOM_ID_IN_SCENE,
-    SCENE_DATA,
-    SCENE_ID,
-    SCENE_NAME,
-    STATE_ATTRIBUTE_ROOM_NAME,
 )
 
 CONFIG_SCHEMA = vol.Schema(
-    {DOMAIN: vol.Schema({vol.Required(HUB_ADDRESS): cv.string,})}, extra=vol.ALLOW_EXTRA
+    {DOMAIN: vol.Schema({vol.Required(HUB_ADDRESS): cv.string})}, extra=vol.ALLOW_EXTRA
 )
 
 PLATFORMS = ["cover", "scene"]
@@ -60,9 +53,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     pv_request = AioRequest(hub_address, loop=hass.loop, websession=websession)
 
-    rooms = await Rooms(pv_request)
+    rooms = Rooms(pv_request)
     room_data = await rooms.get_resources()
-    if not rooms:
+    if not room_data:
         _LOGGER.error("Unable to initialize PowerView hub: %s", hub_address)
         raise ConfigEntryNotReady
 
