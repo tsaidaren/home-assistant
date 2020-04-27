@@ -33,14 +33,18 @@ DEVICE_INFO = "device_info"
 DEVICE_MODEL = "device_model"
 DEVICE_FIRMWARE = "device_firmware"
 
-SHADE_NAME = "name"
 SCENE_NAME = "name"
-ROOM_NAME = "name"
 SCENE_ID = "id"
-ROOM_ID = "id"
-SHADE_ID = "id"
 ROOM_ID_IN_SCENE = "roomId"
+
+SHADE_NAME = "name"
+SHADE_ID = "id"
 ROOM_ID_IN_SHADE = "roomId"
+
+ROOM_NAME = "name"
+ROOM_ID = "id"
+
+SHADE_RESPONSE = "shade"
 
 STATE_ATTRIBUTE_ROOM_NAME = "roomName"
 

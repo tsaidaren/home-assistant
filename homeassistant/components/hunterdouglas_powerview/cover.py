@@ -169,6 +169,7 @@ class PowerViewShade(HDEntity, CoverEntity):
 
     @callback
     def _async_process_new_shade_data(self, data):
+        """Process new data from an update."""
         self._shade.raw_data = data
         self._async_update_current_cover_position()
         self.async_write_ha_state()
