@@ -138,7 +138,7 @@ class PowerViewShade(HDEntity, CoverEntity):
         """Move the shade to a specific position."""
         if ATTR_POSITION not in kwargs:
             return
-        await self._move(kwargs[ATTR_POSITION])
+        await self._async_move(kwargs[ATTR_POSITION])
 
     async def _async_move(self, hass_position):
         """Move the shade to a position."""
@@ -153,14 +153,23 @@ class PowerViewShade(HDEntity, CoverEntity):
         """Update the shade state after a command."""
         if not raw_data or SHADE_RESPONSE not in raw_data:
             return
-        self._shade.raw_data = raw_data[SHADE_RESPONSE]
+        self._async_process_new_shade_data(raw_data[SHADE_RESPONSE])
+
+    async def async_added_to_hass(self):
+        """When entity is added to hass."""
         self._async_update_current_cover_position()
-        self.async_write_ha_state()
+        self.async_on_remove(
+            self._coordinator.async_add_listener(self._async_update_shade)
+        )
 
     @callback
     def _async_update_shade(self):
         """Update with new data from the coordinator."""
-        self._shade.raw_data = self._coordinator.data[self._shade.id]
+        self._async_process_new_shade_data(self._coordinator.data[self._shade.id])
+
+    @callback
+    def _async_process_new_shade_data(self, data):
+        self._shade.raw_data = data
         self._async_update_current_cover_position()
         self.async_write_ha_state()
 
@@ -171,13 +180,6 @@ class PowerViewShade(HDEntity, CoverEntity):
         position_data = self._shade.raw_data[ATTR_POSITION_DATA]
         if ATTR_POSITION1 in position_data:
             self._current_cover_position = position_data[ATTR_POSITION1]
-
-    async def async_added_to_hass(self):
-        """When entity is added to hass."""
-        self._async_update_current_cover_position()
-        self.async_on_remove(
-            self._coordinator.async_add_listener(self._async_update_shade)
-        )
 
     @property
     def device_info(self):
