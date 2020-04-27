@@ -2,10 +2,17 @@
 import logging
 
 from aiopvapi.helpers.constants import ATTR_POSITION1, ATTR_POSITION_DATA
-from aiopvapi.resources.shade import MAX_POSITION, MIN_POSITION, factory as PvShade
+from aiopvapi.resources.shade import (
+    ATTR_POSKIND1,
+    ATTR_TYPE,
+    MAX_POSITION,
+    MIN_POSITION,
+    factory as PvShade,
+)
 
 from homeassistant.components.cover import (
     ATTR_POSITION,
+    DEVICE_CLASS_SHADE,
     SUPPORT_CLOSE,
     SUPPORT_OPEN,
     SUPPORT_SET_POSITION,
@@ -30,6 +37,7 @@ from .const import (
     PV_SHADE_DATA,
     ROOM_ID_IN_SHADE,
     ROOM_NAME,
+    SHADE_RESPONSE,
     STATE_ATTRIBUTE_ROOM_NAME,
 )
 from .entity import HDEntity
@@ -58,12 +66,12 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
 def hd_position_to_hass(hd_position):
     """Convert hunter douglas position to hass position."""
-    return round((hd_position / 65535) * 100)
+    return round((hd_position / MAX_POSITION) * 100)
 
 
 def hass_position_to_hd(hass_positon):
     """Convert hass position to hunter douglas position."""
-    return int(hass_positon / 100 * 65535)
+    return int(hass_positon / 100 * MAX_POSITION)
 
 
 class PowerViewShade(HDEntity, CoverEntity):
@@ -71,12 +79,12 @@ class PowerViewShade(HDEntity, CoverEntity):
 
     def __init__(self, shade, room_data, coordinator, device_info):
         """Initialize the shade."""
+        room_id = shade.raw_data.get(ROOM_ID_IN_SHADE)
         super().__init__(coordinator, device_info, shade.id)
         self._shade = shade
         self._device_info = device_info
         self._room_name = None
         self._name = self._shade.name
-        room_id = shade.raw_data.get(ROOM_ID_IN_SHADE)
         self._room_name = room_data.get(room_id, {}).get(ROOM_NAME, "")
         self._current_cover_position = MIN_POSITION
         self._coordinator = coordinator
@@ -105,32 +113,49 @@ class PowerViewShade(HDEntity, CoverEntity):
         return hd_position_to_hass(self._current_cover_position)
 
     @property
+    def device_class(self):
+        """Return device class."""
+        return DEVICE_CLASS_SHADE
+
+    @property
     def name(self):
         """Return the name of the shade."""
         return self._name
 
     async def async_close_cover(self, **kwargs):
         """Close the cover."""
-        await self._shade.close()
-        self._current_cover_position = MIN_POSITION
-        self.async_write_ha_state()
+        await self._async_move(0)
 
     async def async_open_cover(self, **kwargs):
         """Open the cover."""
-        await self._shade.open()
-        self._current_cover_position = MAX_POSITION
-        self.async_write_ha_state()
+        await self._async_move(100)
 
     async def async_stop_cover(self, **kwargs):
         """Stop the cover."""
-        await self._shade.stop()
-        await self._coordinator.async_request_refresh()
+        self._async_update_from_command(await self._shade.stop())
 
     async def set_cover_position(self, **kwargs):
         """Move the shade to a specific position."""
-        if ATTR_POSITION in kwargs:
-            position = kwargs[ATTR_POSITION]
-            await self._shade.move(hass_position_to_hd(position))
+        if ATTR_POSITION not in kwargs:
+            return
+        await self._move(kwargs[ATTR_POSITION])
+
+    async def _async_move(self, hass_position):
+        """Move the shade to a position."""
+        self._async_update_from_command(
+            await self._shade.move(
+                {ATTR_POSITION1: hass_position_to_hd(hass_position), ATTR_POSKIND1: 1}
+            )
+        )
+
+    @callback
+    def _async_update_from_command(self, raw_data):
+        """Update the shade state after a command."""
+        if not raw_data or SHADE_RESPONSE not in raw_data:
+            return
+        self._shade.raw_data = raw_data[SHADE_RESPONSE]
+        self._async_update_current_cover_position()
+        self.async_write_ha_state()
 
     @callback
     def _async_update_shade(self):
@@ -159,10 +184,16 @@ class PowerViewShade(HDEntity, CoverEntity):
         """Return the device_info of the device."""
         firmware = self._shade.raw_data[FIRMWARE_IN_SHADE]
         sw_version = f"{firmware[FIRMWARE_REVISION]}.{firmware[FIRMWARE_SUB_REVISION]}.{firmware[FIRMWARE_BUILD]}"
+        model = self._shade.raw_data[ATTR_TYPE]
+        for shade in self._shade.shade_types:
+            if shade.shade_type == model:
+                model = shade.description
+                break
+
         return {
             "identifiers": {(DOMAIN, self.unique_id)},
             "name": self.name,
-            "model": str(self._shade),
+            "model": str(model),
             "sw_version": sw_version,
             "manufacturer": MANUFACTURER,
             "via_device": (DOMAIN, self._device_info[DEVICE_SERIAL_NUMBER]),
