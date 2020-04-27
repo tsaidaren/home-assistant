@@ -11,6 +11,8 @@ from homeassistant.const import CONF_PLATFORM
 import homeassistant.helpers.config_validation as cv
 
 from .const import (
+    COORDINATOR,
+    DEVICE_INFO,
     DOMAIN,
     HUB_ADDRESS,
     PV_API,
@@ -19,6 +21,7 @@ from .const import (
     ROOM_NAME,
     STATE_ATTRIBUTE_ROOM_NAME,
 )
+from .entity import HDEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -44,19 +47,24 @@ async def async_setup_entry(hass, entry, async_add_entities):
     room_data = pv_data[PV_ROOM_DATA]
     scene_data = pv_data[PV_SCENE_DATA]
     pv_request = pv_data[PV_API]
+    coordinator = pv_data[COORDINATOR]
+    device_info = pv_data[DEVICE_INFO]
 
     pvscenes = (
-        PowerViewScene(PvScene(raw_scene, pv_request), room_data)
+        PowerViewScene(
+            PvScene(raw_scene, pv_request), room_data, coordinator, device_info
+        )
         for scene_id, raw_scene in scene_data.items()
     )
     async_add_entities(pvscenes)
 
 
-class PowerViewScene(Scene):
+class PowerViewScene(HDEntity, Scene):
     """Representation of a Powerview scene."""
 
-    def __init__(self, scene, room_data):
+    def __init__(self, scene, room_data, coordinator, device_info):
         """Initialize the scene."""
+        super().__init__(coordinator, device_info, scene.id)
         self._scene = scene
         self._room_name = room_data.get(scene.room_id, {}).get(ROOM_NAME, "")
 

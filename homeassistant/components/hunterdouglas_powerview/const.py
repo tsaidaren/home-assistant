@@ -1,11 +1,31 @@
 """Support for Powerview scenes from a Powerview hub."""
 
 DOMAIN = "hunterdouglas_powerview"
+
+
+MANUFACTURER = "Hunter Douglas"
+
 HUB_ADDRESS = "address"
 
 SCENE_DATA = "sceneData"
 SHADE_DATA = "shadeData"
 ROOM_DATA = "roomData"
+USER_DATA = "userData"
+
+MAC_ADDRESS_IN_USERDATA = "macAddress"
+SERIAL_NUMBER_IN_USERDATA = "serialNumber"
+FIRMWARE_IN_USERDATA = "firmware"
+MAINPROCESSOR_IN_USERDATA_FIRMWARE = "mainProcessor"
+REVISION_IN_MAINPROCESSOR = "revision"
+MODEL_IN_MAINPROCESSOR = "name"
+
+DEVICE_NAME = "device_name"
+DEVICE_MAC_ADDRESS = "device_mac_address"
+DEVICE_SERIAL_NUMBER = "device_serial_number"
+DEVICE_REVISION = "device_revision"
+DEVICE_INFO = "device_info"
+DEVICE_MODEL = "device_model"
+
 SHADE_NAME = "name"
 SCENE_NAME = "name"
 ROOM_NAME = "name"

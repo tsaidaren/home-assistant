@@ -2,7 +2,7 @@
 import logging
 
 from aiopvapi.helpers.constants import ATTR_POSITION1, ATTR_POSITION_DATA
-from aiopvapi.resources.shade import factory as PvShade
+from aiopvapi.resources.shade import MAX_POSITION, MIN_POSITION, factory as PvShade
 
 from homeassistant.components.cover import (
     ATTR_POSITION,
@@ -16,6 +16,8 @@ from homeassistant.core import callback
 
 from .const import (
     COORDINATOR,
+    DEVICE_INFO,
+    DEVICE_MODEL,
     DOMAIN,
     PV_API,
     PV_ROOM_DATA,
@@ -24,6 +26,7 @@ from .const import (
     ROOM_NAME,
     STATE_ATTRIBUTE_ROOM_NAME,
 )
+from .entity import HDEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,9 +39,12 @@ async def async_setup_entry(hass, entry, async_add_entities):
     shade_data = pv_data[PV_SHADE_DATA]
     pv_request = pv_data[PV_API]
     coordinator = pv_data[COORDINATOR]
+    device_info = pv_data[DEVICE_INFO]
 
     pvshades = (
-        PowerViewShade(PvShade(raw_shade, pv_request), room_data, coordinator)
+        PowerViewShade(
+            PvShade(raw_shade, pv_request), room_data, coordinator, device_info
+        )
         for shade_id, raw_shade in shade_data.items()
     )
     async_add_entities(pvshades)
@@ -54,15 +60,18 @@ def hass_position_to_hd(hass_positon):
     return int(hass_positon / 100 * 65535)
 
 
-class PowerViewShade(CoverEntity):
+class PowerViewShade(HDEntity, CoverEntity):
     """Representation of a powerview shade."""
 
-    def __init__(self, shade, room_data, coordinator):
+    def __init__(self, shade, room_data, coordinator, device_info):
         """Initialize the shade."""
+        super().__init__(coordinator, device_info, shade.id)
         self._shade = shade
+        self._device_info = device_info
         self._room_name = None
         room_id = shade.raw_data.get(ROOM_ID_IN_SHADE)
         self._room_name = room_data.get(room_id, {}).get(ROOM_NAME, "")
+        self._current_cover_position = MIN_POSITION
         self._coordinator = coordinator
 
     @property
@@ -73,21 +82,20 @@ class PowerViewShade(CoverEntity):
     @property
     def supported_features(self):
         """Flag supported features."""
-        return SUPPORT_OPEN | SUPPORT_CLOSE | SUPPORT_STOP | SUPPORT_SET_POSITION
+        supported_features = SUPPORT_OPEN | SUPPORT_CLOSE | SUPPORT_SET_POSITION
+        if self._device_info[DEVICE_MODEL] != "1":
+            supported_features |= SUPPORT_STOP
+        return supported_features
 
     @property
     def is_closed(self):
         """Return if the cover is closed."""
-        return (
-            self._shade.raw_data.get(ATTR_POSITION_DATA) == self._shade.close_position
-        )
+        return self._current_cover_position == MIN_POSITION
 
     @property
     def current_cover_position(self):
         """Return the current position of cover."""
-        return hd_position_to_hass(
-            self._shade.raw_data[ATTR_POSITION_DATA][ATTR_POSITION1]
-        )
+        return hd_position_to_hass(self._current_cover_position)
 
     @property
     def name(self):
@@ -97,14 +105,20 @@ class PowerViewShade(CoverEntity):
     async def async_close_cover(self, **kwargs):
         """Close the cover."""
         await self._shade.close()
+        self._current_cover_position = MIN_POSITION
+        self.async_write_ha_state()
 
     async def async_open_cover(self, **kwargs):
         """Open the cover."""
         await self._shade.open()
+        self._current_cover_position = MAX_POSITION
+        self.async_write_ha_state()
 
     async def async_stop_cover(self, **kwargs):
         """Stop the cover."""
         await self._shade.stop()
+        await self._shade.refresh()
+        self.async_write_ha_state()
 
     async def set_cover_position(self, **kwargs):
         """Move the shade to a specific position."""
@@ -118,18 +132,16 @@ class PowerViewShade(CoverEntity):
         self._shade.raw_data = self._coordinator.data[self._shade.id]
         self.async_write_ha_state()
 
-    @property
-    def should_poll(self):
-        """No need to poll. Coordinator notifies entity of updates."""
-        return False
-
-    @property
-    def available(self):
-        """Return if entity is available."""
-        return self._coordinator.last_update_success
+    @callback
+    def _async_update_current_cover_position(self):
+        """Update the current cover position from the data."""
+        position_data = self._shade.raw_data[ATTR_POSITION_DATA]
+        if ATTR_POSITION1 in position_data:
+            self._current_cover_position = position_data[ATTR_POSITION1]
 
     async def async_added_to_hass(self):
         """When entity is added to hass."""
+        self._async_update_current_cover_position()
         self.async_on_remove(
             self._coordinator.async_add_listener(self._async_update_shade)
         )
