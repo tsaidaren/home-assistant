@@ -46,7 +46,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    """Set up the Lutron shades."""
+    """Set up the hunter douglas shades."""
 
     pv_data = hass.data[DOMAIN][entry.entry_id]
     room_data = pv_data[PV_ROOM_DATA]
@@ -83,6 +83,8 @@ class PowerViewShade(HDEntity, CoverEntity):
         super().__init__(coordinator, device_info, shade.id)
         self._shade = shade
         self._device_info = device_info
+        self._is_opening = False
+        self._is_closing = False
         self._room_name = None
         self._name = self._shade.name
         self._room_name = room_data.get(room_id, {}).get(ROOM_NAME, "")
@@ -108,6 +110,16 @@ class PowerViewShade(HDEntity, CoverEntity):
         return self._current_cover_position == MIN_POSITION
 
     @property
+    def is_opening(self):
+        """Return if the cover is opening."""
+        return self._is_opening
+
+    @property
+    def is_closing(self):
+        """Return if the cover is closing."""
+        return self._is_closing
+
+    @property
     def current_cover_position(self):
         """Return the current position of cover."""
         return hd_position_to_hass(self._current_cover_position)
@@ -125,14 +137,19 @@ class PowerViewShade(HDEntity, CoverEntity):
     async def async_close_cover(self, **kwargs):
         """Close the cover."""
         await self._async_move(0)
+        self._is_closing = True
+        self.async_write_ha_state()
 
     async def async_open_cover(self, **kwargs):
         """Open the cover."""
         await self._async_move(100)
+        self._is_opening = True
+        self.async_write_ha_state()
 
     async def async_stop_cover(self, **kwargs):
         """Stop the cover."""
         self._async_update_from_command(await self._shade.stop())
+        self.async_write_ha_state()
 
     async def set_cover_position(self, **kwargs):
         """Move the shade to a specific position."""
@@ -166,13 +183,13 @@ class PowerViewShade(HDEntity, CoverEntity):
     def _async_update_shade(self):
         """Update with new data from the coordinator."""
         self._async_process_new_shade_data(self._coordinator.data[self._shade.id])
+        self.async_write_ha_state()
 
     @callback
     def _async_process_new_shade_data(self, data):
         """Process new data from an update."""
         self._shade.raw_data = data
         self._async_update_current_cover_position()
-        self.async_write_ha_state()
 
     @callback
     def _async_update_current_cover_position(self):
@@ -181,6 +198,8 @@ class PowerViewShade(HDEntity, CoverEntity):
         position_data = self._shade.raw_data[ATTR_POSITION_DATA]
         if ATTR_POSITION1 in position_data:
             self._current_cover_position = position_data[ATTR_POSITION1]
+        self._is_opening = False
+        self._is_closing = False
 
     @property
     def device_info(self):
