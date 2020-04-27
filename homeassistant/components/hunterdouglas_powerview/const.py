@@ -1,0 +1,27 @@
+"""Support for Powerview scenes from a Powerview hub."""
+
+DOMAIN = "hunterdouglas_powerview"
+HUB_ADDRESS = "address"
+
+SCENE_DATA = "sceneData"
+SHADE_DATA = "shadeData"
+ROOM_DATA = "roomData"
+SHADE_NAME = "name"
+SCENE_NAME = "name"
+ROOM_NAME = "name"
+SCENE_ID = "id"
+ROOM_ID = "id"
+SHADE_ID = "id"
+ROOM_ID_IN_SCENE = "roomId"
+ROOM_ID_IN_SHADE = "roomId"
+
+STATE_ATTRIBUTE_ROOM_NAME = "roomName"
+
+PV_API = "pv_api"
+PV_ROOMS = "pv_rooms"
+PV_SCENES = "pv_scenes"
+PV_SHADES = "pv_shades"
+PV_SCENE_DATA = "pv_scene_data"
+PV_SHADE_DATA = "pv_shade_data"
+PV_ROOM_DATA = "pv_room_data"
+COORDINATOR = "coordinator"

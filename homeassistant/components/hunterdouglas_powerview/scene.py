@@ -2,57 +2,62 @@
 import logging
 from typing import Any
 
-from aiopvapi.helpers.aiorequest import AioRequest
 from aiopvapi.resources.scene import Scene as PvScene
-from aiopvapi.rooms import Rooms
-from aiopvapi.scenes import Scenes
 import voluptuous as vol
 
 from homeassistant.components.scene import DOMAIN, Scene
+from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import CONF_PLATFORM
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import async_generate_entity_id
 
+from .const import (
+    DOMAIN,
+    HUB_ADDRESS,
+    PV_API,
+    PV_ROOM_DATA,
+    PV_ROOMS,
+    PV_SCENE_DATA,
+    PV_SCENES,
+    PV_SHADES,
+    ROOM_DATA,
+    ROOM_ID,
+    ROOM_ID_IN_SCENE,
+    ROOM_NAME,
+    SCENE_DATA,
+    SCENE_ID,
+    SCENE_NAME,
+    STATE_ATTRIBUTE_ROOM_NAME,
+)
+
 _LOGGER = logging.getLogger(__name__)
-ENTITY_ID_FORMAT = DOMAIN + ".{}"
-HUB_ADDRESS = "address"
 
 PLATFORM_SCHEMA = vol.Schema(
-    {
-        vol.Required(CONF_PLATFORM): "hunterdouglas_powerview",
-        vol.Required(HUB_ADDRESS): cv.string,
-    }
+    {vol.Required(CONF_PLATFORM): DOMAIN, vol.Required(HUB_ADDRESS): cv.string,}
 )
 
 
-SCENE_DATA = "sceneData"
-ROOM_DATA = "roomData"
-SCENE_NAME = "name"
-ROOM_NAME = "name"
-SCENE_ID = "id"
-ROOM_ID = "id"
-ROOM_ID_IN_SCENE = "roomId"
-STATE_ATTRIBUTE_ROOM_NAME = "roomName"
+def setup_platform(hass, config, add_entities, discovery_info=None):
+    """Import platform from yaml."""
+
+    hass.async_create_task(
+        hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": SOURCE_IMPORT}, data=config
+        )
+    )
 
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Set up Home Assistant scene entries."""
+async def async_setup_entry(hass, entry, async_add_entities):
+    """Set up powerview scene entries."""
 
-    hub_address = config.get(HUB_ADDRESS)
-    websession = async_get_clientsession(hass)
+    pv_data = hass.data[DOMAIN][entry.entry_id]
+    room_data = pv_data[PV_ROOM_DATA]
+    scene_data = pv_data[PV_SCENE_DATA]
+    pv_request = pv_data[PV_API]
 
-    pv_request = AioRequest(hub_address, loop=hass.loop, websession=websession)
-
-    _scenes = await Scenes(pv_request).get_resources()
-    _rooms = await Rooms(pv_request).get_resources()
-
-    if not _scenes or not _rooms:
-        _LOGGER.error("Unable to initialize PowerView hub: %s", hub_address)
-        return
     pvscenes = (
-        PowerViewScene(hass, PvScene(_raw_scene, pv_request), _rooms)
-        for _raw_scene in _scenes[SCENE_DATA]
+        PowerViewScene(hass, PvScene(raw_scene, pv_request), room_data)
+        for raw_scene in scene_data[SCENE_DATA]
     )
     async_add_entities(pvscenes)
 
@@ -66,9 +71,6 @@ class PowerViewScene(Scene):
         self.hass = hass
         self._room_name = None
         self._sync_room_data(room_data)
-        self.entity_id = async_generate_entity_id(
-            ENTITY_ID_FORMAT, str(self._scene.id), hass=hass
-        )
 
     def _sync_room_data(self, room_data):
         """Sync room data."""
