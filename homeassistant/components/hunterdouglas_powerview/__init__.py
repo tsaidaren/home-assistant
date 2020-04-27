@@ -104,7 +104,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         _LOGGER,
         name="powerview shades",
         update_method=async_update_data,
-        update_interval=timedelta(seconds=30),
+        update_interval=timedelta(seconds=10),
     )
 
     hass.data[DOMAIN][entry.entry_id] = {

@@ -117,8 +117,7 @@ class PowerViewShade(HDEntity, CoverEntity):
     async def async_stop_cover(self, **kwargs):
         """Stop the cover."""
         await self._shade.stop()
-        await self._shade.refresh()
-        self.async_write_ha_state()
+        await self._coordinator.async_request_refresh()
 
     async def set_cover_position(self, **kwargs):
         """Move the shade to a specific position."""
