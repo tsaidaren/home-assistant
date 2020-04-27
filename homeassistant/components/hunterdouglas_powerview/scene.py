@@ -48,7 +48,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     pvscenes = (
         PowerViewScene(hass, PvScene(raw_scene, pv_request), room_data)
-        for raw_scene in scene_data[SCENE_DATA]
+        for scene_id, raw_scene in scene_data[SCENE_DATA].items()
     )
     async_add_entities(pvscenes)
 
