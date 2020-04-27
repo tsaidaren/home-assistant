@@ -5,6 +5,7 @@ import logging
 
 from aiopvapi.helpers.aiorequest import AioRequest
 from aiopvapi.helpers.constants import ATTR_ID
+from aiopvapi.hub import Hub
 from aiopvapi.rooms import Rooms
 from aiopvapi.scenes import Scenes
 from aiopvapi.shades import Shades
@@ -23,12 +24,14 @@ from .const import (
     DOMAIN,
     HUB_ADDRESS,
     PV_API,
+    PV_HUB,
     PV_ROOM_DATA,
-    PV_ROOMS,
     PV_SCENE_DATA,
-    PV_SCENES,
     PV_SHADE_DATA,
     PV_SHADES,
+    ROOM_DATA,
+    SCENE_DATA,
+    SHADE_DATA,
 )
 
 CONFIG_SCHEMA = vol.Schema(
@@ -55,37 +58,39 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     pv_request = AioRequest(hub_address, loop=hass.loop, websession=websession)
 
-    rooms = Rooms(pv_request)
-    room_entries = await rooms.get_resources()
-    _LOGGER.debug("Room entries: %s", room_entries)
-    if not room_entries:
+    hub = Hub(pv_request)
+
+    async with async_timeout.timeout(20):
+        await hub.query_user_data()
+        await hub.query_firmware()
+    if not hub.ip:
         _LOGGER.error("Unable to initialize PowerView hub: %s", hub_address)
         raise ConfigEntryNotReady
-    room_data = map_data_by_id(room_entries)
-    _LOGGER.debug("Room data: %s", room_data)
+
+    _LOGGER.debug(
+        "Hub: name=%s main_processor_version=%s radio_version=%s",
+        hub.name,
+        hub.main_processor_version,
+        hub.radio_version,
+    )
+
+    rooms = Rooms(pv_request)
+    room_data = map_data_by_id((await rooms.get_resources())[ROOM_DATA])
 
     scenes = Scenes(pv_request)
-    scene_entries = await scenes.get_resources()
-    _LOGGER.debug("Scene entries: %s", scene_entries)
-    scene_data = map_data_by_id(scene_entries)
-    _LOGGER.debug("Scene data: %s", scene_data)
+    scene_data = map_data_by_id((await scenes.get_resources())[SCENE_DATA])
 
     shades = Shades(pv_request)
-    shade_entries = await shades.get_resources()
-    _LOGGER.debug("Shade entries: %s", shade_entries)
-    shade_data = map_data_by_id(shade_entries)
-    _LOGGER.debug("Shade data: %s", shade_data)
+    shade_data = map_data_by_id((await shades.get_resources())[SHADE_DATA])
 
     async def async_update_data():
         """Fetch data from shade endpoint."""
+        shades = hass.data[DOMAIN][entry.entry_id][PV_SHADES]
         async with async_timeout.timeout(10):
-            shade_entries = await hass.data[DOMAIN][entry.entry_id][
-                PV_SHADES
-            ].get_resources()
+            shade_entries = await shades.get_resources()
         if not shade_entries:
             raise UpdateFailed(f"Failed to fetch new shade data.")
-        shade_data = map_data_by_id(shade_entries)
-        hass.data[DOMAIN][entry.entry_id][PV_SHADE_DATA] = shade_data
+        return map_data_by_id(shade_entries[SHADE_DATA])
 
     coordinator = DataUpdateCoordinator(
         hass,
@@ -97,9 +102,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     hass.data[DOMAIN][entry.entry_id] = {
         PV_API: pv_request,
-        PV_ROOMS: rooms,
+        PV_HUB: hub,
         PV_ROOM_DATA: room_data,
-        PV_SCENES: scenes,
         PV_SCENE_DATA: scene_data,
         PV_SHADES: shades,
         PV_SHADE_DATA: shade_data,

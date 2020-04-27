@@ -1,12 +1,7 @@
 """Support for hunter douglas shades."""
 import logging
 
-from aiopvapi.helpers.constants import (
-    ATTR_ID,
-    ATTR_NAME,
-    ATTR_NAME_UNICODE,
-    ATTR_POSITION1,
-)
+from aiopvapi.helpers.constants import ATTR_POSITION1, ATTR_POSITION_DATA
 from aiopvapi.resources.shade import factory as PvShade
 
 from homeassistant.components.cover import (
@@ -25,8 +20,8 @@ from .const import (
     PV_API,
     PV_ROOM_DATA,
     PV_SHADE_DATA,
+    ROOM_ID_IN_SHADE,
     ROOM_NAME,
-    SHADE_DATA,
     STATE_ATTRIBUTE_ROOM_NAME,
 )
 
@@ -43,21 +38,31 @@ async def async_setup_entry(hass, entry, async_add_entities):
     coordinator = pv_data[COORDINATOR]
 
     pvshades = (
-        PowerViewShade(hass, PvShade(raw_shade, pv_request), room_data, coordinator)
-        for raw_shade in shade_data[SHADE_DATA]
+        PowerViewShade(PvShade(raw_shade, pv_request), room_data, coordinator)
+        for shade_id, raw_shade in shade_data.items()
     )
     async_add_entities(pvshades)
+
+
+def hd_position_to_hass(hd_position):
+    """Convert hunter douglas position to hass position."""
+    return round((hd_position / 65535) * 100)
+
+
+def hass_position_to_hd(hass_positon):
+    """Convert hass position to hunter douglas position."""
+    return int(hass_positon / 100 * 65535)
 
 
 class PowerViewShade(CoverEntity):
     """Representation of a powerview shade."""
 
-    def __init__(self, hass, shade, room_data, coordinator):
+    def __init__(self, shade, room_data, coordinator):
         """Initialize the shade."""
         self._shade = shade
-        self.hass = hass
         self._room_name = None
-        self._room_name = room_data.get(shade.room_id, {}).get(ROOM_NAME, "")
+        room_id = shade.raw_data.get(ROOM_ID_IN_SHADE)
+        self._room_name = room_data.get(room_id, {}).get(ROOM_NAME, "")
         self._coordinator = coordinator
 
     @property
@@ -74,15 +79,15 @@ class PowerViewShade(CoverEntity):
     def is_closed(self):
         """Return if the cover is closed."""
         return (
-            self._shade.get_current_position(refresh=False)
-            == self._shade.close_position
+            self._shade.raw_data.get(ATTR_POSITION_DATA) == self._shade.close_position
         )
 
     @property
     def current_cover_position(self):
         """Return the current position of cover."""
-        # TODO: convert
-        return self._shade.get_current_position(refresh=False)
+        return hd_position_to_hass(
+            self._shade.raw_data[ATTR_POSITION_DATA][ATTR_POSITION1]
+        )
 
     @property
     def name(self):
@@ -103,15 +108,14 @@ class PowerViewShade(CoverEntity):
 
     async def set_cover_position(self, **kwargs):
         """Move the shade to a specific position."""
-        # TODO : convert
         if ATTR_POSITION in kwargs:
             position = kwargs[ATTR_POSITION]
-            await self._shade.move(position)
+            await self._shade.move(hass_position_to_hd(position))
 
     @callback
     def _async_update_shade(self):
         """Update with new data from the coordinator."""
-        self._shade.raw_data = self._coordinator.data[SHADE_DATA][self._shade.id]
+        self._shade.raw_data = self._coordinator.data[self._shade.id]
         self.async_write_ha_state()
 
     @property

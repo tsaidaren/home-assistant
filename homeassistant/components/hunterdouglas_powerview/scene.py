@@ -17,7 +17,6 @@ from .const import (
     PV_ROOM_DATA,
     PV_SCENE_DATA,
     ROOM_NAME,
-    SCENE_DATA,
     STATE_ATTRIBUTE_ROOM_NAME,
 )
 
@@ -47,8 +46,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
     pv_request = pv_data[PV_API]
 
     pvscenes = (
-        PowerViewScene(hass, PvScene(raw_scene, pv_request), room_data)
-        for scene_id, raw_scene in scene_data[SCENE_DATA].items()
+        PowerViewScene(PvScene(raw_scene, pv_request), room_data)
+        for scene_id, raw_scene in scene_data.items()
     )
     async_add_entities(pvscenes)
 
@@ -56,10 +55,9 @@ async def async_setup_entry(hass, entry, async_add_entities):
 class PowerViewScene(Scene):
     """Representation of a Powerview scene."""
 
-    def __init__(self, hass, scene, room_data):
+    def __init__(self, scene, room_data):
         """Initialize the scene."""
         self._scene = scene
-        self.hass = hass
         self._room_name = room_data.get(scene.room_id, {}).get(ROOM_NAME, "")
 
     @property

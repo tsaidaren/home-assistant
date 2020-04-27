@@ -2,7 +2,7 @@
 import logging
 
 from aiopvapi.helpers.aiorequest import AioRequest
-from aiopvapi.rooms import Rooms
+from aiopvapi.hub import Hub
 import async_timeout
 import voluptuous as vol
 
@@ -27,14 +27,15 @@ async def validate_input(hass: core.HomeAssistant, data):
     websession = async_get_clientsession(hass)
 
     pv_request = AioRequest(hub_address, loop=hass.loop, websession=websession)
+    hub = Hub(pv_request)
 
     async with async_timeout.timeout(10):
-        room_data = await Rooms(pv_request).get_resources()
-    if not room_data:
+        await hub.query_user_data()
+    if not hub.ip:
         raise CannotConnect
 
     # Return info that you want to store in the config entry.
-    return {"title": "Name of the device"}
+    return {"title": hub.name}
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -47,6 +48,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle the initial step."""
         errors = {}
         if user_input is not None:
+            if self._host_already_configured(user_input[HUB_ADDRESS]):
+                return self.async_abort(reason="already_configured")
             try:
                 info = await validate_input(self.hass, user_input)
 
@@ -64,6 +67,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_import(self, user_input=None):
         """Handle the initial step."""
         return await self.async_step_user(user_input)
+
+    def _host_already_configured(self, host):
+        """See if we already have a hub with the host address configured."""
+        existing_hosts = {
+            entry.data[HUB_ADDRESS] for entry in self._async_current_entries()
+        }
+        return host in existing_hosts
 
 
 class CannotConnect(exceptions.HomeAssistantError):
