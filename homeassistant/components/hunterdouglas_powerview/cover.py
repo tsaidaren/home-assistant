@@ -24,16 +24,9 @@ from .const import (
     DOMAIN,
     PV_API,
     PV_ROOM_DATA,
-    PV_ROOMS,
     PV_SHADE_DATA,
-    PV_SHADES,
-    ROOM_DATA,
-    ROOM_ID,
-    ROOM_ID_IN_SSHADE,
     ROOM_NAME,
     SHADE_DATA,
-    SHADE_ID,
-    SHADE_NAME,
     STATE_ATTRIBUTE_ROOM_NAME,
 )
 
@@ -50,9 +43,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     coordinator = pv_data[COORDINATOR]
 
     pvshades = (
-        PowerViewShade(
-            hass, PvShade(raw_shade, pv_request), room_data, pv_request, coordinator
-        )
+        PowerViewShade(hass, PvShade(raw_shade, pv_request), room_data, coordinator)
         for raw_shade in shade_data[SHADE_DATA]
     )
     async_add_entities(pvshades)
@@ -61,27 +52,13 @@ async def async_setup_entry(hass, entry, async_add_entities):
 class PowerViewShade(CoverEntity):
     """Representation of a powerview shade."""
 
-    def __init__(self, hass, shade, room_data, pv_request, coordinator):
+    def __init__(self, hass, shade, room_data, coordinator):
         """Initialize the shade."""
         self._shade = shade
         self.hass = hass
         self._room_name = None
-        self._pv_request = pv_request
-        self._sync_room_data(room_data)
+        self._room_name = room_data.get(shade.room_id, {}).get(ROOM_NAME, "")
         self._coordinator = coordinator
-
-    def _sync_room_data(self, room_data):
-        """Sync room data."""
-        room = next(
-            (
-                room
-                for room in room_data[ROOM_DATA]
-                if room[ROOM_ID] == self._shade.room_id
-            ),
-            {},
-        )
-
-        self._room_name = room.get(ROOM_NAME, "")
 
     @property
     def device_state_attributes(self):
@@ -133,12 +110,9 @@ class PowerViewShade(CoverEntity):
 
     @callback
     def _async_update_shade(self):
-        myid = self._shade.id
-        for raw_shade in self._coordinator.data[SHADE_DATA]:
-            if raw_shade.get(ATTR_ID) == myid:
-                self._shade = PvShade(raw_shade, self._pv_request)
-                self.async_write_ha_state()
-                break
+        """Update with new data from the coordinator."""
+        self._shade.raw_data = self._coordinator.data[SHADE_DATA][self._shade.id]
+        self.async_write_ha_state()
 
     @property
     def should_poll(self):
