@@ -20,6 +20,7 @@ from homeassistant.components.cover import (
     CoverEntity,
 )
 from homeassistant.core import callback
+from homeassistant.helpers.event import async_call_later
 
 from .const import (
     COORDINATOR,
@@ -43,6 +44,10 @@ from .const import (
 from .entity import HDEntity
 
 _LOGGER = logging.getLogger(__name__)
+
+# Estimated time it takes to complete a transition
+# from one state to another
+TRANSITION_COMPLETE_DURATION = 37
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
@@ -86,6 +91,8 @@ class PowerViewShade(HDEntity, CoverEntity):
         self._is_opening = False
         self._is_closing = False
         self._room_name = None
+        self._last_action_timestamp = 0
+        self._scheduled_transition_update = None
         self._name = self._shade.name
         self._room_name = room_data.get(room_id, {}).get(ROOM_NAME, "")
         self._current_cover_position = MIN_POSITION
@@ -138,13 +145,13 @@ class PowerViewShade(HDEntity, CoverEntity):
         """Close the cover."""
         await self._async_move(0)
         self._is_closing = True
-        self.async_write_ha_state()
+        self._async_schedule_update_for_transition()
 
     async def async_open_cover(self, **kwargs):
         """Open the cover."""
         await self._async_move(100)
         self._is_opening = True
-        self.async_write_ha_state()
+        self._async_schedule_update_for_transition()
 
     async def async_stop_cover(self, **kwargs):
         """Stop the cover."""
@@ -156,6 +163,7 @@ class PowerViewShade(HDEntity, CoverEntity):
         if ATTR_POSITION not in kwargs:
             return
         await self._async_move(kwargs[ATTR_POSITION])
+        self._async_schedule_update_for_transition()
 
     async def _async_move(self, hass_position):
         """Move the shade to a position."""
@@ -182,6 +190,10 @@ class PowerViewShade(HDEntity, CoverEntity):
     @callback
     def _async_update_shade(self):
         """Update with new data from the coordinator."""
+        if self._scheduled_transition_update:
+            # If a transition in in progress
+            # the data will be wrong
+            return
         self._async_process_new_shade_data(self._coordinator.data[self._shade.id])
         self.async_write_ha_state()
 
@@ -200,6 +212,27 @@ class PowerViewShade(HDEntity, CoverEntity):
             self._current_cover_position = position_data[ATTR_POSITION1]
         self._is_opening = False
         self._is_closing = False
+
+    @callback
+    def _async_schedule_update_for_transition(self):
+        self.async_write_ha_state()
+
+        # Cancel any previous updates
+        if self._scheduled_transition_update:
+            self._scheduled_transition_update()
+
+        # Schedule an update for when we expect the transition
+        # to be completed.
+        self._scheduled_transition_update = async_call_later(
+            self.hass,
+            TRANSITION_COMPLETE_DURATION,
+            self._async_complete_schedule_update,
+        )
+
+    async def _async_complete_schedule_update(self, _):
+        """Update status of the cover."""
+        self._scheduled_transition_update = None
+        await self._shade.refresh()
 
     @property
     def device_info(self):
