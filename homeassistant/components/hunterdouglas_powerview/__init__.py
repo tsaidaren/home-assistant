@@ -13,7 +13,8 @@ from aiopvapi.userdata import UserData
 import async_timeout
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
+from homeassistant.const import CONF_HOST
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -31,7 +32,6 @@ from .const import (
     DEVICE_SERIAL_NUMBER,
     DOMAIN,
     FIRMWARE_IN_USERDATA,
-    HUB_ADDRESS,
     MAC_ADDRESS_IN_USERDATA,
     MAINPROCESSOR_IN_USERDATA_FIRMWARE,
     MODEL_IN_MAINPROCESSOR,
@@ -48,17 +48,43 @@ from .const import (
     USER_DATA,
 )
 
-CONFIG_SCHEMA = vol.Schema(
-    {DOMAIN: vol.Schema({vol.Required(HUB_ADDRESS): cv.string})}, extra=vol.ALLOW_EXTRA
+DEVICE_SCHEMA = vol.Schema(
+    {DOMAIN: vol.Schema({vol.Required(CONF_HOST): cv.string})}, extra=vol.ALLOW_EXTRA
 )
+
+
+def _has_all_unique_hosts(value):
+    """Validate that each hub configured has a unique host."""
+    hosts = [device[CONF_HOST] for device in value]
+    schema = vol.Schema(vol.Unique())
+    schema(hosts)
+    return value
+
+
+CONFIG_SCHEMA = vol.Schema(
+    {DOMAIN: vol.All(cv.ensure_list, [DEVICE_SCHEMA], _has_all_unique_hosts)},
+    extra=vol.ALLOW_EXTRA,
+)
+
 
 PLATFORMS = ["cover", "scene"]
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup(hass: HomeAssistant, config: dict):
+async def async_setup(hass: HomeAssistant, hass_config: dict):
     """Set up the Hunter Douglas PowerView component."""
     hass.data.setdefault(DOMAIN, {})
+
+    if DOMAIN not in hass_config:
+        return
+
+    for conf in hass_config[DOMAIN]:
+        hass.async_create_task(
+            hass.config_entries.flow.async_init(
+                DOMAIN, context={"source": SOURCE_IMPORT}, data=conf
+            )
+        )
+
     return True
 
 
@@ -67,7 +93,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     config = entry.data
 
-    hub_address = config.get(HUB_ADDRESS)
+    hub_address = config.get(CONF_HOST)
     websession = async_get_clientsession(hass)
 
     pv_request = AioRequest(hub_address, loop=hass.loop, websession=websession)

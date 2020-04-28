@@ -7,7 +7,7 @@ import voluptuous as vol
 
 from homeassistant.components.scene import Scene
 from homeassistant.config_entries import SOURCE_IMPORT
-from homeassistant.const import CONF_PLATFORM
+from homeassistant.const import CONF_HOST, CONF_PLATFORM
 import homeassistant.helpers.config_validation as cv
 
 from .const import (
@@ -35,7 +35,9 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 
     hass.async_create_task(
         hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": SOURCE_IMPORT}, data=config
+            DOMAIN,
+            context={"source": SOURCE_IMPORT},
+            data={CONF_HOST: config[HUB_ADDRESS]},
         )
     )
 
