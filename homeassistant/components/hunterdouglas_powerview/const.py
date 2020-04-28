@@ -1,5 +1,9 @@
 """Support for Powerview scenes from a Powerview hub."""
 
+import asyncio
+
+from aiopvapi.helpers.aiorequest import PvApiConnectionError
+
 DOMAIN = "hunterdouglas_powerview"
 
 
@@ -56,3 +60,5 @@ PV_SCENE_DATA = "pv_scene_data"
 PV_SHADE_DATA = "pv_shade_data"
 PV_ROOM_DATA = "pv_room_data"
 COORDINATOR = "coordinator"
+
+HUB_EXCEPTIONS = (asyncio.exceptions.TimeoutError, PvApiConnectionError)

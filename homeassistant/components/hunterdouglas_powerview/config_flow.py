@@ -1,8 +1,7 @@
 """Config flow for Hunter Douglas PowerView integration."""
-import asyncio
 import logging
 
-from aiopvapi.helpers.aiorequest import AioRequest, PvApiConnectionError
+from aiopvapi.helpers.aiorequest import AioRequest
 from aiopvapi.hub import Hub
 import async_timeout
 import voluptuous as vol
@@ -12,6 +11,7 @@ from homeassistant.const import CONF_HOST, CONF_NAME
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import DOMAIN  # pylint:disable=unused-import
+from .const import HUB_EXCEPTIONS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ async def validate_input(hass: core.HomeAssistant, data):
     try:
         async with async_timeout.timeout(10):
             await hub.query_user_data()
-    except (asyncio.TimeoutError, PvApiConnectionError):
+    except HUB_EXCEPTIONS:
         raise CannotConnect
     if not hub.ip:
         raise CannotConnect
@@ -62,7 +62,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             try:
                 info = await validate_input(self.hass, user_input)
 
-                return self.async_create_entry(title=info["title"], data=user_input)
+                return self.async_create_entry(
+                    title=info["title"], data={CONF_HOST: user_input[CONF_HOST]}
+                )
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except Exception:  # pylint: disable=broad-except
@@ -95,15 +97,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_link(self, user_input=None):
         """Attempt to link with the Harmony."""
-        errors = {}
-
         if user_input is not None:
             return await self.async_step_user(self.powerview_config)
 
         return self.async_show_form(
-            step_id="link",
-            errors=errors,
-            description_placeholders=self.powerview_config,
+            step_id="link", description_placeholders=self.powerview_config
         )
 
     def _host_already_configured(self, host):

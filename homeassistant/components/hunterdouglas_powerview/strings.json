@@ -5,9 +5,13 @@
       "user": {
         "title": "Connect to the PowerView Hub",
         "data": {
-          "address": "IP Address"
+          "host": "IP Address"
         }
-      }
+      },
+      "link": {
+        "title": "Connect to the PowerView Hub",
+        "description": "Do you want to setup {name} ({host})?"
+      } 
     },
     "error": {
       "cannot_connect": "Failed to connect, please try again",

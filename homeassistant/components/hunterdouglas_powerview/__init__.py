@@ -3,7 +3,7 @@ import asyncio
 from datetime import timedelta
 import logging
 
-from aiopvapi.helpers.aiorequest import AioRequest, PvApiConnectionError
+from aiopvapi.helpers.aiorequest import AioRequest
 from aiopvapi.helpers.constants import ATTR_ID
 from aiopvapi.hub import Hub
 from aiopvapi.rooms import Rooms
@@ -32,6 +32,7 @@ from .const import (
     DEVICE_SERIAL_NUMBER,
     DOMAIN,
     FIRMWARE_IN_USERDATA,
+    HUB_EXCEPTIONS,
     MAC_ADDRESS_IN_USERDATA,
     MAINPROCESSOR_IN_USERDATA_FIRMWARE,
     MODEL_IN_MAINPROCESSOR,
@@ -103,7 +104,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     try:
         async with async_timeout.timeout(10):
             await hub.query_user_data()
-    except (asyncio.TimeoutError, PvApiConnectionError):
+    except HUB_EXCEPTIONS:
         _LOGGER.error("Connection error to PowerView hub: %s", hub_address)
         raise ConfigEntryNotReady
     if not hub.ip:
