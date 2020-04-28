@@ -38,7 +38,7 @@ from .const import (
     PV_ROOM_DATA,
     PV_SHADE_DATA,
     ROOM_ID_IN_SHADE,
-    ROOM_NAME,
+    ROOM_NAME_UNICODE,
     SHADE_RESPONSE,
     STATE_ATTRIBUTE_ROOM_NAME,
 )
@@ -103,7 +103,7 @@ class PowerViewShade(HDEntity, CoverEntity):
         self._last_action_timestamp = 0
         self._scheduled_transition_update = None
         self._name = name
-        self._room_name = room_data.get(room_id, {}).get(ROOM_NAME, "")
+        self._room_name = room_data.get(room_id, {}).get(ROOM_NAME_UNICODE, "")
         self._current_cover_position = MIN_POSITION
         self._coordinator = coordinator
 

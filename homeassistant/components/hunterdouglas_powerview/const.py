@@ -42,6 +42,7 @@ SHADE_ID = "id"
 ROOM_ID_IN_SHADE = "roomId"
 
 ROOM_NAME = "name"
+ROOM_NAME_UNICODE = "name_unicode"
 ROOM_ID = "id"
 
 SHADE_RESPONSE = "shade"

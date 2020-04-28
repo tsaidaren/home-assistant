@@ -18,7 +18,7 @@ from .const import (
     PV_API,
     PV_ROOM_DATA,
     PV_SCENE_DATA,
-    ROOM_NAME,
+    ROOM_NAME_UNICODE,
     STATE_ATTRIBUTE_ROOM_NAME,
 )
 from .entity import HDEntity
@@ -68,7 +68,7 @@ class PowerViewScene(HDEntity, Scene):
         """Initialize the scene."""
         super().__init__(coordinator, device_info, scene.id)
         self._scene = scene
-        self._room_name = room_data.get(scene.room_id, {}).get(ROOM_NAME, "")
+        self._room_name = room_data.get(scene.room_id, {}).get(ROOM_NAME_UNICODE, "")
 
     @property
     def name(self):
