@@ -746,6 +746,7 @@ async def test_homekit_finds_linked_batteries(
         await homekit.async_start()
     await hass.async_block_till_done()
 
+    await hass.async_block_till_done()
     mock_get_acc.assert_called_with(
         hass,
         hk_driver,
