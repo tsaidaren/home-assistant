@@ -79,20 +79,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_homekit(self, homekit_info):
         """Handle HomeKit discovery."""
-        if self._async_current_entries():
-            # We can see rachio on the network to tell them to configure
-            # it, but since the device will not give up the account it is
-            # bound to and there can be multiple rachio systems on a single
-            # account, we avoid showing the device as discovered once
-            # they already have one configured as they can always
-            # add a new one via "+"
-            return self.async_abort(reason="already_configured")
-        properties = {
-            key.lower(): value for (key, value) in homekit_info["properties"].items()
-        }
         if self._host_already_configured(homekit_info["host"]):
             return self.async_abort(reason="already_configured")
-        await self.async_set_unique_id(properties["id"])
+        await self.async_set_unique_id(homekit_info["properties"]["id"])
 
         name = homekit_info["name"]
         if name.endswith(HAP_SUFFIX):
