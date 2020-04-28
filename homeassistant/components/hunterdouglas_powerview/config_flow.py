@@ -1,5 +1,5 @@
 """Config flow for Hunter Douglas PowerView integration."""
-from asyncio import TimeoutError
+import asyncio
 import logging
 
 from aiopvapi.helpers.aiorequest import AioRequest, PvApiConnectionError
@@ -16,6 +16,7 @@ from .const import DOMAIN  # pylint:disable=unused-import
 _LOGGER = logging.getLogger(__name__)
 
 DATA_SCHEMA = vol.Schema({vol.Required(CONF_HOST): str})
+HAP_SUFFIX = "._hap._tcp.local."
 
 
 async def validate_input(hass: core.HomeAssistant, data):
@@ -33,7 +34,7 @@ async def validate_input(hass: core.HomeAssistant, data):
     try:
         async with async_timeout.timeout(10):
             await hub.query_user_data()
-    except (TimeoutError, PvApiConnectionError):
+    except (asyncio.TimeoutError, PvApiConnectionError):
         raise CannotConnect
     if not hub.ip:
         raise CannotConnect
@@ -93,9 +94,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="already_configured")
         await self.async_set_unique_id(properties["id"])
 
+        name = homekit_info["name"]
+        if name.endswith(HAP_SUFFIX):
+            name = name[: -len(HAP_SUFFIX)]
+
         self.powerview_config = {
             CONF_HOST: homekit_info["host"],
-            CONF_NAME: homekit_info["name"],
+            CONF_NAME: name,
         }
         return await self.async_step_link()
 
