@@ -1,4 +1,5 @@
 """Config flow for Hunter Douglas PowerView integration."""
+from asyncio import TimeoutError
 import logging
 
 from aiopvapi.helpers.aiorequest import AioRequest, PvApiConnectionError
@@ -32,7 +33,7 @@ async def validate_input(hass: core.HomeAssistant, data):
     try:
         async with async_timeout.timeout(10):
             await hub.query_user_data()
-    except PvApiConnectionError:
+    except (TimeoutError, PvApiConnectionError):
         raise CannotConnect
     if not hub.ip:
         raise CannotConnect

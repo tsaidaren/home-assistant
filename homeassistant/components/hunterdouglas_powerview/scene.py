@@ -33,8 +33,6 @@ PLATFORM_SCHEMA = vol.Schema(
 def setup_platform(hass, config, add_entities, discovery_info=None):
     """Import platform from yaml."""
 
-    _LOGGER.debug("Import legacy: %s", config)
-
     hass.async_create_task(
         hass.config_entries.flow.async_init(
             DOMAIN,
