@@ -9,6 +9,7 @@ from aiopvapi.resources.shade import (
     MIN_POSITION,
     factory as PvShade,
 )
+import async_timeout
 
 from homeassistant.components.cover import (
     ATTR_POSITION,
@@ -60,13 +61,16 @@ async def async_setup_entry(hass, entry, async_add_entities):
     coordinator = pv_data[COORDINATOR]
     device_info = pv_data[DEVICE_INFO]
 
-    pvshades = (
-        PowerViewShade(
-            PvShade(raw_shade, pv_request), room_data, coordinator, device_info
-        )
-        for shade_id, raw_shade in shade_data.items()
-    )
-    async_add_entities(pvshades)
+    entities = []
+    for raw_shade in shade_data.values():
+        # The shade may be out of sync with the hub
+        # so we force a refresh when we add it if
+        # possible
+        shade = PvShade(raw_shade, pv_request)
+        async with async_timeout.timeout(5):
+            await shade.refresh()
+        entities.append(PowerViewShade(shade, room_data, coordinator, device_info))
+    async_add_entities(entities)
 
 
 def hd_position_to_hass(hd_position):
@@ -152,8 +156,7 @@ class PowerViewShade(HDEntity, CoverEntity):
     async def async_stop_cover(self, **kwargs):
         """Stop the cover."""
         # Cancel any previous updates
-        if self._scheduled_transition_update:
-            self._scheduled_transition_update()
+        self._async_cancel_scheduled_transition_update()
         self._async_update_from_command(await self._shade.stop())
         await self._async_force_refresh_state()
 
@@ -210,12 +213,19 @@ class PowerViewShade(HDEntity, CoverEntity):
         self._is_closing = False
 
     @callback
+    def _async_cancel_scheduled_transition_update(self):
+        """Cancel any previous updates."""
+        if not self._scheduled_transition_update:
+            return
+        self._scheduled_transition_update()
+        self._scheduled_transition_update = None
+
+    @callback
     def _async_schedule_update_for_transition(self, steps):
         self.async_write_ha_state()
 
         # Cancel any previous updates
-        if self._scheduled_transition_update:
-            self._scheduled_transition_update()
+        self._async_cancel_scheduled_transition_update()
 
         est_time_to_complete_transition = 1 + int(
             TRANSITION_COMPLETE_DURATION * (steps / 100)
