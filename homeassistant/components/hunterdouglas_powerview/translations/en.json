@@ -1,21 +1,20 @@
 {
+    "title": "Hunter Douglas PowerView",
     "config": {
-        "abort": {
-            "already_configured": "Device is already configured"
-        },
-        "error": {
-            "cannot_connect": "Failed to connect, please try again",
-            "invalid_auth": "Invalid authentication",
-            "unknown": "Unexpected error"
-        },
-        "step": {
-            "user": {
-                "data": {
-                    "host": "Host"
-                },
-                "title": "Connect to the device"
-            }
+      "step": {
+        "user": {
+          "title": "Connect to the PowerView Hub",
+          "data": {
+            "address": "IP Address"
+          }
         }
-    },
-    "title": "Hunter Douglas PowerView"
-}
+      },
+      "error": {
+        "cannot_connect": "Failed to connect, please try again",
+        "unknown": "Unexpected error"
+      },
+      "abort": {
+        "already_configured": "Device is already configured"
+      }
+    }
+  }

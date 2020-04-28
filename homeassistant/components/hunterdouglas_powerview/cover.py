@@ -67,9 +67,14 @@ async def async_setup_entry(hass, entry, async_add_entities):
         # so we force a refresh when we add it if
         # possible
         shade = PvShade(raw_shade, pv_request)
+        name_before_refresh = shade.name
         async with async_timeout.timeout(5):
             await shade.refresh()
-        entities.append(PowerViewShade(shade, room_data, coordinator, device_info))
+        entities.append(
+            PowerViewShade(
+                shade, name_before_refresh, room_data, coordinator, device_info
+            )
+        )
     async_add_entities(entities)
 
 
@@ -86,7 +91,7 @@ def hass_position_to_hd(hass_positon):
 class PowerViewShade(HDEntity, CoverEntity):
     """Representation of a powerview shade."""
 
-    def __init__(self, shade, room_data, coordinator, device_info):
+    def __init__(self, shade, name, room_data, coordinator, device_info):
         """Initialize the shade."""
         room_id = shade.raw_data.get(ROOM_ID_IN_SHADE)
         super().__init__(coordinator, device_info, shade.id)
@@ -97,7 +102,7 @@ class PowerViewShade(HDEntity, CoverEntity):
         self._room_name = None
         self._last_action_timestamp = 0
         self._scheduled_transition_update = None
-        self._name = self._shade.name
+        self._name = name
         self._room_name = room_data.get(room_id, {}).get(ROOM_NAME, "")
         self._current_cover_position = MIN_POSITION
         self._coordinator = coordinator
