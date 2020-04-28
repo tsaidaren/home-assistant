@@ -13,14 +13,21 @@ def fix_threading_exception_logging() -> None:
     if sys.version_info[:2] >= (3, 8):
         return
 
-    run_old = threading.Thread.run
+    init_old = threading.Thread.__init__
 
-    def run(*args: Any, **kwargs: Any) -> None:
-        try:
-            run_old(*args, **kwargs)
-        except (KeyboardInterrupt, SystemExit):  # pylint: disable=try-except-raise
-            raise
-        except Exception:  # pylint: disable=broad-except
-            sys.excepthook(*sys.exc_info())
+    def init_new(self: Any, *args: Any, **kwargs: Any) -> Any:
+        """Patch threading init to call excepthook when run has an uncaught exception."""
+        init_old(self, *args, **kwargs)
+        run_old = self.run
 
-    threading.Thread.run = run  # type: ignore
+        def run_with_our_excepthook(*args: Any, **kwargs: Any) -> Any:
+            try:
+                run_old(*args, **kwargs)
+            except (KeyboardInterrupt, SystemExit):  # pylint: disable=try-except-raise
+                raise
+            except Exception:  # pylint: disable=broad-except
+                sys.excepthook(*sys.exc_info())
+
+        self.run = run_with_our_excepthook
+
+    threading.Thread.__init__ = init_new  # type: ignore
