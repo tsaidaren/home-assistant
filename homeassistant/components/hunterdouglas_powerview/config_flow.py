@@ -1,7 +1,7 @@
 """Config flow for Hunter Douglas PowerView integration."""
 import logging
 
-from aiopvapi.helpers.aiorequest import AioRequest
+from aiopvapi.helpers.aiorequest import AioRequest, PvApiConnectionError
 from aiopvapi.hub import Hub
 import async_timeout
 import voluptuous as vol
@@ -29,8 +29,11 @@ async def validate_input(hass: core.HomeAssistant, data):
     pv_request = AioRequest(hub_address, loop=hass.loop, websession=websession)
     hub = Hub(pv_request)
 
-    async with async_timeout.timeout(10):
-        await hub.query_user_data()
+    try:
+        async with async_timeout.timeout(10):
+            await hub.query_user_data()
+    except PvApiConnectionError:
+        raise CannotConnect
     if not hub.ip:
         raise CannotConnect
 

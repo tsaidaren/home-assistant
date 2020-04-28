@@ -76,7 +76,7 @@ async def async_setup(hass: HomeAssistant, hass_config: dict):
     hass.data.setdefault(DOMAIN, {})
 
     if DOMAIN not in hass_config:
-        return
+        return True
 
     for conf in hass_config[DOMAIN]:
         hass.async_create_task(
