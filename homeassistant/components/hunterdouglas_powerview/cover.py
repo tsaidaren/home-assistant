@@ -1,4 +1,5 @@
 """Support for hunter douglas shades."""
+import asyncio
 import logging
 
 from aiopvapi.helpers.constants import ATTR_POSITION1, ATTR_POSITION_DATA
@@ -68,8 +69,12 @@ async def async_setup_entry(hass, entry, async_add_entities):
         # possible
         shade = PvShade(raw_shade, pv_request)
         name_before_refresh = shade.name
-        async with async_timeout.timeout(5):
-            await shade.refresh()
+        try:
+            async with async_timeout.timeout(1):
+                await shade.refresh()
+        except asyncio.TimeoutError:
+            # Forced refresh is not required for setup
+            pass
         entities.append(
             PowerViewShade(
                 shade, name_before_refresh, room_data, coordinator, device_info
