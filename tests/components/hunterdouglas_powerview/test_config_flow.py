@@ -160,7 +160,7 @@ async def test_form_cannot_connect(hass):
     )
 
     mock_powerview_hub = _get_mock_powerview_hub(
-        ip="1.2.3.4", query_user_data=asyncio.exceptions.TimeoutError
+        ip="1.2.3.4", query_user_data=asyncio.TimeoutError
     )
     with patch(
         "homeassistant.components.hunterdouglas_powerview.config_flow.Hub",

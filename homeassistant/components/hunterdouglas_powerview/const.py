@@ -61,4 +61,4 @@ PV_SHADE_DATA = "pv_shade_data"
 PV_ROOM_DATA = "pv_room_data"
 COORDINATOR = "coordinator"
 
-HUB_EXCEPTIONS = (asyncio.exceptions.TimeoutError, PvApiConnectionError)
+HUB_EXCEPTIONS = (asyncio.TimeoutError, PvApiConnectionError)
