@@ -158,10 +158,15 @@ class Thermostat(HomeAccessory):
             list(self.hc_homekit_to_hass)[0],
             self.hc_hass_to_homekit,
         )
+        # Must set the value first as setting
+        # valid_values happens before setting
+        # the value and if 0 is not a valid
+        # value this will throw
         self.char_target_heat_cool = serv_thermostat.configure_char(
-            CHAR_TARGET_HEATING_COOLING,
-            valid_values=self.hc_hass_to_homekit,
-            value=list(self.hc_homekit_to_hass)[0],
+            CHAR_TARGET_HEATING_COOLING, value=list(self.hc_homekit_to_hass)[0]
+        )
+        self.char_target_heat_cool.override_properties(
+            valid_values=self.hc_hass_to_homekit
         )
         # Current and target temperature characteristics
 
@@ -402,6 +407,14 @@ class Thermostat(HomeAccessory):
             original_hc_hass_to_homekit = self.hc_hass_to_homekit
             self._configure_hvac_modes(new_state)
             if self.hc_hass_to_homekit != original_hc_hass_to_homekit:
+                if self.char_target_heat_cool.value not in self.hc_homekit_to_hass:
+                    # We must make sure the char value is
+                    # in the new valid values before
+                    # setting the new valid values or
+                    # changing them with throw
+                    self.char_target_heat_cool.set_value(
+                        list(self.hc_homekit_to_hass)[0], should_notify=False
+                    )
                 self.char_target_heat_cool.override_properties(
                     valid_values=self.hc_hass_to_homekit
                 )
@@ -486,13 +499,13 @@ class Thermostat(HomeAccessory):
             # even if the device does not support it
             hc_hvac_mode = self.char_target_heat_cool.value
             if hc_hvac_mode == HC_HEAT_COOL_HEAT:
-                target_temp = self._temperature_to_homekit(
-                    new_state.attributes.get(ATTR_TARGET_TEMP_LOW)
-                )
+                temp_low = new_state.attributes.get(ATTR_TARGET_TEMP_LOW)
+                if isinstance(temp_low, (int, float)):
+                    target_temp = self._temperature_to_homekit(temp_low)
             elif hc_hvac_mode == HC_HEAT_COOL_COOL:
-                target_temp = self._temperature_to_homekit(
-                    new_state.attributes.get(ATTR_TARGET_TEMP_HIGH)
-                )
+                temp_high = new_state.attributes.get(ATTR_TARGET_TEMP_HIGH)
+                if isinstance(temp_high, (int, float)):
+                    target_temp = self._temperature_to_homekit(temp_high)
         if target_temp and self.char_target_temp.value != target_temp:
             self.char_target_temp.set_value(target_temp)
 
