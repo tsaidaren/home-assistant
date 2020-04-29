@@ -152,6 +152,12 @@ class Thermostat(HomeAccessory):
         )
 
         self._configure_hvac_modes(state)
+        _LOGGER.debug(
+            "Configure target heating cooling for %s to %s (valid_values=%s)",
+            state.entity_id,
+            list(self.hc_homekit_to_hass)[0],
+            self.hc_hass_to_homekit,
+        )
         self.char_target_heat_cool = serv_thermostat.configure_char(
             CHAR_TARGET_HEATING_COOLING,
             valid_values=self.hc_hass_to_homekit,
@@ -412,6 +418,12 @@ class Thermostat(HomeAccessory):
         if hvac_mode and hvac_mode in HC_HASS_TO_HOMEKIT:
             homekit_hvac_mode = HC_HASS_TO_HOMEKIT[hvac_mode]
             if homekit_hvac_mode in self.hc_homekit_to_hass:
+                _LOGGER.debug(
+                    "Setting cooling to homekit_hvac_mode for %s to %s (valid_values: %s)",
+                    new_state.entity_id,
+                    homekit_hvac_mode,
+                    self.hc_hass_to_homekit,
+                )
                 if self.char_target_heat_cool.value != homekit_hvac_mode:
                     self.char_target_heat_cool.set_value(homekit_hvac_mode)
             else:
