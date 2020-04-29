@@ -1538,10 +1538,17 @@ async def test_thermostat_with_no_modes_when_we_first_see(hass, hk_driver, cls, 
     assert acc.char_heating_thresh_temp.value == 19.0
 
     assert acc.char_cooling_thresh_temp.properties[PROP_MAX_VALUE] == DEFAULT_MAX_TEMP
+<<<<<<< HEAD
     assert acc.char_cooling_thresh_temp.properties[PROP_MIN_VALUE] == 7.0
     assert acc.char_cooling_thresh_temp.properties[PROP_MIN_STEP] == 0.1
     assert acc.char_heating_thresh_temp.properties[PROP_MAX_VALUE] == DEFAULT_MAX_TEMP
     assert acc.char_heating_thresh_temp.properties[PROP_MIN_VALUE] == 7.0
+=======
+    assert acc.char_cooling_thresh_temp.properties[PROP_MIN_VALUE] == HC_MIN_TEMP
+    assert acc.char_cooling_thresh_temp.properties[PROP_MIN_STEP] == 0.1
+    assert acc.char_heating_thresh_temp.properties[PROP_MAX_VALUE] == DEFAULT_MAX_TEMP
+    assert acc.char_heating_thresh_temp.properties[PROP_MIN_VALUE] == HC_MIN_TEMP
+>>>>>>> e873407443... Improve handling homekit thermostat states
     assert acc.char_heating_thresh_temp.properties[PROP_MIN_STEP] == 0.1
 
     assert acc.char_target_heat_cool.value == 0
@@ -1591,10 +1598,17 @@ async def test_thermostat_with_no_off_after_recheck(hass, hk_driver, cls, events
     assert acc.char_heating_thresh_temp.value == 19.0
 
     assert acc.char_cooling_thresh_temp.properties[PROP_MAX_VALUE] == DEFAULT_MAX_TEMP
+<<<<<<< HEAD
     assert acc.char_cooling_thresh_temp.properties[PROP_MIN_VALUE] == 7.0
     assert acc.char_cooling_thresh_temp.properties[PROP_MIN_STEP] == 0.1
     assert acc.char_heating_thresh_temp.properties[PROP_MAX_VALUE] == DEFAULT_MAX_TEMP
     assert acc.char_heating_thresh_temp.properties[PROP_MIN_VALUE] == 7.0
+=======
+    assert acc.char_cooling_thresh_temp.properties[PROP_MIN_VALUE] == HC_MIN_TEMP
+    assert acc.char_cooling_thresh_temp.properties[PROP_MIN_STEP] == 0.1
+    assert acc.char_heating_thresh_temp.properties[PROP_MAX_VALUE] == DEFAULT_MAX_TEMP
+    assert acc.char_heating_thresh_temp.properties[PROP_MIN_VALUE] == HC_MIN_TEMP
+>>>>>>> e873407443... Improve handling homekit thermostat states
     assert acc.char_heating_thresh_temp.properties[PROP_MIN_STEP] == 0.1
 
     assert acc.char_target_heat_cool.value == 2

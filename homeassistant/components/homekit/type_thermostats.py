@@ -122,9 +122,9 @@ class Thermostat(HomeAccessory):
         min_temp, max_temp = self.get_temperature_range()
 
         # Homekit only supports 10-38, overwriting
-        # the max to appears to work, but less than 10 causes
+        # the max to appears to work, but less than 0 causes
         # a crash on the home app
-        hc_min_temp = max(min_temp, HC_MIN_TEMP)
+        hc_min_temp = max(min_temp, 0)
         hc_max_temp = max_temp
 
         min_humidity = self.hass.states.get(self.entity_id).attributes.get(
@@ -152,12 +152,6 @@ class Thermostat(HomeAccessory):
         )
 
         self._configure_hvac_modes(state)
-        _LOGGER.debug(
-            "Configure target heating cooling for %s to %s (valid_values=%s)",
-            state.entity_id,
-            list(self.hc_homekit_to_hass)[0],
-            self.hc_hass_to_homekit,
-        )
         # Must set the value first as setting
         # valid_values happens before setting
         # the value and if 0 is not a valid
@@ -431,12 +425,6 @@ class Thermostat(HomeAccessory):
         if hvac_mode and hvac_mode in HC_HASS_TO_HOMEKIT:
             homekit_hvac_mode = HC_HASS_TO_HOMEKIT[hvac_mode]
             if homekit_hvac_mode in self.hc_homekit_to_hass:
-                _LOGGER.debug(
-                    "Setting cooling to homekit_hvac_mode for %s to %s (valid_values: %s)",
-                    new_state.entity_id,
-                    homekit_hvac_mode,
-                    self.hc_hass_to_homekit,
-                )
                 if self.char_target_heat_cool.value != homekit_hvac_mode:
                     self.char_target_heat_cool.set_value(homekit_hvac_mode)
             else:
