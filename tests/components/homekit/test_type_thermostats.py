@@ -1555,14 +1555,7 @@ async def test_thermostat_with_no_modes_when_we_first_see(hass, hk_driver, cls, 
             ATTR_TARGET_TEMP_LOW: 20.0,
             ATTR_CURRENT_TEMPERATURE: 18.0,
             ATTR_HVAC_ACTION: CURRENT_HVAC_HEAT,
-            ATTR_HVAC_MODES: [
-                HVAC_MODE_HEAT,
-                HVAC_MODE_HEAT_COOL,
-                HVAC_MODE_FAN_ONLY,
-                HVAC_MODE_COOL,
-                HVAC_MODE_OFF,
-                HVAC_MODE_AUTO,
-            ],
+            ATTR_HVAC_MODES: [HVAC_MODE_HEAT_COOL, HVAC_MODE_OFF, HVAC_MODE_AUTO],
         },
     )
     await hass.async_block_till_done()

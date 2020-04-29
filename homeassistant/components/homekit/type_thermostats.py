@@ -323,7 +323,8 @@ class Thermostat(HomeAccessory):
     def _configure_hvac_modes(self, state):
         """Configure target mode characteristics."""
         hc_modes = state.attributes.get(ATTR_HVAC_MODES)
-        if hc_modes is None:
+        if not hc_modes:
+            # This cannot be none OR an empty list
             _LOGGER.error(
                 "%s: HVAC modes not yet available. Please disable auto start for homekit.",
                 self.entity_id,
