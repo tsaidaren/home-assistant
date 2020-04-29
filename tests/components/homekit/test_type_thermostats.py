@@ -43,7 +43,6 @@ from homeassistant.components.homekit.const import (
     PROP_MIN_STEP,
     PROP_MIN_VALUE,
 )
-from homeassistant.components.homekit.type_thermostats import HC_MIN_TEMP
 from homeassistant.components.water_heater import DOMAIN as DOMAIN_WATER_HEATER
 from homeassistant.const import (
     ATTR_ENTITY_ID,
@@ -116,7 +115,7 @@ async def test_thermostat(hass, hk_driver, cls, events):
     assert acc.char_current_humidity is None
 
     assert acc.char_target_temp.properties[PROP_MAX_VALUE] == DEFAULT_MAX_TEMP
-    assert acc.char_target_temp.properties[PROP_MIN_VALUE] == HC_MIN_TEMP
+    assert acc.char_target_temp.properties[PROP_MIN_VALUE] == 7.0
     assert acc.char_target_temp.properties[PROP_MIN_STEP] == 0.1
 
     hass.states.async_set(
@@ -447,10 +446,10 @@ async def test_thermostat_auto(hass, hk_driver, cls, events):
     assert acc.char_heating_thresh_temp.value == 19.0
 
     assert acc.char_cooling_thresh_temp.properties[PROP_MAX_VALUE] == DEFAULT_MAX_TEMP
-    assert acc.char_cooling_thresh_temp.properties[PROP_MIN_VALUE] == HC_MIN_TEMP
+    assert acc.char_cooling_thresh_temp.properties[PROP_MIN_VALUE] == 7.0
     assert acc.char_cooling_thresh_temp.properties[PROP_MIN_STEP] == 0.1
     assert acc.char_heating_thresh_temp.properties[PROP_MAX_VALUE] == DEFAULT_MAX_TEMP
-    assert acc.char_heating_thresh_temp.properties[PROP_MIN_VALUE] == HC_MIN_TEMP
+    assert acc.char_heating_thresh_temp.properties[PROP_MIN_VALUE] == 7.0
     assert acc.char_heating_thresh_temp.properties[PROP_MIN_STEP] == 0.1
 
     hass.states.async_set(
@@ -1182,10 +1181,10 @@ async def test_thermostat_without_target_temp_only_range(hass, hk_driver, cls, e
     assert acc.char_heating_thresh_temp.value == 19.0
 
     assert acc.char_cooling_thresh_temp.properties[PROP_MAX_VALUE] == DEFAULT_MAX_TEMP
-    assert acc.char_cooling_thresh_temp.properties[PROP_MIN_VALUE] == HC_MIN_TEMP
+    assert acc.char_cooling_thresh_temp.properties[PROP_MIN_VALUE] == 7.0
     assert acc.char_cooling_thresh_temp.properties[PROP_MIN_STEP] == 0.1
     assert acc.char_heating_thresh_temp.properties[PROP_MAX_VALUE] == DEFAULT_MAX_TEMP
-    assert acc.char_heating_thresh_temp.properties[PROP_MIN_VALUE] == HC_MIN_TEMP
+    assert acc.char_heating_thresh_temp.properties[PROP_MIN_VALUE] == 7.0
     assert acc.char_heating_thresh_temp.properties[PROP_MIN_STEP] == 0.1
 
     hass.states.async_set(
@@ -1539,10 +1538,10 @@ async def test_thermostat_with_no_modes_when_we_first_see(hass, hk_driver, cls, 
     assert acc.char_heating_thresh_temp.value == 19.0
 
     assert acc.char_cooling_thresh_temp.properties[PROP_MAX_VALUE] == DEFAULT_MAX_TEMP
-    assert acc.char_cooling_thresh_temp.properties[PROP_MIN_VALUE] == HC_MIN_TEMP
+    assert acc.char_cooling_thresh_temp.properties[PROP_MIN_VALUE] == 7.0
     assert acc.char_cooling_thresh_temp.properties[PROP_MIN_STEP] == 0.1
     assert acc.char_heating_thresh_temp.properties[PROP_MAX_VALUE] == DEFAULT_MAX_TEMP
-    assert acc.char_heating_thresh_temp.properties[PROP_MIN_VALUE] == HC_MIN_TEMP
+    assert acc.char_heating_thresh_temp.properties[PROP_MIN_VALUE] == 7.0
     assert acc.char_heating_thresh_temp.properties[PROP_MIN_STEP] == 0.1
 
     assert acc.char_target_heat_cool.value == 0
@@ -1592,10 +1591,10 @@ async def test_thermostat_with_no_off_after_recheck(hass, hk_driver, cls, events
     assert acc.char_heating_thresh_temp.value == 19.0
 
     assert acc.char_cooling_thresh_temp.properties[PROP_MAX_VALUE] == DEFAULT_MAX_TEMP
-    assert acc.char_cooling_thresh_temp.properties[PROP_MIN_VALUE] == HC_MIN_TEMP
+    assert acc.char_cooling_thresh_temp.properties[PROP_MIN_VALUE] == 7.0
     assert acc.char_cooling_thresh_temp.properties[PROP_MIN_STEP] == 0.1
     assert acc.char_heating_thresh_temp.properties[PROP_MAX_VALUE] == DEFAULT_MAX_TEMP
-    assert acc.char_heating_thresh_temp.properties[PROP_MIN_VALUE] == HC_MIN_TEMP
+    assert acc.char_heating_thresh_temp.properties[PROP_MIN_VALUE] == 7.0
     assert acc.char_heating_thresh_temp.properties[PROP_MIN_STEP] == 0.1
 
     assert acc.char_target_heat_cool.value == 2
