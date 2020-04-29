@@ -116,6 +116,9 @@ class Thermostat(HomeAccessory):
         """Initialize a Thermostat accessory object."""
         super().__init__(*args, category=CATEGORY_THERMOSTAT)
         self._unit = self.hass.config.units.temperature_unit
+        self._state_updates = 0
+        self.hc_homekit_to_hass = None
+        self.hc_hass_to_homekit = None
         min_temp, max_temp = self.get_temperature_range()
 
         # Homekit only supports 10-38, overwriting
@@ -148,48 +151,10 @@ class Thermostat(HomeAccessory):
             CHAR_CURRENT_HEATING_COOLING, value=0
         )
 
-        # Target mode characteristics
-        hc_modes = state.attributes.get(ATTR_HVAC_MODES)
-        if hc_modes is None:
-            _LOGGER.error(
-                "%s: HVAC modes not yet available. Please disable auto start for homekit.",
-                self.entity_id,
-            )
-            hc_modes = (
-                HVAC_MODE_HEAT,
-                HVAC_MODE_COOL,
-                HVAC_MODE_HEAT_COOL,
-                HVAC_MODE_OFF,
-            )
-
-        # Determine available modes for this entity,
-        # Prefer HEAT_COOL over AUTO and COOL over FAN_ONLY, DRY
-        #
-        # HEAT_COOL is preferred over auto because HomeKit Accessory Protocol describes
-        # heating or cooling comes on to maintain a target temp which is closest to
-        # the Home Assistant spec
-        #
-        # HVAC_MODE_HEAT_COOL: The device supports heating/cooling to a range
-        self.hc_homekit_to_hass = {
-            c: s
-            for s, c in HC_HASS_TO_HOMEKIT.items()
-            if (
-                s in hc_modes
-                and not (
-                    (s == HVAC_MODE_AUTO and HVAC_MODE_HEAT_COOL in hc_modes)
-                    or (
-                        s in (HVAC_MODE_DRY, HVAC_MODE_FAN_ONLY)
-                        and HVAC_MODE_COOL in hc_modes
-                    )
-                )
-            )
-        }
-        hc_valid_values = {k: v for v, k in self.hc_homekit_to_hass.items()}
-
+        self._configure_hvac_modes(state)
         self.char_target_heat_cool = serv_thermostat.configure_char(
-            CHAR_TARGET_HEATING_COOLING, valid_values=hc_valid_values,
+            CHAR_TARGET_HEATING_COOLING, valid_values=self.hc_hass_to_homekit,
         )
-
         # Current and target temperature characteristics
 
         self.char_current_temp = serv_thermostat.configure_char(
@@ -248,7 +213,7 @@ class Thermostat(HomeAccessory):
                 CHAR_CURRENT_HUMIDITY, value=50
             )
 
-        self.update_state(state)
+        self._update_state(state)
 
         serv_thermostat.setter_callback = self._set_chars
 
@@ -355,6 +320,45 @@ class Thermostat(HomeAccessory):
         if CHAR_TARGET_HUMIDITY in char_values:
             self.set_target_humidity(char_values[CHAR_TARGET_HUMIDITY])
 
+    def _configure_hvac_modes(self, state):
+        """Configure target mode characteristics."""
+        hc_modes = state.attributes.get(ATTR_HVAC_MODES)
+        if hc_modes is None:
+            _LOGGER.error(
+                "%s: HVAC modes not yet available. Please disable auto start for homekit.",
+                self.entity_id,
+            )
+            hc_modes = (
+                HVAC_MODE_HEAT,
+                HVAC_MODE_COOL,
+                HVAC_MODE_HEAT_COOL,
+                HVAC_MODE_OFF,
+            )
+
+        # Determine available modes for this entity,
+        # Prefer HEAT_COOL over AUTO and COOL over FAN_ONLY, DRY
+        #
+        # HEAT_COOL is preferred over auto because HomeKit Accessory Protocol describes
+        # heating or cooling comes on to maintain a target temp which is closest to
+        # the Home Assistant spec
+        #
+        # HVAC_MODE_HEAT_COOL: The device supports heating/cooling to a range
+        self.hc_homekit_to_hass = {
+            c: s
+            for s, c in HC_HASS_TO_HOMEKIT.items()
+            if (
+                s in hc_modes
+                and not (
+                    (s == HVAC_MODE_AUTO and HVAC_MODE_HEAT_COOL in hc_modes)
+                    or (
+                        s in (HVAC_MODE_DRY, HVAC_MODE_FAN_ONLY)
+                        and HVAC_MODE_COOL in hc_modes
+                    )
+                )
+            )
+        }
+        self.hc_hass_to_homekit = {k: v for v, k in self.hc_homekit_to_hass.items()}
+
     def get_temperature_range(self):
         """Return min and max temperature range."""
         max_temp = self.hass.states.get(self.entity_id).attributes.get(ATTR_MAX_TEMP)
@@ -381,14 +385,38 @@ class Thermostat(HomeAccessory):
 
     def update_state(self, new_state):
         """Update thermostat state after state changed."""
+        if self._state_updates < 3:
+            # When we get the first state updates
+            # we recheck valid hvac modes as the entity
+            # may not have been fully setup when we saw it the
+            # first time
+            original_hc_hass_to_homekit = self.hc_hass_to_homekit
+            self._configure_hvac_modes(new_state)
+            if self.hc_hass_to_homekit != original_hc_hass_to_homekit:
+                self.char_target_heat_cool.override_properties(
+                    valid_values=self.hc_hass_to_homekit
+                )
+            self._state_updates += 1
+
+        self._update_state(new_state)
+
+    def _update_state(self, new_state):
+        """Update state without rechecking the device features."""
         features = new_state.attributes.get(ATTR_SUPPORTED_FEATURES, 0)
 
         # Update target operation mode FIRST
         hvac_mode = new_state.state
         if hvac_mode and hvac_mode in HC_HASS_TO_HOMEKIT:
             homekit_hvac_mode = HC_HASS_TO_HOMEKIT[hvac_mode]
-            if self.char_target_heat_cool.value != homekit_hvac_mode:
-                self.char_target_heat_cool.set_value(homekit_hvac_mode)
+            if homekit_hvac_mode in self.hc_homekit_to_hass:
+                if self.char_target_heat_cool.value != homekit_hvac_mode:
+                    self.char_target_heat_cool.set_value(homekit_hvac_mode)
+            else:
+                _LOGGER.error(
+                    "Cannot map hvac target mode: %s to homekit as only %s modes are supported",
+                    hvac_mode,
+                    self.hc_homekit_to_hass,
+                )
 
         # Set current operation mode for supported thermostats
         hvac_action = new_state.attributes.get(ATTR_HVAC_ACTION)
