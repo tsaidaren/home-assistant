@@ -153,7 +153,9 @@ class Thermostat(HomeAccessory):
 
         self._configure_hvac_modes(state)
         self.char_target_heat_cool = serv_thermostat.configure_char(
-            CHAR_TARGET_HEATING_COOLING, valid_values=self.hc_hass_to_homekit,
+            CHAR_TARGET_HEATING_COOLING,
+            valid_values=self.hc_hass_to_homekit,
+            value=list(self.hc_homekit_to_hass)[0],
         )
         # Current and target temperature characteristics
 
