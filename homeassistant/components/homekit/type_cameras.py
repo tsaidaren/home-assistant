@@ -128,6 +128,12 @@ class Camera(HomeAccessory, PyhapCamera):
             "srtp": True,
         }
 
+        if self.conf.get(CONF_LINKED_MOTION_SENSOR):
+            service = self.add_preload_service(SERV_MOTION_SENSOR)
+            self.char_motion_detected = service.configure_char(
+                CHAR_MOTION_DETECTED, value=False
+            )
+
         super().__init__(
             hass,
             driver,
@@ -139,9 +145,12 @@ class Camera(HomeAccessory, PyhapCamera):
             options=options,
         )
 
+        self.update_state(state)
+
     def update_state(self, new_state):
         """Handle state change to update HomeKit value."""
-        pass  # pylint: disable=unnecessary-pass
+        # Get motion sensor state
+        pass
 
     async def _async_get_stream_source(self):
         """Find the camera stream source url."""
