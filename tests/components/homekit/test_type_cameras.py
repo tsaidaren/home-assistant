@@ -1,5 +1,6 @@
 """Test different accessory types: Camera."""
 
+import asyncio
 from uuid import UUID
 
 from pyhap.accessory_driver import AccessoryDriver
@@ -23,11 +24,12 @@ from homeassistant.setup import async_setup_component
 
 from .common import mock_turbo_jpeg
 
-from tests.async_mock import AsyncMock, MagicMock, patch
+from tests.async_mock import AsyncMock, MagicMock, PropertyMock, patch
 
 MOCK_START_STREAM_TLV = "ARUCAQEBEDMD1QMXzEaatnKSQ2pxovYCNAEBAAIJAQECAgECAwEAAwsBAgAFAgLQAgMBHgQXAQFjAgQ768/RAwIrAQQEAAAAPwUCYgUDLAEBAwIMAQEBAgEAAwECBAEUAxYBAW4CBCzq28sDAhgABAQAAKBABgENBAEA"
 MOCK_END_POINTS_TLV = "ARAzA9UDF8xGmrZykkNqcaL2AgEAAxoBAQACDTE5Mi4xNjguMjA4LjUDAi7IBAKkxwQlAQEAAhDN0+Y0tZ4jzoO0ske9UsjpAw6D76oVXnoi7DbawIG4CwUlAQEAAhCyGcROB8P7vFRDzNF2xrK1Aw6NdcLugju9yCfkWVSaVAYEDoAsAAcEpxV8AA=="
 MOCK_START_STREAM_SESSION_UUID = UUID("3303d503-17cc-469a-b672-92436a71a2f6")
+MAX_PID = 2147483647
 
 
 @pytest.fixture()
@@ -60,6 +62,16 @@ def _get_failing_mock_ffmpeg():
     ffmpeg.open = AsyncMock(return_value=False)
     ffmpeg.close = AsyncMock(side_effect=OSError)
     ffmpeg.kill = AsyncMock(side_effect=OSError)
+    return ffmpeg
+
+
+def _get_startup_fails_mock_ffmpeg():
+    """Return an ffmpeg that fails to startup."""
+    ffmpeg = MagicMock()
+    ffmpeg.open = AsyncMock(return_value=True)
+    ffmpeg.close = AsyncMock(return_value=True)
+    ffmpeg.kill = AsyncMock(return_value=True)
+    type(ffmpeg.stream).pid = PropertyMock(return_value=MAX_PID)
     return ffmpeg
 
 
@@ -208,6 +220,21 @@ async def test_camera_stream_source_configured_with_failing_ffmpeg(
         acc.set_selected_stream_configuration(MOCK_START_STREAM_TLV)
         await acc.stop_stream(session_info)
         # Calling a second time should not throw
+        await acc.stop_stream(session_info)
+        await hass.async_block_till_done()
+
+    acc.set_endpoints(MOCK_END_POINTS_TLV)
+    session_info = acc.sessions[MOCK_START_STREAM_SESSION_UUID]
+    with patch(
+        "homeassistant.components.demo.camera.DemoCamera.stream_source",
+        return_value="rtsp://example.local",
+    ), patch(
+        "homeassistant.components.homekit.type_cameras.HAFFmpeg",
+        return_value=_get_startup_fails_mock_ffmpeg(),
+    ):
+        acc.set_selected_stream_configuration(MOCK_START_STREAM_TLV)
+        await hass.async_block_till_done()
+        await asyncio.sleep(6)
         await acc.stop_stream(session_info)
         await hass.async_block_till_done()
 
