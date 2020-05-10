@@ -317,7 +317,7 @@ class HomeAccessory(Accessory):
     @property
     def available(self):
         """Return if accessory is available."""
-        return self.hass.states.get(self.entity_id) != STATE_UNAVAILABLE
+        return self.hass.states.get(self.entity_id).state != STATE_UNAVAILABLE
 
     async def run(self):
         """Handle accessory driver started event.
