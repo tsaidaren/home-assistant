@@ -2,11 +2,15 @@
 import ipaddress
 import logging
 import socket
+import threading
 
 import voluptuous as vol
 from zeroconf import (
+    DNSPointer,
+    DNSRecord,
     InterfaceChoice,
     NonUniqueNameException,
+    RecordUpdateListener,
     ServiceBrowser,
     ServiceInfo,
     ServiceStateChange,
@@ -84,6 +88,28 @@ class HaZeroconf(Zeroconf):
     ha_close = Zeroconf.close
 
 
+class HaRecordUpdateListener(RecordUpdateListener, threading.Thread):
+    def __init__(self, callback):
+        threading.Thread.__init__(self, name="zeroconf-HaRecordUpdateListener")
+        self.daemon = True
+        self.update_callback = callback
+        self.services = {}
+
+    def update_record(self, zc: "Zeroconf", now: float, record: DNSRecord) -> None:
+        if not isinstance(record, DNSPointer):
+            return
+        service_key = record.alias.lower()
+        if record.is_expired(now):
+            if record in self.services[service_key]:
+                del self.services[service_key]
+            return
+        if service_key in self.services:
+            self.services[service_key].reset_ttl(record)
+            return
+        self.services[service_key] = record
+        self.update_callback(zc, record)
+
+
 def setup(hass, config):
     """Set up Zeroconf and make Home Assistant discoverable."""
     zeroconf = hass.data[DOMAIN] = _get_instance(
@@ -145,31 +171,35 @@ def setup(hass, config):
 
     hass.bus.listen_once(EVENT_HOMEASSISTANT_START, zeroconf_hass_start)
 
-    def service_update(zeroconf, service_type, name, state_change):
+    service_names = set(ZEROCONF.keys())
+    if HOMEKIT_TYPE not in service_names:
+        service_names.add(HOMEKIT_TYPE)
+
+    def service_update(zeroconf, record):
         """Service state changed."""
-        if state_change != ServiceStateChange.Added:
+        if record.name not in service_names:
             return
 
-        service_info = zeroconf.get_service_info(service_type, name)
+        _LOGGER.debug("New record %s %s", record.name, record.alias)
+
+        service_info = zeroconf.get_service_info(record.name, record.alias)
+        if not service_info:
+            return
         info = info_from_service(service_info)
-        _LOGGER.debug("Discovered new device %s %s", name, info)
+        _LOGGER.debug("Discovered new device %s %s %s", record.name, record.alias, info)
 
         # If we can handle it as a HomeKit discovery, we do that here.
-        if service_type == HOMEKIT_TYPE and handle_homekit(hass, info):
+        if record.name == HOMEKIT_TYPE and handle_homekit(hass, info):
             return
 
-        for domain in ZEROCONF[service_type]:
+        for domain in ZEROCONF[record.name]:
             hass.add_job(
                 hass.config_entries.flow.async_init(
                     domain, context={"source": DOMAIN}, data=info
                 )
             )
 
-    for service in ZEROCONF:
-        ServiceBrowser(zeroconf, service, handlers=[service_update])
-
-    if HOMEKIT_TYPE not in ZEROCONF:
-        ServiceBrowser(zeroconf, HOMEKIT_TYPE, handlers=[service_update])
+    zeroconf.add_listener(HaRecordUpdateListener(service_update), None)
 
     return True
 
