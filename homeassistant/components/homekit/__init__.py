@@ -62,6 +62,8 @@ from .const import (
     HOMEKIT,
     HOMEKIT_PAIRING_QR,
     HOMEKIT_PAIRING_QR_SECRET,
+    HOMEKIT_SHARED_ZEROCONF,
+    HOMEKIT_SHARED_ZEROCONF_LOCK,
     MANUFACTURER,
     SERVICE_HOMEKIT_RESET_ACCESSORY,
     SERVICE_HOMEKIT_START,
@@ -132,6 +134,8 @@ async def async_setup(hass: HomeAssistant, config: dict):
     """Set up the HomeKit from yaml."""
 
     hass.data.setdefault(DOMAIN, {})
+
+    hass.data[DOMAIN][HOMEKIT_SHARED_ZEROCONF_LOCK] = asyncio.Lock()
 
     _async_register_events_and_services(hass)
 
@@ -237,6 +241,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         entry.entry_id,
     )
     await hass.async_add_executor_job(homekit.setup)
+    await homekit.async_setup_zeroconf()
 
     undo_listener = entry.add_update_listener(_async_update_listener)
 
@@ -281,6 +286,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
             await asyncio.sleep(1)
 
     hass.data[DOMAIN].pop(entry.entry_id)
+
+    async with hass.data[DOMAIN][HOMEKIT_SHARED_ZEROCONF_LOCK]:
+        if not hass.data[DOMAIN] and HOMEKIT_SHARED_ZEROCONF in hass.data:
+            await hass.async_add_executor_job(hass.data[HOMEKIT_SHARED_ZEROCONF].close)
+            del hass.data[HOMEKIT_SHARED_ZEROCONF]
 
     return True
 
@@ -415,6 +425,7 @@ class HomeKit:
         self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, self.async_stop)
         ip_addr = self._ip_address or get_local_ip()
         persist_file = get_persist_fullpath_for_entry_id(self.hass, self._entry_id)
+
         self.driver = HomeDriver(
             self.hass,
             self._entry_id,
@@ -425,10 +436,22 @@ class HomeKit:
             advertised_address=self._advertise_ip,
             interface_choice=self._interface_choice,
         )
+
         self.bridge = HomeBridge(self.hass, self.driver, self._name)
         if self._safe_mode:
             _LOGGER.debug("Safe_mode selected for %s", self._name)
             self.driver.safe_mode = True
+
+    async def async_setup_zeroconf(self):
+        """Share a single zeroconf instance between homekit bridges."""
+        async with self.hass.data[DOMAIN][HOMEKIT_SHARED_ZEROCONF_LOCK]:
+            if not self.hass.data.get(HOMEKIT_SHARED_ZEROCONF):
+                # First instance, save this instance.
+                self.hass.data[HOMEKIT_SHARED_ZEROCONF] = self.driver.advertiser
+            else:
+                # Replace the existing zeroconf instance.
+                await self.hass.async_add_executor_job(self.driver.advertiser.close)
+                self.driver.advertiser = self.hass.data[HOMEKIT_SHARED_ZEROCONF]
 
     def reset_accessories(self, entity_ids):
         """Reset the accessory to load the latest configuration."""

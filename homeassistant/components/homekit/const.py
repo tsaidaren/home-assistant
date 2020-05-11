@@ -12,6 +12,8 @@ HOMEKIT = "homekit"
 UNDO_UPDATE_LISTENER = "undo_update_listener"
 SHUTDOWN_TIMEOUT = 30
 CONF_ENTRY_INDEX = "index"
+HOMEKIT_SHARED_ZEROCONF = "homekit_shared_zeroconf"
+HOMEKIT_SHARED_ZEROCONF_LOCK = "homekit_shared_zeroconf_lock"
 
 # ### Codecs ####
 VIDEO_CODEC_COPY = "copy"
