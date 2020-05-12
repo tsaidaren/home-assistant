@@ -481,7 +481,9 @@ def pid_is_alive(pid):
         # HAFFmpeg uses subprocess.Popen instead of
         # asyncio.create_subprocess_shell/exec.
         # hass does not wait on SIGCHLD for these
-        # processes so we have to check.
+        # processes so we have to check waitpid
+        # here or processes will be zombies even
+        # after ffmpeg ends
         os.waitpid(pid, os.WNOHANG)
         os.kill(pid, 0)
         return True
