@@ -278,6 +278,7 @@ class Camera(HomeAccessory, PyhapCamera):
         ffmpeg_pid = self._cur_session[FFMPEG_PID]
         session_id = self._cur_session[SESSION_ID]
         if pid_is_alive(ffmpeg_pid):
+            _LOGGER.debug("[%s] ffmpeg - PID %d is alive", session_id, ffmpeg_pid)
             return True
 
         _LOGGER.warning("Streaming process ended unexpectedly - PID %d", ffmpeg_pid)
