@@ -478,6 +478,11 @@ def find_next_available_port(start_port: int):
 def pid_is_alive(pid):
     """Check to see if a process is alive."""
     try:
+        # HAFFmpeg uses subprocess.Popen instead of
+        # asyncio.create_subprocess_shell/exec.
+        # hass does not wait on SIGCHLD for these
+        # processes so we have to check.
+        os.waitpid(pid, os.WNOHANG)
         os.kill(pid, 0)
         return True
     except OSError:
