@@ -484,7 +484,7 @@ def pid_is_alive(pid):
         # processes so we have to check waitpid
         # here or processes will be zombies even
         # after ffmpeg ends which will make
-        # os.kill(pid, 0) thing its still alive
+        # os.kill(pid, 0) think its still alive
         # because it has not been waited
         os.waitpid(pid, os.WNOHANG)
         os.kill(pid, 0)
