@@ -70,7 +70,8 @@ class WebSocketHandler:
                 if message is None:
                     break
 
-                self._logger.debug("Sending %s", message)
+                if self._logger.isEnabledFor(logging.DEBUG):
+                    self._logger.debug("Sending %s", message)
 
                 if isinstance(message, str):
                     await self.wsock.send_str(message)
@@ -195,7 +196,8 @@ class WebSocketHandler:
                 disconnect_warn = "Received invalid JSON."
                 raise Disconnect
 
-            self._logger.debug("Received %s", msg_data)
+            if self._logger.isEnabledFor(logging.DEBUG):
+                self._logger.debug("Received %s", msg_data)
             connection = await auth.async_handle(msg_data)
             self.hass.data[DATA_CONNECTIONS] = (
                 self.hass.data.get(DATA_CONNECTIONS, 0) + 1
@@ -221,7 +223,8 @@ class WebSocketHandler:
                     disconnect_warn = "Received invalid JSON."
                     break
 
-                self._logger.debug("Received %s", msg_data)
+                if self._logger.isEnabledFor(logging.DEBUG):
+                    self._logger.debug("Received %s", msg_data)
                 connection.async_handle(msg_data)
 
         except asyncio.CancelledError:
