@@ -70,7 +70,11 @@ class WebSocketHandler:
                 if message is None:
                     break
 
-                if self._logger.isEnabledFor(logging.DEBUG):
+                if self._logger.filter(
+                    self._logger.makeRecord(
+                        __name__, None, None, None, None, None, None
+                    )
+                ):
                     self._logger.debug("Sending %s", message)
 
                 if isinstance(message, str):
@@ -196,7 +200,9 @@ class WebSocketHandler:
                 disconnect_warn = "Received invalid JSON."
                 raise Disconnect
 
-            if self._logger.isEnabledFor(logging.DEBUG):
+            if self._logger.filter(
+                self._logger.makeRecord(__name__, None, None, None, None, None, None)
+            ):
                 self._logger.debug("Received %s", msg_data)
             connection = await auth.async_handle(msg_data)
             self.hass.data[DATA_CONNECTIONS] = (
@@ -223,7 +229,11 @@ class WebSocketHandler:
                     disconnect_warn = "Received invalid JSON."
                     break
 
-                if self._logger.isEnabledFor(logging.DEBUG):
+                if self._logger.filter(
+                    self._logger.makeRecord(
+                        __name__, None, None, None, None, None, None
+                    )
+                ):
                     self._logger.debug("Received %s", msg_data)
                 connection.async_handle(msg_data)
 
