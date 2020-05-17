@@ -322,5 +322,6 @@ async def test_format_sw_version():
     """Test format_sw_version method."""
     assert format_sw_version("soho+3.6.8+soho-release-rt120+10") == "3.6.8"
     assert format_sw_version("undefined-undefined-1.6.8") == "1.6.8"
+    assert format_sw_version("56.0-76060") == "56.0.76060"
     assert format_sw_version(3.6) == "3.6"
     assert format_sw_version("unknown") is None
