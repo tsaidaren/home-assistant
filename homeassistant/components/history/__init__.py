@@ -87,15 +87,21 @@ def _get_significant_states(
 
     query = query.order_by(States.last_updated)
 
+    unfiltered_states = execute(query)
+
+    if _LOGGER.isEnabledFor(logging.DEBUG):
+        elapsed = time.perf_counter() - timer_start
+        _LOGGER.debug("get_significant_states (unfiltered) took %fs", elapsed)
+
     states = (
         state
-        for state in execute(query)
+        for state in unfiltered_states
         if (_is_significant(state) and not state.attributes.get(ATTR_HIDDEN, False))
     )
 
     if _LOGGER.isEnabledFor(logging.DEBUG):
         elapsed = time.perf_counter() - timer_start
-        _LOGGER.debug("get_significant_states took %fs", elapsed)
+        _LOGGER.debug("get_significant_states (filtered) took %fs", elapsed)
 
     return _states_to_json(
         session,
