@@ -195,6 +195,24 @@ def humanify(hass, events):
     """
     domain_prefixes = tuple(f"{dom}." for dom in CONTINUOUS_DOMAINS)
 
+    intrested_events = {
+        EVENT_STATE_CHANGED,
+        EVENT_HOMEASSISTANT_STOP,
+        EVENT_HOMEASSISTANT_START,
+    }
+    external_events = hass.data.get(DOMAIN, {})
+    yield_events = set(list(external_events))
+    yield_events.update(
+        [
+            EVENT_STATE_CHANGED,
+            EVENT_HOMEASSISTANT_START,
+            EVENT_HOMEASSISTANT_STOP,
+            EVENT_LOGBOOK_ENTRY,
+            EVENT_AUTOMATION_TRIGGERED,
+            EVENT_SCRIPT_STARTED,
+        ]
+    )
+
     # Group events in batches of GROUP_BY_MINUTES
     for _, g_events in groupby(
         events, lambda event: event.time_fired.minute // GROUP_BY_MINUTES
@@ -211,6 +229,9 @@ def humanify(hass, events):
 
         # Process events
         for event in events_batch:
+            if event.event_type not in intrested_events:
+                continue
+
             if event.event_type == EVENT_STATE_CHANGED:
                 entity_id = event.data.get("entity_id")
 
@@ -230,32 +251,21 @@ def humanify(hass, events):
                 start_stop_events[event.time_fired.minute] = 2
 
         # Yield entries
-        external_events = hass.data.get(DOMAIN, {})
         for event in events_batch:
-            if event.event_type in external_events:
-                domain, describe_event = external_events[event.event_type]
-                data = describe_event(event)
-                data["when"] = event.time_fired
-                data["domain"] = domain
-                data["context_id"] = event.context.id
-                data["context_user_id"] = event.context.user_id
-                yield data
+            if event.event_type not in yield_events:
+                continue
 
             if event.event_type == EVENT_STATE_CHANGED:
                 to_state = State.from_dict(event.data.get("new_state"))
-
-                domain = to_state.domain
-
-                # Skip all but the last sensor state
-                if (
-                    domain in CONTINUOUS_DOMAINS
-                    and event != last_sensor_event[to_state.entity_id]
-                ):
+                if to_state is None:
                     continue
 
+                domain = to_state.domain
+                # Skip all but the last sensor state
                 # Don't show continuous sensor value changes in the logbook
-                if domain in CONTINUOUS_DOMAINS and to_state.attributes.get(
-                    "unit_of_measurement"
+                if domain in CONTINUOUS_DOMAINS and (
+                    event != last_sensor_event[to_state.entity_id]
+                    or to_state.attributes.get("unit_of_measurement")
                 ):
                     continue
 
@@ -338,6 +348,15 @@ def humanify(hass, events):
                     "context_user_id": event.context.user_id,
                 }
 
+            elif event.event_type in external_events:
+                domain, describe_event = external_events[event.event_type]
+                data = describe_event(event)
+                data["when"] = event.time_fired
+                data["domain"] = domain
+                data["context_id"] = event.context.id
+                data["context_user_id"] = event.context.user_id
+                yield data
+
 
 def _get_related_entity_ids(session, entity_filter):
     timer_start = time.perf_counter()
@@ -410,16 +429,25 @@ def _get_events(hass, config, start_day, end_day, entity_id=None):
                 Events.event_type.in_(ALL_EVENT_TYPES + list(hass.data.get(DOMAIN, {})))
             )
             .filter((Events.time_fired > start_day) & (Events.time_fired < end_day))
-            .filter(
+        )
+
+        has_entity_filter = False
+
+        if has_entity_filter:
+            query = query.filter(
                 (
                     (States.last_updated == States.last_changed)
                     & States.entity_id.in_(entity_ids)
                 )
                 | (States.state_id.is_(None))
             )
-        )
+            return list(humanify(hass, yield_events(query)))
 
-        return list(humanify(hass, yield_events(query)))
+        query = query.filter(
+            (States.last_updated == States.last_changed) | (States.state_id.is_(None))
+        )
+        events = [row.to_native() for row in query.all()]
+        return list(humanify(hass, events))
 
 
 def _keep_event(hass, event, entities_filter):
