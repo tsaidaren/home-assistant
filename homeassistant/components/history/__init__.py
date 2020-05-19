@@ -20,6 +20,7 @@ from homeassistant.const import (
     CONF_INCLUDE,
     HTTP_BAD_REQUEST,
 )
+from homeassistant.core import split_entity_id
 import homeassistant.helpers.config_validation as cv
 import homeassistant.util.dt as dt_util
 
@@ -292,8 +293,9 @@ def _states_to_json(
 
     # Append all changes to it
     for ent_id, group in groupby(states, lambda state: state.entity_id):
-        if not minimal_response or group.domain in NEED_ATTRIBUTE_DOMAINS:
-            if group.domain in FILTER_SIGNIFICANT_DOMAINS:
+        domain = split_entity_id(ent_id)[0]
+        if not minimal_response or domain in NEED_ATTRIBUTE_DOMAINS:
+            if domain in FILTER_SIGNIFICANT_DOMAINS:
                 result[ent_id].extend(
                     [
                         native_state
