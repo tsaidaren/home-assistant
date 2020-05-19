@@ -45,9 +45,9 @@ CONFIG_SCHEMA = vol.Schema(
 
 SIGNIFICANT_DOMAINS = ("climate", "device_tracker", "thermostat", "water_heater")
 IGNORE_DOMAINS = ("zone", "scene")
-
-FILTER_SIGNIFICANT_DOMAINS = {"script"}
-NEED_ATTRIBUTE_DOMAINS = {"climate", "water_heater", "script"}
+NEED_ATTRIBUTE_DOMAINS = {"climate", "water_heater", "thermostat", "script"}
+SCRIPT_DOMAIN = "script"
+ATTR_CAN_CANCEL = "can_cancel"
 
 
 def get_significant_states(hass, *args, **kwargs):
@@ -101,7 +101,7 @@ def _get_significant_states(
         elapsed = time.perf_counter() - timer_start
         _LOGGER.debug("get_significant_states took %fs", elapsed)
 
-    return _sorted_states_to_json(
+    return _states_to_json(
         hass,
         session,
         states,
@@ -134,7 +134,7 @@ def state_changes_during_period(hass, start_time, end_time=None, entity_id=None)
             query.order_by(States.entity_id, States.last_updated), to_native=False
         )
 
-        return _sorted_states_to_json(hass, session, states, start_time, entity_ids)
+        return _states_to_json(hass, session, states, start_time, entity_ids)
 
 
 def get_last_state_changes(hass, number_of_states, entity_id):
@@ -157,7 +157,7 @@ def get_last_state_changes(hass, number_of_states, entity_id):
             to_native=False,
         )
 
-        return _sorted_states_to_json(
+        return _states_to_json(
             hass,
             session,
             reversed(states),
@@ -260,7 +260,7 @@ def _get_states_with_session(
     ]
 
 
-def _sorted_states_to_json(
+def _states_to_json(
     hass,
     session,
     states,
@@ -274,8 +274,6 @@ def _sorted_states_to_json(
 
     This takes our state list and turns it into a JSON friendly data
     structure {'entity_id': [list of states], 'entity_id2': [list of states]}
-
-    States must be pre-sorted by entity_id and last_updated
 
     We also need to go back and create a synthetic zero data point for
     each list of states, otherwise our graphs won't start on the Y
@@ -305,22 +303,7 @@ def _sorted_states_to_json(
     # Append all changes to it
     for ent_id, group in groupby(states, lambda state: state.entity_id):
         domain = split_entity_id(ent_id)[0]
-        if (
-            not minimal_response
-            or domain in NEED_ATTRIBUTE_DOMAINS
-            or domain in FILTER_SIGNIFICANT_DOMAINS
-        ):
-            if domain in FILTER_SIGNIFICANT_DOMAINS:
-                result[ent_id].extend(
-                    [
-                        native_state
-                        for native_state in (db_state.to_native() for db_state in group)
-                        if _is_significant(native_state)
-                    ]
-                )
-            else:
-                result[ent_id].extend([db_state.to_native() for db_state in group])
-        else:
+        if minimal_response and domain not in NEED_ATTRIBUTE_DOMAINS:
             if not result[ent_id]:
                 db_state = next(group)
                 if db_state:
@@ -328,6 +311,11 @@ def _sorted_states_to_json(
 
             db_state = None
             for db_state in group:
+                if ATTR_HIDDEN in db_state.attributes:
+                    native_state = db_state.to_native()
+                    if native_state.attributes.get(ATTR_HIDDEN, False):
+                        continue
+
                 result[ent_id].append(
                     {
                         STATE_KEY: db_state.state,
@@ -337,6 +325,18 @@ def _sorted_states_to_json(
             if db_state is not None:
                 # The last value needs to have all the data
                 result[ent_id][-1] = db_state.to_native()
+        else:
+            result[ent_id].extend(
+                [
+                    native_state
+                    for native_state in (db_state.to_native() for db_state in group)
+                    if (
+                        domain != SCRIPT_DOMAIN
+                        or native_state.attributes.get(ATTR_CAN_CANCEL)
+                    )
+                    and not native_state.attributes.get(ATTR_HIDDEN, False)
+                ]
+            )
 
     # Filter out the empty lists if some states had 0 results.
     return {key: val for key, val in result.items() if val}
@@ -544,12 +544,3 @@ class Filters:
         if self.excluded_entities:
             query = query.filter(~States.entity_id.in_(self.excluded_entities))
         return query
-
-
-def _is_significant(state):
-    """Test if state is significant for history charts.
-
-    Will only test for things that are not filtered out in SQL.
-    """
-    # scripts that are not cancellable will never change state
-    return state.domain != "script" or state.attributes.get("can_cancel")
