@@ -89,7 +89,7 @@ def _get_significant_states(
     if end_time is not None:
         query = query.filter(States.last_updated < end_time)
 
-    query = query.order_by(States.last_updated)
+    query = query.order_by(States.entity_id, States.last_updated)
 
     states = execute(query, to_native=False)
 
@@ -125,7 +125,9 @@ def state_changes_during_period(hass, start_time, end_time=None, entity_id=None)
 
         entity_ids = [entity_id] if entity_id is not None else None
 
-        states = execute(query.order_by(States.last_updated), to_native=False)
+        states = execute(
+            query.order_by(States.entity_id, States.last_updated), to_native=False
+        )
 
         return _states_to_json(hass, session, states, start_time, entity_ids)
 
@@ -144,7 +146,9 @@ def get_last_state_changes(hass, number_of_states, entity_id):
         entity_ids = [entity_id] if entity_id is not None else None
 
         states = execute(
-            query.order_by(States.last_updated.desc()).limit(number_of_states),
+            query.order_by(States.entity_id, States.last_updated.desc()).limit(
+                number_of_states
+            ),
             to_native=False,
         )
 
@@ -271,10 +275,6 @@ def _states_to_json(
     axis correctly.
     """
     result = defaultdict(list)
-    # Set all entity IDs to empty lists in result set to maintain the order
-    if entity_ids is not None:
-        for ent_id in entity_ids:
-            result[ent_id] = []
 
     # Get the states at the start time
     timer_start = time.perf_counter()
@@ -311,20 +311,17 @@ def _states_to_json(
                 if db_state:
                     result[ent_id].append(db_state.to_native())
 
-            result[ent_id].extend(
-                [
-                    {
-                        "state": db_state.state,
-                        "entity_id": ent_id,
-                        "last_changed": db_state.last_changed,
-                        "attributes": {},
-                    }
-                    for db_state in group
-                ]
-            )
+            db_state = None
+            for db_state in group:
+                result[ent_id].append(
+                    {"state": db_state.state, "last_changed": db_state.last_changed}
+                )
+            if db_state is not None:
+                # The last value needs to have all the data
+                result[ent_id][-1] = db_state.to_native()
 
     # Filter out the empty lists if some states had 0 results.
-    return {key: val for key, val in result.items() if val}
+    return result
 
 
 def get_state(hass, utc_point_in_time, entity_id, run=None):
