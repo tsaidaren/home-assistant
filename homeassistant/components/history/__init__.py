@@ -93,7 +93,7 @@ def _get_significant_states(
     if end_time is not None:
         query = query.filter(States.last_updated < end_time)
 
-    query = query.order_by(States.last_updated)
+    query = query.order_by(States.entity_id, States.last_updated)
 
     states = execute(query, to_native=False)
 
@@ -101,7 +101,7 @@ def _get_significant_states(
         elapsed = time.perf_counter() - timer_start
         _LOGGER.debug("get_significant_states took %fs", elapsed)
 
-    return _states_to_json(
+    return _sorted_states_to_json(
         hass,
         session,
         states,
@@ -130,9 +130,11 @@ def state_changes_during_period(hass, start_time, end_time=None, entity_id=None)
 
         entity_ids = [entity_id] if entity_id is not None else None
 
-        states = execute(query.order_by(States.last_updated), to_native=False)
+        states = execute(
+            query.order_by(States.entity_id, States.last_updated), to_native=False
+        )
 
-        return _states_to_json(hass, session, states, start_time, entity_ids)
+        return _sorted_states_to_json(hass, session, states, start_time, entity_ids)
 
 
 def get_last_state_changes(hass, number_of_states, entity_id):
@@ -149,11 +151,13 @@ def get_last_state_changes(hass, number_of_states, entity_id):
         entity_ids = [entity_id] if entity_id is not None else None
 
         states = execute(
-            query.order_by(States.last_updated.desc()).limit(number_of_states),
+            query.order_by(States.entity_id, States.last_updated.desc()).limit(
+                number_of_states
+            ),
             to_native=False,
         )
 
-        return _states_to_json(
+        return _sorted_states_to_json(
             hass,
             session,
             reversed(states),
@@ -256,7 +260,7 @@ def _get_states_with_session(
     ]
 
 
-def _states_to_json(
+def _sorted_states_to_json(
     hass,
     session,
     states,
@@ -270,6 +274,8 @@ def _states_to_json(
 
     This takes our state list and turns it into a JSON friendly data
     structure {'entity_id': [list of states], 'entity_id2': [list of states]}
+
+    States must be sorted by entity_id and last_updated
 
     We also need to go back and create a synthetic zero data point for
     each list of states, otherwise our graphs won't start on the Y
@@ -307,10 +313,10 @@ def _states_to_json(
 
             db_state = None
             for db_state in group:
-                if ATTR_HIDDEN in db_state.attributes:
-                    native_state = db_state.to_native()
-                    if native_state.attributes.get(ATTR_HIDDEN, False):
-                        continue
+                if ATTR_HIDDEN in db_state.attributes and db_state.to_native().attributes.get(
+                    ATTR_HIDDEN, False
+                ):
+                    continue
 
                 result[ent_id].append(
                     {
