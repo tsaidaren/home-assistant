@@ -28,6 +28,8 @@ SCHEMA_VERSION = 7
 
 _LOGGER = logging.getLogger(__name__)
 
+DB_TIMEZONE = "+00:00"
+
 
 class Events(Base):  # type: ignore
     """Event history data."""

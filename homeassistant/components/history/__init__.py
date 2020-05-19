@@ -10,7 +10,7 @@ import voluptuous as vol
 
 from homeassistant.components import recorder
 from homeassistant.components.http import HomeAssistantView
-from homeassistant.components.recorder.models import States, process_timestamp
+from homeassistant.components.recorder.models import DB_TIMEZONE, States
 from homeassistant.components.recorder.util import execute, session_scope
 from homeassistant.const import (
     ATTR_HIDDEN,
@@ -325,7 +325,7 @@ def _sorted_states_to_json(
                 result[ent_id].append(
                     {
                         STATE_KEY: db_state.state,
-                        LAST_CHANGED_KEY: process_timestamp(db_state.last_changed),
+                        LAST_CHANGED_KEY: f"{str(db_state.last_changed).replace(' ','T')}{DB_TIMEZONE}",
                     }
                 )
             if db_state is not None:

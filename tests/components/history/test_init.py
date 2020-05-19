@@ -1,10 +1,13 @@
 """The tests the History component."""
 # pylint: disable=protected-access,invalid-name
 from datetime import timedelta
+import json
 import unittest
 
 from homeassistant.components import history, recorder
+from homeassistant.components.recorder.models import process_timestamp
 import homeassistant.core as ha
+from homeassistant.helpers.json import JSONEncoder
 from homeassistant.setup import async_setup_component, setup_component
 import homeassistant.util.dt as dt_util
 
@@ -214,9 +217,13 @@ class TestComponentHistory(unittest.TestCase):
 
         # The second media_player.test state is reduced
         # down to last_changed and state when minimal_response
-        # is set
+        # is set.  We use JSONEncoder to make sure that are
+        # pre-encoded last_changed is always the same as what
+        # will happen with encoding a native state
         input_state = states["media_player.test"][1]
-        orig_last_changed = input_state.last_changed
+        orig_last_changed = json.dumps(
+            process_timestamp(input_state.last_changed), cls=JSONEncoder
+        ).replace('"', "")
         orig_state = input_state.state
         states["media_player.test"][1] = {
             "last_changed": orig_last_changed,
