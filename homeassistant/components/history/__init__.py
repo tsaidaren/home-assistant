@@ -296,28 +296,28 @@ def _states_to_json(
             if group.domain in FILTER_SIGNIFICANT_DOMAINS:
                 result[ent_id].extend(
                     [
-                        state
-                        for state in (s.to_native() for s in group)
-                        if _is_significant(state)
+                        native_state
+                        for native_state in (db_state.to_native() for db_state in group)
+                        if _is_significant(native_state)
                     ]
                 )
             else:
-                result[ent_id].extend([s.to_native() for s in group])
+                result[ent_id].extend([db_state.to_native() for db_state in group])
         else:
             if not result[ent_id]:
-                state = next(group)
-                if state:
-                    result[ent_id].append(state.to_native())
+                db_state = next(group)
+                if db_state:
+                    result[ent_id].append(db_state.to_native())
 
             result[ent_id].extend(
                 [
                     {
-                        "state": s.state,
+                        "state": db_state.state,
                         "entity_id": ent_id,
-                        "last_changed": s.last_changed,
+                        "last_changed": db_state.last_changed,
                         "attributes": {},
                     }
-                    for s in group
+                    for db_state in group
                 ]
             )
 
