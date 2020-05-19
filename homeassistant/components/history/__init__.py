@@ -306,6 +306,10 @@ def _sorted_states_to_json(
     for ent_id, group in groupby(states, lambda state: state.entity_id):
         domain = split_entity_id(ent_id)[0]
         if minimal_response and domain not in NEED_ATTRIBUTE_DOMAINS:
+            # With minimal response we only provide a native
+            # State for the first and last response. All the states
+            # in-between only provide the "state" and the
+            # "last_changed".
             if not result[ent_id]:
                 db_state = next(group)
                 if db_state:
