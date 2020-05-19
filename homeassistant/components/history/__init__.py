@@ -329,7 +329,6 @@ def _sorted_states_to_json(
                     }
                 )
             if db_state is not None:
-                # The last value needs to have all the data
                 result[ent_id][-1] = db_state.to_native()
         else:
             result[ent_id].extend(
