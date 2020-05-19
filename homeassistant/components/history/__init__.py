@@ -282,6 +282,10 @@ def _sorted_states_to_json(
     axis correctly.
     """
     result = defaultdict(list)
+    # Set all entity IDs to empty lists in result set to maintain the order
+    if entity_ids is not None:
+        for ent_id in entity_ids:
+            result[ent_id] = []
 
     # Get the states at the start time
     timer_start = time.perf_counter()
@@ -301,7 +305,11 @@ def _sorted_states_to_json(
     # Append all changes to it
     for ent_id, group in groupby(states, lambda state: state.entity_id):
         domain = split_entity_id(ent_id)[0]
-        if not minimal_response or domain in NEED_ATTRIBUTE_DOMAINS:
+        if (
+            not minimal_response
+            or domain in NEED_ATTRIBUTE_DOMAINS
+            or domain in FILTER_SIGNIFICANT_DOMAINS
+        ):
             if domain in FILTER_SIGNIFICANT_DOMAINS:
                 result[ent_id].extend(
                     [
@@ -331,7 +339,7 @@ def _sorted_states_to_json(
                 result[ent_id][-1] = db_state.to_native()
 
     # Filter out the empty lists if some states had 0 results.
-    return result
+    return {key: val for key, val in result.items() if val}
 
 
 def get_state(hass, utc_point_in_time, entity_id, run=None):
