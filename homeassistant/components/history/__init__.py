@@ -335,7 +335,7 @@ def _sorted_states_to_json(
                 ent_results.append(
                     {
                         STATE_KEY: db_state.state,
-                        LAST_CHANGED_KEY: f"{str(db_state.last_changed.replace(microsecond=0)).replace(' ','T')}{DB_TIMEZONE}",
+                        LAST_CHANGED_KEY: f"{str(db_state.last_changed).replace(' ','T').split('.')[0]}{DB_TIMEZONE}",
                     }
                 )
                 prev_state = db_state
