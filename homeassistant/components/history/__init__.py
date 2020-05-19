@@ -31,6 +31,9 @@ _LOGGER = logging.getLogger(__name__)
 DOMAIN = "history"
 CONF_ORDER = "use_include_order"
 
+STATE_KEY = "state"
+LAST_CHANGED_KEY = "last_changed"
+
 CONFIG_SCHEMA = vol.Schema(
     {
         DOMAIN: recorder.FILTER_SCHEMA.extend(
@@ -62,6 +65,7 @@ def _get_significant_states(
     filters=None,
     include_start_time_state=True,
     significant_changes_only=True,
+    minimal_response=False,
 ):
     """
     Return states changes during UTC period start_time - end_time.
@@ -105,6 +109,7 @@ def _get_significant_states(
         entity_ids,
         filters,
         include_start_time_state,
+        minimal_response,
     )
 
 
@@ -263,7 +268,7 @@ def _sorted_states_to_json(
     entity_ids,
     filters=None,
     include_start_time_state=True,
-    minimal_response=True,
+    minimal_response=False,
 ):
     """Convert SQL results into JSON friendly data structure.
 
@@ -317,8 +322,8 @@ def _sorted_states_to_json(
             for db_state in group:
                 result[ent_id].append(
                     {
-                        "state": db_state.state,
-                        "last_changed": process_timestamp(db_state.last_changed),
+                        STATE_KEY: db_state.state,
+                        LAST_CHANGED_KEY: process_timestamp(db_state.last_changed),
                     }
                 )
             if db_state is not None:
@@ -371,7 +376,6 @@ class HistoryPeriodView(HomeAssistantView):
 
     async def get(self, request, datetime=None):
         """Return history over a period of time."""
-
         if datetime:
             datetime = dt_util.parse_datetime(datetime)
 
@@ -406,6 +410,8 @@ class HistoryPeriodView(HomeAssistantView):
             request.query.get("significant_changes_only", "1") != "0"
         )
 
+        minimal_response = bool(request.query.get("minimal_response"))
+
         hass = request.app["hass"]
 
         return await hass.async_add_executor_job(
@@ -416,6 +422,7 @@ class HistoryPeriodView(HomeAssistantView):
             entity_ids,
             include_start_time_state,
             significant_changes_only,
+            minimal_response,
         )
 
     def _sorted_significant_states_json(
@@ -426,6 +433,7 @@ class HistoryPeriodView(HomeAssistantView):
         entity_ids,
         include_start_time_state,
         significant_changes_only,
+        minimal_response,
     ):
         """Fetch significant stats from the database as json."""
         timer_start = time.perf_counter()
@@ -440,6 +448,7 @@ class HistoryPeriodView(HomeAssistantView):
                 self.filters,
                 include_start_time_state,
                 significant_changes_only,
+                minimal_response,
             )
 
         result = list(result.values())
