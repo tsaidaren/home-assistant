@@ -305,33 +305,53 @@ def _sorted_states_to_json(
     # Append all changes to it
     for ent_id, group in groupby(states, lambda state: state.entity_id):
         domain = split_entity_id(ent_id)[0]
+        ent_results = result[ent_id]
         if minimal_response and domain not in NEED_ATTRIBUTE_DOMAINS:
             # With minimal response we only provide a native
             # State for the first and last response. All the states
             # in-between only provide the "state" and the
             # "last_changed".
-            if not result[ent_id]:
+            if not ent_results:
                 db_state = next(group)
-                if db_state:
-                    result[ent_id].append(db_state.to_native())
+                if not db_state:
+                    continue
+                ent_results.append(db_state.to_native())
 
-            db_state = None
+            initial_state = ent_results[-1]
+            prev_state = ent_results[-1]
+            initial_state_count = len(ent_results)
+
             for db_state in group:
                 if ATTR_HIDDEN in db_state.attributes and db_state.to_native().attributes.get(
                     ATTR_HIDDEN, False
                 ):
                     continue
 
-                result[ent_id].append(
+                # With minimal response we do not care about attribute
+                # changes so we can filter out duplicate states
+                if db_state.state == prev_state.state:
+                    continue
+
+                ent_results.append(
                     {
                         STATE_KEY: db_state.state,
-                        LAST_CHANGED_KEY: f"{str(db_state.last_changed).replace(' ','T')}{DB_TIMEZONE}",
+                        LAST_CHANGED_KEY: f"{str(db_state.last_changed.replace(microsecond=0)).replace(' ','T')}{DB_TIMEZONE}",
                     }
                 )
-            if db_state is not None:
-                result[ent_id][-1] = db_state.to_native()
+                prev_state = db_state
+
+            if prev_state and prev_state != initial_state:
+                if len(ent_results) == initial_state_count:
+                    # There were no state changes
+                    # append the last state we have
+                    ent_results.append(prev_state.to_native())
+                else:
+                    # There was at least one state change
+                    # replace the last minimal state with
+                    # a full state
+                    ent_results[-1] = prev_state.to_native()
         else:
-            result[ent_id].extend(
+            ent_results.extend(
                 [
                     native_state
                     for native_state in (db_state.to_native() for db_state in group)
