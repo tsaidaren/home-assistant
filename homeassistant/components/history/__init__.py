@@ -97,7 +97,7 @@ def _get_significant_states(
         elapsed = time.perf_counter() - timer_start
         _LOGGER.debug("get_significant_states took %fs", elapsed)
 
-    return _states_to_json(
+    return _sorted_states_to_json(
         hass,
         session,
         states,
@@ -129,7 +129,7 @@ def state_changes_during_period(hass, start_time, end_time=None, entity_id=None)
             query.order_by(States.entity_id, States.last_updated), to_native=False
         )
 
-        return _states_to_json(hass, session, states, start_time, entity_ids)
+        return _sorted_states_to_json(hass, session, states, start_time, entity_ids)
 
 
 def get_last_state_changes(hass, number_of_states, entity_id):
@@ -152,7 +152,7 @@ def get_last_state_changes(hass, number_of_states, entity_id):
             to_native=False,
         )
 
-        return _states_to_json(
+        return _sorted_states_to_json(
             hass,
             session,
             reversed(states),
@@ -255,7 +255,7 @@ def _get_states_with_session(
     ]
 
 
-def _states_to_json(
+def _sorted_states_to_json(
     hass,
     session,
     states,
@@ -269,6 +269,8 @@ def _states_to_json(
 
     This takes our state list and turns it into a JSON friendly data
     structure {'entity_id': [list of states], 'entity_id2': [list of states]}
+
+    States must be pre-sorted by entity_id and last_updated
 
     We also need to go back and create a synthetic zero data point for
     each list of states, otherwise our graphs won't start on the Y
