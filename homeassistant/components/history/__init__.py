@@ -42,6 +42,9 @@ CONFIG_SCHEMA = vol.Schema(
 SIGNIFICANT_DOMAINS = ("climate", "device_tracker", "thermostat", "water_heater")
 IGNORE_DOMAINS = ("zone", "scene")
 
+FILTER_SIGNIFICANT_DOMAINS = {"script"}
+NEED_ATTRIBUTE_DOMAINS = {"climate", "water_heater", "script"}
+
 
 def get_significant_states(hass, *args, **kwargs):
     """Wrap _get_significant_states with a sql session."""
@@ -87,13 +90,13 @@ def _get_significant_states(
 
     query = query.order_by(States.last_updated)
 
-    states = [state for state in query]
+    states = execute(query, to_native=False)
 
     if _LOGGER.isEnabledFor(logging.DEBUG):
         elapsed = time.perf_counter() - timer_start
         _LOGGER.debug("get_significant_states took %fs", elapsed)
 
-    return _states_to_json_no_convert(
+    return _states_to_json(
         hass,
         session,
         states,
@@ -121,7 +124,7 @@ def state_changes_during_period(hass, start_time, end_time=None, entity_id=None)
 
         entity_ids = [entity_id] if entity_id is not None else None
 
-        states = execute(query.order_by(States.last_updated))
+        states = execute(query.order_by(States.last_updated), to_native=False)
 
         return _states_to_json(hass, session, states, start_time, entity_ids)
 
@@ -140,7 +143,8 @@ def get_last_state_changes(hass, number_of_states, entity_id):
         entity_ids = [entity_id] if entity_id is not None else None
 
         states = execute(
-            query.order_by(States.last_updated.desc()).limit(number_of_states)
+            query.order_by(States.last_updated.desc()).limit(number_of_states),
+            to_native=False,
         )
 
         return _states_to_json(
@@ -254,6 +258,7 @@ def _states_to_json(
     entity_ids,
     filters=None,
     include_start_time_state=True,
+    minimal_response=True,
 ):
     """Convert SQL results into JSON friendly data structure.
 
@@ -287,55 +292,17 @@ def _states_to_json(
 
     # Append all changes to it
     for ent_id, group in groupby(states, lambda state: state.entity_id):
-        result[ent_id].extend(group)
-
-    # Filter out the empty lists if some states had 0 results.
-    return {key: val for key, val in result.items() if val}
-
-
-def _states_to_json_no_convert(
-    hass,
-    session,
-    states,
-    start_time,
-    entity_ids,
-    filters=None,
-    include_start_time_state=True,
-):
-    """Convert SQL results into JSON friendly data structure.
-
-    This takes our state list and turns it into a JSON friendly data
-    structure {'entity_id': [list of states], 'entity_id2': [list of states]}
-
-    We also need to go back and create a synthetic zero data point for
-    each list of states, otherwise our graphs won't start on the Y
-    axis correctly.
-    """
-    result = defaultdict(list)
-    # Set all entity IDs to empty lists in result set to maintain the order
-    if entity_ids is not None:
-        for ent_id in entity_ids:
-            result[ent_id] = []
-
-    # Get the states at the start time
-    timer_start = time.perf_counter()
-    if include_start_time_state:
-        run = recorder.run_information_from_instance(hass, start_time)
-        for state in _get_states_with_session(
-            session, start_time, entity_ids, run=run, filters=filters
-        ):
-            state.last_changed = start_time
-            state.last_updated = start_time
-            result[state.entity_id].append(state)
-
-    if _LOGGER.isEnabledFor(logging.DEBUG):
-        elapsed = time.perf_counter() - timer_start
-        _LOGGER.debug("getting %d first datapoints took %fs", len(result), elapsed)
-
-    # Append all changes to it
-    for ent_id, group in groupby(states, lambda state: state.entity_id):
-        if ent_id.startswith("climate.") or ent_id.startswith("water_heater."):
-            result[ent_id].extend([g.to_native() for g in group])
+        if not minimal_response or group.domain in NEED_ATTRIBUTE_DOMAINS:
+            if group.domain in FILTER_SIGNIFICANT_DOMAINS:
+                result[ent_id].extend(
+                    [
+                        state
+                        for state in (s.to_native() for s in group)
+                        if _is_significant(state)
+                    ]
+                )
+            else:
+                result[ent_id].extend([s.to_native() for s in group])
         else:
             if not result[ent_id]:
                 state = next(group)
