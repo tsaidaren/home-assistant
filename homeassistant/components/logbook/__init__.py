@@ -437,11 +437,6 @@ def _get_events(hass, config, start_day, end_day, entity_id=None):
     entities_filter = _generate_filter_from_config(config)
 
     with session_scope(hass=hass) as session:
-        import cProfile
-
-        pr = cProfile.Profile()
-        pr.enable()
-
         if entity_id is not None:
             entity_ids = [entity_id.lower()]
         else:
@@ -464,11 +459,7 @@ def _get_events(hass, config, start_day, end_day, entity_id=None):
             )
         )
 
-        rr = list(humanify(hass, query.all(), entities_filter))
-        pr.disable()
-        pr.create_stats()
-        pr.dump_stats("logbook2.cprof")
-        return rr
+        return list(humanify(hass, query.all(), entities_filter))
 
 
 def _entry_message_from_state(domain, state):
