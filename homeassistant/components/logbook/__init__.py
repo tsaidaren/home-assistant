@@ -357,7 +357,7 @@ def humanify(hass, events_states, entities_filter):
                     "context_user_id": event.context.user_id,
                 }
 
-            elif event.event_type == EVENT_AUTOMATION_TRIGGERED:
+            elif db_event.event_type == EVENT_AUTOMATION_TRIGGERED:
                 event = db_event.to_native()
                 if not entities_filter(event.data.get(ATTR_ENTITY_ID) or "automation."):
                     continue
@@ -371,7 +371,7 @@ def humanify(hass, events_states, entities_filter):
                     "context_user_id": event.context.user_id,
                 }
 
-            elif event.event_type == EVENT_SCRIPT_STARTED:
+            elif db_event.event_type == EVENT_SCRIPT_STARTED:
                 event = db_event.to_native()
                 if not entities_filter(event.data.get(ATTR_ENTITY_ID) or "script."):
                     continue
