@@ -49,6 +49,7 @@ CONTINUOUS_DOMAINS = ["proximity", "sensor"]
 
 DOMAIN = "logbook"
 
+DB_TIMEZONE = "+00:00"
 GROUP_BY_MINUTES = 15
 
 CONFIG_SCHEMA = vol.Schema(
@@ -298,7 +299,7 @@ def humanify(hass, events_states, entities_filter):
                 prev_entity_state[db_state.entity_id] = state
 
                 yield {
-                    "when": db_event.time_fired,
+                    "when": f"{str(db_event.time_fired).replace(' ','T').split('.')[0]}{DB_TIMEZONE}",
                     "name": state.attributes.get("friendly_name"),
                     "message": _entry_message_from_state(domain, state),
                     "domain": domain,
@@ -312,7 +313,7 @@ def humanify(hass, events_states, entities_filter):
                     continue
 
                 yield {
-                    "when": db_event.time_fired,
+                    "when": f"{str(db_event.time_fired).replace(' ','T').split('.')[0]}{DB_TIMEZONE}",
                     "name": "Home Assistant",
                     "message": "started",
                     "domain": HA_DOMAIN,
@@ -327,7 +328,7 @@ def humanify(hass, events_states, entities_filter):
                     action = "stopped"
 
                 yield {
-                    "when": db_event.time_fired,
+                    "when": f"{str(db_event.time_fired).replace(' ','T').split('.')[0]}{DB_TIMEZONE}",
                     "name": "Home Assistant",
                     "message": action,
                     "domain": HA_DOMAIN,
@@ -348,7 +349,7 @@ def humanify(hass, events_states, entities_filter):
                     continue
 
                 yield {
-                    "when": event.time_fired,
+                    "when": f"{str(db_event.time_fired).replace(' ','T').split('.')[0]}{DB_TIMEZONE}",
                     "name": event.data.get(ATTR_NAME),
                     "message": event.data.get(ATTR_MESSAGE),
                     "domain": domain,
@@ -362,7 +363,7 @@ def humanify(hass, events_states, entities_filter):
                 if not entities_filter(event.data.get(ATTR_ENTITY_ID) or "automation."):
                     continue
                 yield {
-                    "when": event.time_fired,
+                    "when": f"{str(db_event.time_fired).replace(' ','T').split('.')[0]}{DB_TIMEZONE}",
                     "name": event.data.get(ATTR_NAME),
                     "message": "has been triggered",
                     "domain": "automation",
@@ -376,7 +377,7 @@ def humanify(hass, events_states, entities_filter):
                 if not entities_filter(event.data.get(ATTR_ENTITY_ID) or "script."):
                     continue
                 yield {
-                    "when": event.time_fired,
+                    "when": f"{str(db_event.time_fired).replace(' ','T').split('.')[0]}{DB_TIMEZONE}",
                     "name": event.data.get(ATTR_NAME),
                     "message": "started",
                     "domain": "script",
