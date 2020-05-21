@@ -219,6 +219,8 @@ async def async_setup(hass, config):
     async def start_server():
         """Start the server."""
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, stop_server)
+        _LOGGER.info("Go webserver")
+
         await server.start()
 
         # If we are set up successful, we store the HTTP settings for safe mode.
@@ -250,6 +252,7 @@ async def async_setup(hass, config):
 
     hass.config.api = ApiConfig(local_ip, host, port, ssl_certificate is not None)
 
+    _LOGGER.info("Starting webserver")
     await start_server()
 
     return True
