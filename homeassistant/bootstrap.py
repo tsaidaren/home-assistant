@@ -323,6 +323,11 @@ async def _async_set_up_integrations(
 ) -> None:
     """Set up all the integrations."""
 
+    import cProfile
+
+    pr = cProfile.Profile()
+    pr.enable()
+
     async def async_setup_multi_components(domains: Set[str]) -> None:
         """Set up multiple domains. Log on failure."""
         futures = {
@@ -423,3 +428,6 @@ async def _async_set_up_integrations(
 
     # Wrap up startup
     await hass.async_block_till_done()
+    pr.disable()
+    pr.create_stats()
+    pr.dump_stats("startup.cprof")
