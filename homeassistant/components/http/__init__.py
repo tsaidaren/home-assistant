@@ -10,11 +10,7 @@ from aiohttp import web
 from aiohttp.web_exceptions import HTTPMovedPermanently
 import voluptuous as vol
 
-from homeassistant.const import (
-    EVENT_HOMEASSISTANT_START,
-    EVENT_HOMEASSISTANT_STOP,
-    SERVER_PORT,
-)
+from homeassistant.const import EVENT_HOMEASSISTANT_STOP, SERVER_PORT
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import storage
 import homeassistant.helpers.config_validation as cv
@@ -238,8 +234,6 @@ async def async_setup(hass, config):
 
         await store.async_save(conf_to_save)
 
-    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, start_server)
-
     hass.http = server
 
     host = conf.get(CONF_BASE_URL)
@@ -255,6 +249,8 @@ async def async_setup(hass, config):
         port = server_port
 
     hass.config.api = ApiConfig(local_ip, host, port, ssl_certificate is not None)
+
+    await start_server()
 
     return True
 
