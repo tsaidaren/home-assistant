@@ -43,6 +43,8 @@ STAGE_1_INTEGRATIONS = {
     # To provide account link implementations
     "cloud",
 }
+# Ensure the webserver is up in case anything hangs
+STAGE_2_INTEGRATIONS = {"http", "frontend"}
 
 
 async def async_setup_hass(
@@ -323,11 +325,6 @@ async def _async_set_up_integrations(
 ) -> None:
     """Set up all the integrations."""
 
-    import cProfile
-
-    pr = cProfile.Profile()
-    pr.enable()
-
     async def async_setup_multi_components(domains: Set[str]) -> None:
         """Set up multiple domains. Log on failure."""
         futures = {
@@ -370,7 +367,8 @@ async def _async_set_up_integrations(
     # setup components
     logging_domains = domains & LOGGING_INTEGRATIONS
     stage_1_domains = domains & STAGE_1_INTEGRATIONS
-    stage_2_domains = domains - logging_domains - stage_1_domains
+    stage_2_domains = domains & STAGE_2_INTEGRATIONS
+    stage_3_domains = domains - logging_domains - stage_1_domains - stage_2_domains
 
     if logging_domains:
         _LOGGER.info("Setting up %s", logging_domains)
@@ -387,11 +385,14 @@ async def _async_set_up_integrations(
     if stage_1_domains:
         await async_setup_multi_components(stage_1_domains)
 
+    if stage_2_domains:
+        await async_setup_multi_components(stage_2_domains)
+
     # Load all integrations
     after_dependencies: Dict[str, Set[str]] = {}
 
     for int_or_exc in await asyncio.gather(
-        *(loader.async_get_integration(hass, domain) for domain in stage_2_domains),
+        *(loader.async_get_integration(hass, domain) for domain in stage_3_domains),
         return_exceptions=True,
     ):
         # Exceptions are handled in async_setup_component.
@@ -399,10 +400,10 @@ async def _async_set_up_integrations(
             after_dependencies[int_or_exc.domain] = set(int_or_exc.after_dependencies)
 
     last_load = None
-    while stage_2_domains:
+    while stage_3_domains:
         domains_to_load = set()
 
-        for domain in stage_2_domains:
+        for domain in stage_3_domains:
             after_deps = after_dependencies.get(domain)
             # Load if integration has no after_dependencies or they are
             # all loaded
@@ -417,17 +418,14 @@ async def _async_set_up_integrations(
         await async_setup_multi_components(domains_to_load)
 
         last_load = domains_to_load
-        stage_2_domains -= domains_to_load
+        stage_3_domains -= domains_to_load
 
-    # These are stage 2 domains that never have their after_dependencies
+    # These are stage 3 domains that never have their after_dependencies
     # satisfied.
-    if stage_2_domains:
-        _LOGGER.debug("Final set up: %s", stage_2_domains)
+    if stage_3_domains:
+        _LOGGER.debug("Final set up: %s", stage_3_domains)
 
-        await async_setup_multi_components(stage_2_domains)
+        await async_setup_multi_components(stage_3_domains)
 
     # Wrap up startup
     await hass.async_block_till_done()
-    pr.disable()
-    pr.create_stats()
-    pr.dump_stats("startup.cprof")
