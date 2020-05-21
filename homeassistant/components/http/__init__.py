@@ -216,7 +216,7 @@ async def async_setup(hass, config):
         """Stop the server."""
         await server.stop()
 
-    async def start_server(event):
+    async def start_server():
         """Start the server."""
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, stop_server)
         await server.start()
