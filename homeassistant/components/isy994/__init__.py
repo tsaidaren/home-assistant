@@ -1,16 +1,18 @@
 """Support the ISY-994 controllers."""
 import asyncio
-from functools import partial
 from typing import Optional
 from urllib.parse import urlparse
 
+from aiohttp import CookieJar
+import async_timeout
 from pyisy import ISY
+from pyisy.connection import ISYConnectionError, ISYInvalidAuthError
 import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import aiohttp_client, config_validation as cv
 import homeassistant.helpers.device_registry as dr
 from homeassistant.helpers.typing import ConfigType
 
@@ -139,27 +141,39 @@ async def async_setup_entry(
     if host.scheme == "http":
         https = False
         port = host.port or 80
+        session = aiohttp_client.async_create_clientsession(
+            hass, verify_ssl=None, cookie_jar=CookieJar(unsafe=True)
+        )
     elif host.scheme == "https":
         https = True
         port = host.port or 443
+        session = aiohttp_client.async_get_clientsession(hass)
     else:
         _LOGGER.error("isy994 host value in configuration is invalid")
         return False
 
     # Connect to ISY controller.
-    isy = await hass.async_add_executor_job(
-        partial(
-            ISY,
-            host.hostname,
-            port,
-            username=user,
-            password=password,
-            use_https=https,
-            tls_ver=tls_version,
-            log=_LOGGER,
-            webroot=host.path,
-        )
+    isy = ISY(
+        host.hostname,
+        port,
+        username=user,
+        password=password,
+        use_https=https,
+        tls_ver=tls_version,
+        webroot=host.path,
+        websession=session,
+        use_websocket=True,
     )
+
+    try:
+        with async_timeout.timeout(30):
+            await isy.initialize()
+    except (ISYInvalidAuthError, ISYConnectionError):
+        _LOGGER.error(
+            "Failed to connect to the ISY, please adjust settings and try again."
+        )
+        return False
+
     if not isy.connected:
         return False
 
@@ -182,7 +196,7 @@ async def async_setup_entry(
     def _start_auto_update() -> None:
         """Start isy auto update."""
         _LOGGER.debug("ISY Starting Event Stream and automatic updates.")
-        isy.auto_update = True
+        isy.websocket.start()
 
     await hass.async_add_executor_job(_start_auto_update)
 
@@ -258,7 +272,7 @@ async def async_unload_entry(
     def _stop_auto_update() -> None:
         """Start isy auto update."""
         _LOGGER.debug("ISY Stopping Event Stream and automatic updates.")
-        isy.auto_update = False
+        isy.websocket.stop()
 
     await hass.async_add_executor_job(_stop_auto_update)
 

@@ -330,7 +330,7 @@ UOM_FRIENDLY_NAME = {
     "22": "%RH",
     "23": PRESSURE_INHG,
     "24": f"{LENGTH_INCHES}/{TIME_HOURS}",
-    UOM_INDEX: "index",  # Index type. Use "node.formatted" for value
+    UOM_INDEX: UOM_INDEX,  # Index type. Use "node.formatted" for value
     "26": TEMP_KELVIN,
     "27": "keyword",
     "28": MASS_KILOGRAMS,
