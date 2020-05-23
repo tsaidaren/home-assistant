@@ -79,8 +79,8 @@ EXT:
 LOCATION: http://{advertise_ip}:{advertise_port}/description.xml
 SERVER: FreeRTOS/6.0.5, UPnP/1.0, IpBridge/1.16.0
 hue-bridgeid: 001788FFFE23BFC2
-ST: upnp:rootdevice
-USN: uuid:2f402f80-da50-11e1-9b23-00178829d301::upnp:rootdevice
+ST: urn:schemas-upnp-org:device:basic:1
+USN: uuid:2f402f80-da50-11e1-9b23-00178829d301
 
 """
 
