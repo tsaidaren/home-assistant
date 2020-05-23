@@ -167,6 +167,7 @@ UNDO_UPDATE_LISTENER = "undo_update_listener"
 # Used for discovery
 UDN_UUID_PREFIX = "uuid:"
 ISY_URL_POSTFIX = "/desc"
+EVENTS_SUFFIX = "_ISYSUB"
 
 # Do not use the Home Assistant consts for the states here - we're matching exact API
 # responses, not using them for Home Assistant states
