@@ -547,9 +547,8 @@ class HomeKit:
         self._async_purge_old_bridges(dev_reg, identifier, connection)
         dev_reg.async_get_or_create(
             config_entry_id=self._entry_id,
-            connections={
-                (device_registry.CONNECTION_NETWORK_MAC, self.driver.state.mac)
-            },
+            identifiers={identifier},
+            connections={connection},
             manufacturer=MANUFACTURER,
             name=self._name,
             model="Home Assistant HomeKit Bridge",
