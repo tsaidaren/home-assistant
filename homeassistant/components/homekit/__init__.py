@@ -2,6 +2,7 @@
 import asyncio
 import ipaddress
 import logging
+import os
 
 from aiohttp import web
 import voluptuous as vol
@@ -435,6 +436,13 @@ class HomeKit:
             interface_choice=self._interface_choice,
         )
 
+        # If we do not load the mac address will be wrong
+        # as pyhap uses a random one until state is restored
+        if os.path.exists(persist_file):
+            self.driver.load()
+        else:
+            self.driver.persist()
+
         self.bridge = HomeBridge(self.hass, self.driver, self._name)
         if self._safe_mode:
             _LOGGER.debug("Safe_mode selected for %s", self._name)
@@ -542,6 +550,18 @@ class HomeKit:
     def _async_register_bridge(self, dev_reg):
         """Register the bridge as a device so homekit_controller and exclude it from discovery."""
         formatted_mac = device_registry.format_mac(self.driver.state.mac)
+        # Connections and identifiers are both used here.
+        #
+        # connections exists so homekit_controller can know the
+        # mac address of the bridge and know to not offer
+        # it via discovery.
+        #
+        # identifiers is used as well since connections may be unstable
+        # because it will not survive manual pairing resets (deleting state file)
+        # which we have trained users to do over the past few years
+        # because this was the way you had to fix homekit when pairing
+        # failed.
+        #
         connection = (device_registry.CONNECTION_NETWORK_MAC, formatted_mac)
         identifier = (DOMAIN, self._entry_id, BRIDGE_SERIAL_NUMBER)
         self._async_purge_old_bridges(dev_reg, identifier, connection)
