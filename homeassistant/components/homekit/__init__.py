@@ -553,10 +553,10 @@ class HomeKit:
         # Connections and identifiers are both used here.
         #
         # connections exists so homekit_controller can know the
-        # mac address of the bridge and know to not offer
+        # virtual mac address of the bridge and know to not offer
         # it via discovery.
         #
-        # identifiers is used as well since connections may be unstable
+        # identifiers is used as well since the virtual mac may change
         # because it will not survive manual pairing resets (deleting state file)
         # which we have trained users to do over the past few years
         # because this was the way you had to fix homekit when pairing
