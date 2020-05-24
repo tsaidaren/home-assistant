@@ -173,9 +173,16 @@ async def async_setup_entry(
     try:
         with async_timeout.timeout(30):
             await isy.initialize()
-    except (ISYInvalidAuthError, ISYConnectionError):
+    except ISYInvalidAuthError as err:
         _LOGGER.error(
-            "Failed to connect to the ISY, please adjust settings and try again."
+            "Invalid credentials for the ISY, please adjust settings and try again: %s",
+            err,
+        )
+        return False
+    except ISYConnectionError as err:
+        _LOGGER.error(
+            "Failed to connect to the ISY, please adjust settings and try again: %s",
+            err,
         )
         return False
 
