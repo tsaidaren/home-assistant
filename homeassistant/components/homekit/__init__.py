@@ -49,6 +49,7 @@ from .const import (
     ATTR_SOFTWARE_VERSION,
     ATTR_VALUE,
     BRIDGE_NAME,
+    BRIDGE_SERIAL_NUMBER,
     CONF_ADVERTISE_IP,
     CONF_AUTO_START,
     CONF_ENTITY_CONFIG,
@@ -540,6 +541,10 @@ class HomeKit:
     @callback
     def _async_register_bridge(self, dev_reg):
         """Register the bridge as a device so homekit_controller and exclude it from discovery."""
+        formatted_mac = device_registry.format_mac(self.driver.state.mac)
+        connection = (device_registry.CONNECTION_NETWORK_MAC, formatted_mac)
+        identifier = (DOMAIN, self._entry_id, BRIDGE_SERIAL_NUMBER)
+        self._async_purge_old_bridges(dev_reg, identifier, connection)
         dev_reg.async_get_or_create(
             config_entry_id=self._entry_id,
             connections={
@@ -549,6 +554,21 @@ class HomeKit:
             name=self._name,
             model="Home Assistant HomeKit Bridge",
         )
+
+    @callback
+    def _async_purge_old_bridges(self, dev_reg, identifier, connection):
+        """Purge bridges that exist from failed pairing or manual resets."""
+        devices_to_purge = []
+        for entry in dev_reg.devices.values():
+            if self._entry_id in entry.config_entries and (
+                identifier not in entry.identifiers
+                or connection not in entry.connections
+            ):
+                devices_to_purge.append(entry.id)
+                continue
+
+        for device_id in devices_to_purge:
+            dev_reg.async_remove_device(device_id)
 
     def _start(self, bridged_states):
         from . import (  # noqa: F401 pylint: disable=unused-import, import-outside-toplevel
