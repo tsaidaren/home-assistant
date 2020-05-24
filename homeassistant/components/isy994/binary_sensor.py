@@ -300,6 +300,7 @@ class ISYInsteonBinarySensorEntity(ISYBinarySensorEntity):
                 # of the sensor until we receive our first ON event.
                 self._computed_state = None
 
+    @callback
     def _negative_node_control_handler(self, event: object) -> None:
         """Handle an "On" control event from the "negative" node."""
         if event.control == CMD_ON:
@@ -308,9 +309,10 @@ class ISYInsteonBinarySensorEntity(ISYBinarySensorEntity):
                 self.name,
             )
             self._computed_state = False
-            self.schedule_update_ha_state()
+            self.async_write_ha_state()
             self._heartbeat()
 
+    @callback
     def _positive_node_control_handler(self, event: object) -> None:
         """Handle On and Off control event coming from the primary node.
 
@@ -324,7 +326,7 @@ class ISYInsteonBinarySensorEntity(ISYBinarySensorEntity):
                 self.name,
             )
             self._computed_state = True
-            self.schedule_update_ha_state()
+            self.async_write_ha_state()
             self._heartbeat()
         if event.control == CMD_OFF:
             _LOGGER.debug(
@@ -332,9 +334,10 @@ class ISYInsteonBinarySensorEntity(ISYBinarySensorEntity):
                 self.name,
             )
             self._computed_state = False
-            self.schedule_update_ha_state()
+            self.async_write_ha_state()
             self._heartbeat()
 
+    @callback
     def on_update(self, event: object) -> None:
         """Primary node status updates.
 
@@ -348,7 +351,7 @@ class ISYInsteonBinarySensorEntity(ISYBinarySensorEntity):
         if self._status_was_unknown and self._computed_state is None:
             self._computed_state = bool(self._node.status)
             self._status_was_unknown = False
-            self.schedule_update_ha_state()
+            self.async_write_ha_state()
             self._heartbeat()
 
     @property
@@ -405,6 +408,7 @@ class ISYBinarySensorHeartbeat(ISYNodeEntity, BinarySensorEntity):
         if event.control in [CMD_ON, CMD_OFF]:
             self.heartbeat()
 
+    @callback
     def heartbeat(self):
         """Mark the device as online, and restart the 25 hour timer.
 
@@ -415,7 +419,7 @@ class ISYBinarySensorHeartbeat(ISYNodeEntity, BinarySensorEntity):
         """
         self._computed_state = False
         self._restart_timer()
-        self.schedule_update_ha_state()
+        self.async_write_ha_state()
 
     def _restart_timer(self):
         """Restart the 25 hour timer."""
@@ -431,7 +435,7 @@ class ISYBinarySensorHeartbeat(ISYNodeEntity, BinarySensorEntity):
             """Heartbeat missed; set state to ON to indicate dead battery."""
             self._computed_state = True
             self._heartbeat_timer = None
-            self.schedule_update_ha_state()
+            self.async_write_ha_state()
 
         point_in_time = dt_util.utcnow() + timedelta(hours=25)
         _LOGGER.debug(
@@ -501,9 +505,10 @@ class ISYEventsBinarySensorEntity(BinarySensorEntity):
         """Subscribe to the node change events."""
         self._change_handler = self._isy.connection_events.subscribe(self.on_update)
 
+    @callback
     def on_update(self, event: object) -> None:
         """Handle the update event from the ISY994 Node."""
-        self.schedule_update_ha_state()
+        self.async_write_ha_state()
 
     @property
     def device_info(self):
@@ -551,7 +556,4 @@ class ISYEventsBinarySensorEntity(BinarySensorEntity):
     @property
     def device_state_attributes(self) -> Dict:
         """Get the state attributes for the device."""
-        return {
-            "connection_status": self._isy.websocket.status,
-            "last_heartbeat": self._isy.websocket.last_heartbeat,
-        }
+        return {"last_event": self._isy.websocket.status}

@@ -222,7 +222,7 @@ class ISYThermostatEntity(ISYNodeEntity, ClimateEntity):
             await self._node.set_climate_setpoint_cool(int(target_temp_high))
             # Presumptive setting--event stream will correct if cmd fails:
             self._target_temp_high = target_temp_high
-        self.schedule_update_ha_state()
+        self.async_write_ha_state()
 
     async def async_set_fan_mode(self, fan_mode: str) -> None:
         """Set new target fan mode."""
@@ -230,7 +230,7 @@ class ISYThermostatEntity(ISYNodeEntity, ClimateEntity):
         await self._node.set_fan_mode(HA_FAN_TO_ISY.get(fan_mode))
         # Presumptive setting--event stream will correct if cmd fails:
         self._fan_mode = fan_mode
-        self.schedule_update_ha_state()
+        self.async_write_ha_state()
 
     async def async_set_hvac_mode(self, hvac_mode: str) -> None:
         """Set new target hvac mode."""
@@ -238,4 +238,4 @@ class ISYThermostatEntity(ISYNodeEntity, ClimateEntity):
         await self._node.set_climate_mode(HA_HVAC_TO_ISY.get(hvac_mode))
         # Presumptive setting--event stream will correct if cmd fails:
         self._hvac_mode = hvac_mode
-        self.schedule_update_ha_state()
+        self.async_write_ha_state()
