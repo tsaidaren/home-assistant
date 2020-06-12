@@ -33,7 +33,13 @@ from homeassistant.const import (
     STATE_OFF,
     STATE_ON,
 )
-from homeassistant.core import DOMAIN as HA_DOMAIN, State, callback, split_entity_id
+from homeassistant.core import (
+    DOMAIN as HA_DOMAIN,
+    Context,
+    State,
+    callback,
+    split_entity_id,
+)
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entityfilter import generate_filter
 from homeassistant.loader import bind_hass
@@ -245,8 +251,8 @@ def humanify(hass, events):
                 data = describe_event(event)
                 data["when"] = event.time_fired
                 data["domain"] = domain
-                data["context_id"] = event.context_id
-                data["context_user_id"] = event.context_user_id
+                data["context_id"] = event.context.id
+                data["context_user_id"] = event.context.user_id
                 yield data
 
             if event.event_type == EVENT_STATE_CHANGED:
@@ -273,8 +279,8 @@ def humanify(hass, events):
                     "message": _entry_message_from_state(domain, to_state),
                     "domain": domain,
                     "entity_id": to_state.entity_id,
-                    "context_id": event.context_id,
-                    "context_user_id": event.context_user_id,
+                    "context_id": event.context.id,
+                    "context_user_id": event.context.user_id,
                 }
 
             elif event.event_type == EVENT_HOMEASSISTANT_START:
@@ -286,8 +292,8 @@ def humanify(hass, events):
                     "name": "Home Assistant",
                     "message": "started",
                     "domain": HA_DOMAIN,
-                    "context_id": event.context_id,
-                    "context_user_id": event.context_user_id,
+                    "context_id": event.context.id,
+                    "context_user_id": event.context.user_id,
                 }
 
             elif event.event_type == EVENT_HOMEASSISTANT_STOP:
@@ -301,8 +307,8 @@ def humanify(hass, events):
                     "name": "Home Assistant",
                     "message": action,
                     "domain": HA_DOMAIN,
-                    "context_id": event.context_id,
-                    "context_user_id": event.context_user_id,
+                    "context_id": event.context.id,
+                    "context_user_id": event.context.user_id,
                 }
 
             elif event.event_type == EVENT_LOGBOOK_ENTRY:
@@ -320,8 +326,8 @@ def humanify(hass, events):
                     "message": event.data.get(ATTR_MESSAGE),
                     "domain": domain,
                     "entity_id": entity_id,
-                    "context_id": event.context_id,
-                    "context_user_id": event.context_user_id,
+                    "context_id": event.context.id,
+                    "context_user_id": event.context.user_id,
                 }
 
             elif event.event_type == EVENT_SCRIPT_STARTED:
@@ -331,8 +337,8 @@ def humanify(hass, events):
                     "message": "started",
                     "domain": "script",
                     "entity_id": event.data.get(ATTR_ENTITY_ID),
-                    "context_id": event.context_id,
-                    "context_user_id": event.context_user_id,
+                    "context_id": event.context.id,
+                    "context_user_id": event.context.user_id,
                 }
 
 
@@ -565,24 +571,25 @@ def _entry_message_from_state(domain, state):
 
 class LazyEvent:
 
-    __slots__ = ["_row", "_event_data", "_time_fired"]
+    __slots__ = ["_row", "_event_data", "_time_fired", "_context"]
 
     def __init__(self, row):
         self._row = row
         self._event_data = None
         self._time_fired = None
+        self._context = None
 
     @property
     def event_type(self):
         return self._row.event_type
 
     @property
-    def context_id(self):
-        return self._row.context_id
-
-    @property
-    def context_user_id(self):
-        return self._row.context_user_id
+    def context(self):
+        if not self._context:
+            self._context = Context(
+                id=self._row.context_id, user_id=self._row.context_user_id
+            )
+        return self._context
 
     @property
     def data(self):
