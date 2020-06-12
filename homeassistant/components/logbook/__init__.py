@@ -1,6 +1,7 @@
 """Event parser and human readable log generator."""
 from datetime import timedelta
 from itertools import groupby
+import json
 import logging
 import time
 
@@ -9,7 +10,7 @@ import voluptuous as vol
 
 from homeassistant.components import sun
 from homeassistant.components.http import HomeAssistantView
-from homeassistant.components.recorder.models import Events, States
+from homeassistant.components.recorder.models import Events, States, process_timestamp
 from homeassistant.components.recorder.util import (
     QUERY_RETRY_WAIT,
     RETRIES,
@@ -244,8 +245,8 @@ def humanify(hass, events):
                 data = describe_event(event)
                 data["when"] = event.time_fired
                 data["domain"] = domain
-                data["context_id"] = event.context.id
-                data["context_user_id"] = event.context.user_id
+                data["context_id"] = event.context_id
+                data["context_user_id"] = event.context_user_id
                 yield data
 
             if event.event_type == EVENT_STATE_CHANGED:
@@ -272,8 +273,8 @@ def humanify(hass, events):
                     "message": _entry_message_from_state(domain, to_state),
                     "domain": domain,
                     "entity_id": to_state.entity_id,
-                    "context_id": event.context.id,
-                    "context_user_id": event.context.user_id,
+                    "context_id": event.context_id,
+                    "context_user_id": event.context_user_id,
                 }
 
             elif event.event_type == EVENT_HOMEASSISTANT_START:
@@ -285,8 +286,8 @@ def humanify(hass, events):
                     "name": "Home Assistant",
                     "message": "started",
                     "domain": HA_DOMAIN,
-                    "context_id": event.context.id,
-                    "context_user_id": event.context.user_id,
+                    "context_id": event.context_id,
+                    "context_user_id": event.context_user_id,
                 }
 
             elif event.event_type == EVENT_HOMEASSISTANT_STOP:
@@ -300,8 +301,8 @@ def humanify(hass, events):
                     "name": "Home Assistant",
                     "message": action,
                     "domain": HA_DOMAIN,
-                    "context_id": event.context.id,
-                    "context_user_id": event.context.user_id,
+                    "context_id": event.context_id,
+                    "context_user_id": event.context_user_id,
                 }
 
             elif event.event_type == EVENT_LOGBOOK_ENTRY:
@@ -319,8 +320,8 @@ def humanify(hass, events):
                     "message": event.data.get(ATTR_MESSAGE),
                     "domain": domain,
                     "entity_id": entity_id,
-                    "context_id": event.context.id,
-                    "context_user_id": event.context.user_id,
+                    "context_id": event.context_id,
+                    "context_user_id": event.context_user_id,
                 }
 
             elif event.event_type == EVENT_SCRIPT_STARTED:
@@ -330,8 +331,8 @@ def humanify(hass, events):
                     "message": "started",
                     "domain": "script",
                     "entity_id": event.data.get(ATTR_ENTITY_ID),
-                    "context_id": event.context.id,
-                    "context_user_id": event.context.user_id,
+                    "context_id": event.context_id,
+                    "context_user_id": event.context_user_id,
                 }
 
 
@@ -388,7 +389,7 @@ def _get_events(hass, config, start_day, end_day, entity_id=None):
     def yield_events(query):
         """Yield Events that are not filtered away."""
         for row in query.yield_per(500):
-            event = row.to_native()
+            event = LazyEvent(row)
             if _keep_event(hass, event, entities_filter):
                 yield event
 
@@ -399,7 +400,13 @@ def _get_events(hass, config, start_day, end_day, entity_id=None):
             entity_ids = _get_related_entity_ids(session, entities_filter)
 
         query = (
-            session.query(Events)
+            session.query(
+                Events.event_type,
+                Events.event_data,
+                Events.time_fired,
+                Events.context_id,
+                Events.context_user_id,
+            )
             .order_by(Events.time_fired)
             .outerjoin(States, (Events.event_id == States.event_id))
             .filter(
@@ -554,3 +561,39 @@ def _entry_message_from_state(domain, state):
         return "turned off"
 
     return f"changed to {state.state}"
+
+
+class LazyEvent:
+
+    __slots__ = ["_row", "_event_data", "_time_fired"]
+
+    def __init__(self, row):
+        self._row = row
+        self._event_data = None
+        self._time_fired = None
+
+    @property
+    def event_type(self):
+        return self._row.event_type
+
+    @property
+    def context_id(self):
+        return self._row.context_id
+
+    @property
+    def context_user_id(self):
+        return self._row.context_user_id
+
+    @property
+    def data(self):
+        if not self._event_data:
+            self._event_data = json.loads(self._row.event_data)
+        return self._event_data
+
+    @property
+    def time_fired(self):
+        if not self._time_fired:
+            self._time_fired = (
+                process_timestamp(self._row.time_fired) or dt_util.utcnow()
+            )
+        return self._time_fired
