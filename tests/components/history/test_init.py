@@ -76,6 +76,9 @@ class TestComponentHistory(unittest.TestCase):
 
                 mock_state_change_event(self.hass, state)
 
+                state_dict = state.as_dict()
+                state_dict["context"]["id"] = None
+                state = ha.State.from_dict(state_dict)
                 states.append(state)
 
             wait_recording_done(self.hass)
@@ -121,7 +124,7 @@ class TestComponentHistory(unittest.TestCase):
             """Set the state."""
             self.hass.states.set(entity_id, state)
             wait_recording_done(self.hass)
-            return self.hass.states.get(entity_id)
+            return get_state_without_context_id(self.hass, entity_id)
 
         start = dt_util.utcnow()
         point = start + timedelta(seconds=1)
@@ -162,7 +165,7 @@ class TestComponentHistory(unittest.TestCase):
             """Set the state."""
             self.hass.states.set(entity_id, state)
             wait_recording_done(self.hass)
-            return self.hass.states.get(entity_id)
+            return get_state_without_context_id(self.hass, entity_id)
 
         start = dt_util.utcnow() - timedelta(minutes=2)
         point = start + timedelta(minutes=1)
@@ -581,7 +584,7 @@ class TestComponentHistory(unittest.TestCase):
             """Set the state."""
             self.hass.states.set(entity_id, state, **kwargs)
             wait_recording_done(self.hass)
-            return self.hass.states.get(entity_id)
+            return get_state_without_context_id(self.hass, entity_id)
 
         start = dt_util.utcnow() - timedelta(minutes=4)
         points = []
@@ -663,7 +666,7 @@ class TestComponentHistory(unittest.TestCase):
             """Set the state."""
             self.hass.states.set(entity_id, state, **kwargs)
             wait_recording_done(self.hass)
-            return self.hass.states.get(entity_id)
+            return get_state_without_context_id(self.hass, entity_id)
 
         zero = dt_util.utcnow()
         one = zero + timedelta(seconds=1)
@@ -788,3 +791,10 @@ async def test_fetch_period_api_with_include_order(hass, hass_client):
         params={"filter_entity_id": "non.existing,something.else"},
     )
     assert response.status == 200
+
+
+def get_state_without_context_id(hass, entity_id):
+    """Remove the context id from a state."""
+    state_dict = hass.states.get(entity_id).as_dict()
+    state_dict["context"]["id"] = None
+    return ha.State.from_dict(state_dict)

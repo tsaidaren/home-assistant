@@ -2,6 +2,7 @@
 from collections import defaultdict
 from datetime import timedelta
 from itertools import groupby
+import json
 import logging
 import time
 from typing import Optional, cast
@@ -22,7 +23,7 @@ from homeassistant.const import (
     CONF_INCLUDE,
     HTTP_BAD_REQUEST,
 )
-from homeassistant.core import split_entity_id
+from homeassistant.core import Context, State, split_entity_id
 import homeassistant.helpers.config_validation as cv
 import homeassistant.util.dt as dt_util
 
@@ -59,7 +60,6 @@ QUERY_STATES = [
     States.last_changed,
     States.last_updated,
     States.created,
-    States.context_id,
     States.context_user_id,
 ]
 
@@ -271,7 +271,7 @@ def _get_states_with_session(
 
     return [
         state
-        for state in (States.to_native(row) for row in execute(query, to_native=False))
+        for state in (to_state(row) for row in execute(query, to_native=False))
         if not state.attributes.get(ATTR_HIDDEN, False)
     ]
 
@@ -330,9 +330,7 @@ def _sorted_states_to_json(
             ent_results.extend(
                 [
                     native_state
-                    for native_state in (
-                        States.to_native(db_state) for db_state in group
-                    )
+                    for native_state in (to_state(db_state) for db_state in group)
                     if (
                         domain != SCRIPT_DOMAIN
                         or native_state.attributes.get(ATTR_CAN_CANCEL)
@@ -347,16 +345,16 @@ def _sorted_states_to_json(
         # in-between only provide the "state" and the
         # "last_changed".
         if not ent_results:
-            ent_results.append(States.to_native(next(group)))
+            ent_results.append(to_state(next(group)))
 
         initial_state = ent_results[-1]
         prev_state = ent_results[-1]
         initial_state_count = len(ent_results)
 
         for db_state in group:
-            if ATTR_HIDDEN in db_state.attributes and States.to_native(
-                db_state
-            ).attributes.get(ATTR_HIDDEN, False):
+            if ATTR_HIDDEN in db_state.attributes and to_state(db_state).attributes.get(
+                ATTR_HIDDEN, False
+            ):
                 continue
 
             # With minimal response we do not care about attribute
@@ -382,7 +380,7 @@ def _sorted_states_to_json(
             # There was at least one state change
             # replace the last minimal state with
             # a full state
-            ent_results[-1] = States.to_native(prev_state)
+            ent_results[-1] = to_state(prev_state)
 
     # Filter out the empty lists if some states had 0 results.
     return {key: val for key, val in result.items() if val}
@@ -594,3 +592,15 @@ class Filters:
         if self.excluded_entities:
             query = query.filter(~States.entity_id.in_(self.excluded_entities))
         return query
+
+
+def to_state(dbstate):
+    """Create a state object from the db row."""
+    return State(
+        dbstate.entity_id,
+        dbstate.state,
+        json.loads(dbstate.attributes),
+        process_timestamp(dbstate.last_changed),
+        process_timestamp(dbstate.last_updated),
+        context=Context(id=None, user_id=dbstate.context_user_id),
+    )
