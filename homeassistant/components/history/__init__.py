@@ -599,7 +599,8 @@ class HistoryState:
     __slots__ = [
         "entity_id",
         "state",
-        "attributes",
+        "_attributes",
+        "_decoded_attributes",
         "last_changed",
         "last_updated",
     ]
@@ -610,9 +611,17 @@ class HistoryState:
         """Initialize a new state."""
         self.entity_id = row.entity_id
         self.state = row.state
-        self.attributes = json.loads(row.attributes)
+        self._attributes = row.attributes
+        self._decoded_attributes = None
         self.last_updated = process_timestamp(row.last_changed)
         self.last_changed = process_timestamp(row.last_updated)
+
+    @property
+    def attributes(self):
+        """Lazy attributes."""
+        if self._decoded_attributes is None:
+            self._decoded_attributes = json.loads(self._attributes)
+        return self._decoded_attributes
 
     def as_dict(self):
         """Return a dict representation of the State.
