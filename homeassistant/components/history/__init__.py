@@ -599,8 +599,7 @@ class HistoryState:
     __slots__ = [
         "entity_id",
         "state",
-        "_attributes",
-        "_decoded_attributes",
+        "attributes",
         "last_changed",
         "last_updated",
     ]
@@ -611,17 +610,12 @@ class HistoryState:
         """Initialize a new state."""
         self.entity_id = row.entity_id
         self.state = row.state
-        self._attributes = row.attributes
-        self._decoded_attributes = None
+        self.attributes = json.loads(row.attributes)
         self.last_updated = process_timestamp(row.last_changed)
-        self.last_changed = process_timestamp(row.last_updated)
-
-    @property
-    def attributes(self):
-        """Lazy attributes."""
-        if self._decoded_attributes is None:
-            self._decoded_attributes = json.loads(self._attributes)
-        return self._decoded_attributes
+        if row.last_changed == row.last_updated:
+            self.last_changed = self.last_updated
+        else:
+            self.last_changed = process_timestamp(row.last_updated)
 
     def as_dict(self):
         """Return a dict representation of the State.
@@ -633,9 +627,9 @@ class HistoryState:
         return {
             "entity_id": self.entity_id,
             "state": self.state,
-            "attributes": dict(self.attributes),
-            "last_changed": self.last_changed,
-            "last_updated": self.last_updated,
+            "attributes": self.attributes,
+            "last_changed": self.last_changed.isoformat(),
+            "last_updated": self.last_updated.isoformat(),
         }
 
     def __eq__(self, other):
