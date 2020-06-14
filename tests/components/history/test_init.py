@@ -1,10 +1,12 @@
 """The tests the History component."""
 # pylint: disable=protected-access,invalid-name
+import collections
 from datetime import timedelta
 import json
 import unittest
 
 from homeassistant.components import history, recorder
+from homeassistant.components.history import HistoryState
 from homeassistant.components.recorder.models import process_timestamp
 import homeassistant.core as ha
 from homeassistant.helpers.json import JSONEncoder
@@ -76,10 +78,7 @@ class TestComponentHistory(unittest.TestCase):
 
                 mock_state_change_event(self.hass, state)
 
-                state_dict = state.as_dict()
-                state_dict["context"]["id"] = None
-                state = ha.State.from_dict(state_dict)
-                states.append(state)
+                states.append(state_to_history_state(state))
 
             wait_recording_done(self.hass)
 
@@ -154,6 +153,13 @@ class TestComponentHistory(unittest.TestCase):
 
         hist = history.state_changes_during_period(self.hass, start, end, entity_id)
 
+        import pprint
+
+        for s in states:
+            pprint.pprint(s.as_dict())
+
+        for s in hist[entity_id]:
+            pprint.pprint(s.as_dict())
         assert states == hist[entity_id]
 
     def test_get_last_state_changes(self):
@@ -795,6 +801,17 @@ async def test_fetch_period_api_with_include_order(hass, hass_client):
 
 def get_state_without_context_id(hass, entity_id):
     """Remove the context id from a state."""
-    state_dict = hass.states.get(entity_id).as_dict()
-    state_dict["context"]["id"] = None
-    return ha.State.from_dict(state_dict)
+    return state_to_history_state(hass.states.get(entity_id))
+
+
+def state_to_history_state(state):
+    """Convert a core state to a history state."""
+    row = collections.namedtuple(
+        "State", ["entity_id", "state", "attributes", "last_changed", "last_updated"]
+    )
+    row.entity_id = state.entity_id
+    row.state = state.state
+    row.attributes = json.dumps(dict(state.attributes))
+    row.last_changed = state.last_changed
+    row.last_updated = state.last_updated
+    return HistoryState(row)
