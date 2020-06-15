@@ -78,7 +78,7 @@ class TestComponentHistory(unittest.TestCase):
 
                 mock_state_change_event(self.hass, state)
 
-                states.append(state_to_history_state(state))
+                states.append(state)
 
             wait_recording_done(self.hass)
 
@@ -231,14 +231,14 @@ class TestComponentHistory(unittest.TestCase):
         # pre-encoded last_changed is always the same as what
         # will happen with encoding a native state
         input_state = states["media_player.test"][1]
-        orig_last_changed = json.dumps(
-            process_timestamp(input_state.last_changed), cls=JSONEncoder,
-        ).replace('"', "")
-        orig_state = input_state.state
         states["media_player.test"][1] = {
-            "last_changed": orig_last_changed,
-            "state": orig_state,
+            "last_changed": input_state["last_changed"],
+            "state": input_state["state"],
         }
+        import pprint
+
+        pprint.pprint(states)
+        pprint.pprint(hist)
 
         assert states == hist
 
@@ -814,4 +814,4 @@ def state_to_history_state(state):
     row.attributes = json.dumps(dict(state.attributes))
     row.last_changed = state.last_changed
     row.last_updated = state.last_updated
-    return HistoryState(row)
+    return HistoryState(row).as_dict()

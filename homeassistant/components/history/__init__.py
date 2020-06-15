@@ -62,6 +62,12 @@ QUERY_STATES = [
     States.created,
 ]
 
+QUERY_CONTEXT_STATES = [
+    *QUERY_STATES,
+    States.context_id,
+    States.context_user_id,
+]
+
 
 def get_significant_states(hass, *args, **kwargs):
     """Wrap _get_significant_states with a sql session."""
@@ -130,7 +136,7 @@ def state_changes_during_period(hass, start_time, end_time=None, entity_id=None)
     """Return states changes during UTC period start_time - end_time."""
 
     with session_scope(hass=hass) as session:
-        query = session.query(*QUERY_STATES).filter(
+        query = session.query(*QUERY_CONTEXT_STATES).filter(
             (States.last_changed == States.last_updated)
             & (States.last_updated > start_time)
         )
@@ -156,7 +162,7 @@ def get_last_state_changes(hass, number_of_states, entity_id):
     start_time = dt_util.utcnow()
 
     with session_scope(hass=hass) as session:
-        query = session.query(*QUERY_STATES).filter(
+        query = session.query(*QUERY_CONTEXT_STATES).filter(
             States.last_changed == States.last_updated
         )
 
@@ -209,7 +215,7 @@ def _get_states_with_session(
         if run is None:
             return []
 
-    query = session.query(*QUERY_STATES)
+    query = session.query(*QUERY_CONTEXT_STATES)
 
     if entity_ids and len(entity_ids) == 1:
         # Use an entirely different (and extremely fast) query if we only
@@ -270,7 +276,7 @@ def _get_states_with_session(
 
     return [
         state
-        for state in (HistoryState(row) for row in execute(query, to_native=False))
+        for state in (States.to_native(row) for row in execute(query, to_native=False))
         if not state.attributes.get(ATTR_HIDDEN, False)
     ]
 
@@ -311,7 +317,7 @@ def _sorted_states_to_json(
         ):
             state.last_changed = start_time
             state.last_updated = start_time
-            result[state.entity_id].append(state)
+            result[state.entity_id].append(state.as_dict())
 
     if _LOGGER.isEnabledFor(logging.DEBUG):
         elapsed = time.perf_counter() - timer_start
@@ -328,7 +334,7 @@ def _sorted_states_to_json(
         if not minimal_response or domain in NEED_ATTRIBUTE_DOMAINS:
             ent_results.extend(
                 [
-                    native_state
+                    native_state.as_dict()
                     for native_state in (HistoryState(db_state) for db_state in group)
                     if (
                         domain != SCRIPT_DOMAIN
@@ -351,9 +357,9 @@ def _sorted_states_to_json(
         initial_state_count = len(ent_results)
 
         for db_state in group:
-            if ATTR_HIDDEN in db_state.attributes and HistoryState(
-                db_state
-            ).attributes.get(ATTR_HIDDEN, False):
+            if ATTR_HIDDEN in db_state.attributes and _decode_attributes(
+                db_state.attributes
+            ).get(ATTR_HIDDEN, False):
                 continue
 
             # With minimal response we do not care about attribute
@@ -379,7 +385,10 @@ def _sorted_states_to_json(
             # There was at least one state change
             # replace the last minimal state with
             # a full state
-            ent_results[-1] = HistoryState(prev_state)
+            ent_results[-1] = HistoryState(prev_state).as_dict()
+
+        if ent_results and not isinstance(ent_results[0], dict):
+            ent_results[0] = ent_results[0].as_dict()
 
     # Filter out the empty lists if some states had 0 results.
     return {key: val for key, val in result.items() if val}
@@ -610,7 +619,7 @@ class HistoryState:
         """Initialize a new state."""
         self.entity_id = row.entity_id
         self.state = row.state
-        self.attributes = json.loads(row.attributes)
+        self.attributes = _decode_attributes(row.attributes)
         self.last_updated = process_timestamp(row.last_changed)
         if row.last_changed == row.last_updated:
             self.last_changed = self.last_updated
@@ -640,3 +649,12 @@ class HistoryState:
             and self.state == other.state
             and self.attributes == other.attributes
         )
+
+
+def _decode_attributes(attributes):
+    """Decode attributes from json in the database."""
+    try:
+        return json.loads(attributes)
+    except ValueError:
+        _LOGGER.exception("Error converting attributes from json: %s", attributes)
+        return {}
