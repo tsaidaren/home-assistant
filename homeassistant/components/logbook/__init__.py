@@ -385,8 +385,10 @@ def _get_events(hass, config, start_day, end_day, entity_id=None):
     with session_scope(hass=hass) as session:
         if entity_id is not None:
             entity_ids = [entity_id.lower()]
-        else:
+        elif config.get(CONF_EXCLUDE) or config.get(CONF_INCLUDE):
             entity_ids = _get_related_entity_ids(session, entities_filter)
+        else:
+            entity_ids = None
 
         query = (
             session.query(
@@ -404,14 +406,21 @@ def _get_events(hass, config, start_day, end_day, entity_id=None):
                 Events.event_type.in_(ALL_EVENT_TYPES + list(hass.data.get(DOMAIN, {})))
             )
             .filter((Events.time_fired > start_day) & (Events.time_fired < end_day))
-            .filter(
+        )
+
+        if entity_ids:
+            query = query.filter(
                 (
                     (States.last_updated == States.last_changed)
                     & States.entity_id.in_(entity_ids)
                 )
                 | (States.state_id.is_(None))
             )
-        )
+        else:
+            query = query.filter(
+                (States.last_updated == States.last_changed)
+                | (States.state_id.is_(None))
+            )
 
         prev_states = {}
         return list(humanify(hass, yield_events(query), prev_states))
