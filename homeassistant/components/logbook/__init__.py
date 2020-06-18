@@ -374,13 +374,17 @@ def _generate_filter_from_config(config):
 
 def _get_events(hass, config, start_day, end_day, entity_id=None):
     """Get events for a period of time."""
+    import cProfile
+
+    pr = cProfile.Profile()
+    pr.enable()
     entities_filter = _generate_filter_from_config(config)
 
     def yield_events(query):
         """Yield Events that are not filtered away."""
         for row in query.yield_per(1000):
-            event = LazyEventPartialState(row)
-            if _keep_event(hass, event, entities_filter):
+            event = _row_to_eventstate(hass, row, entities_filter)
+            if event is not None:
                 yield event
 
     with session_scope(hass=hass) as session:
@@ -405,6 +409,7 @@ def _get_events(hass, config, start_day, end_day, entity_id=None):
                 States.domain,
                 States.attributes,
                 old_state.state_id.label("old_state_id"),
+                old_state.state.label("old_state"),
             )
             .order_by(Events.time_fired)
             .outerjoin(States, (Events.event_id == States.event_id))
@@ -430,7 +435,11 @@ def _get_events(hass, config, start_day, end_day, entity_id=None):
             )
 
         prev_states = {}
-        return list(humanify(hass, yield_events(query), prev_states))
+        result = list(humanify(hass, yield_events(query), prev_states))
+        pr.disable()
+        pr.create_stats()
+        pr.dump_stats("logbook.cprof")
+        return result
 
 
 def _get_attribute(hass, entity_id, event, attribute):
@@ -440,42 +449,60 @@ def _get_attribute(hass, entity_id, event, attribute):
     return current_state.attributes.get(attribute, None)
 
 
-def _keep_event(hass, event, entities_filter):
-
-    if event.event_type == EVENT_STATE_CHANGED:
-        entity_id = event.entity_id
+def _row_to_eventstate(hass, row, entities_filter):
+    if row.event_type == EVENT_STATE_CHANGED:
+        entity_id = row.entity_id
         if entity_id is None:
-            return False
+            return None
 
         # Do not report on new entities
         # Do not report on entity removal
-        if not event.has_old_and_new_state:
-            return False
+        if not _state_change_event_has_old_and_new_state(row):
+            return None
 
+        # Do not report when state does not change
+        if row.state == row.old_state:
+            return None
+
+        event = LazyEventPartialState(row)
         # exclude entities which are customized hidden
         if event.hidden:
             return False
-
-    elif event.event_type == EVENT_LOGBOOK_ENTRY:
-        event_data = event.data
-        domain = event_data.get(ATTR_DOMAIN)
-        entity_id = None
-    elif event.event_type in hass.data.get(DOMAIN, {}) and not event.data.get(
-        "entity_id"
-    ):
-        # If the entity_id isn't described, use the domain that describes
-        # the event for filtering.
-        domain = hass.data[DOMAIN][event.event_type][0]
-        entity_id = None
     else:
-        event_data = event.data
-        domain = event_data.get(ATTR_DOMAIN)
-        entity_id = event_data.get("entity_id")
+        event = LazyEventPartialState(row)
+        if event.event_type == EVENT_LOGBOOK_ENTRY:
 
-    if not entity_id and domain:
-        entity_id = f"{domain}."
+            event_data = event.data
+            domain = event_data.get(ATTR_DOMAIN)
+            entity_id = f"{domain}." if domain else None
+        elif event.event_type in hass.data.get(DOMAIN, {}) and not event.data.get(
+            "entity_id"
+        ):
+            # If the entity_id isn't described, use the domain that describes
+            # the event for filtering.
+            domain = hass.data[DOMAIN][event.event_type][0]
+            entity_id = f"{domain}." if domain else None
+        else:
+            event_data = event.data
+            domain = event_data.get(ATTR_DOMAIN)
+            entity_id = event_data.get("entity_id")
+            if not entity_id and domain:
+                entity_id = f"{domain}."
 
-    return not entity_id or entities_filter(entity_id)
+    if not entity_id or entities_filter(entity_id):
+        return event
+
+    return None
+
+
+def _state_change_event_has_old_and_new_state(row):
+    """Check a row to see if there is an old and new state."""
+    if row.event_data != "{}":
+        # Legacy check for old data before schema v8
+        return '"old_state": {' in row.event_data and '"new_state": {' in row.event_data
+
+    # v8 schema and later
+    return row.state_id is not None and row.old_state_id is not None
 
 
 def _entry_message_from_event(hass, entity_id, domain, event):
@@ -630,17 +657,6 @@ class LazyEventPartialState:
                 process_timestamp(self._row.time_fired) or dt_util.utcnow()
             )
         return self._time_fired
-
-    @property
-    def has_old_and_new_state(self):
-        """Check the json data to see if new_state and old_state is present without decoding."""
-        if self._row.event_data == "{}":
-            return self._row.state_id is not None and self._row.old_state_id is not None
-
-        return (
-            '"old_state": {' in self._row.event_data
-            and '"new_state": {' in self._row.event_data
-        )
 
     @property
     def hidden(self):

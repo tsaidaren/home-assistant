@@ -172,7 +172,7 @@ class TestComponentLogbook(unittest.TestCase):
                 eventA,
                 eventB,
             )
-            if logbook._keep_event(self.hass, e, entities_filter)
+            if logbook._row_to_eventstate(self.hass, e, entities_filter) is not None
         ]
         entries = list(logbook.humanify(self.hass, events))
 
@@ -207,7 +207,7 @@ class TestComponentLogbook(unittest.TestCase):
                 eventA,
                 eventB,
             )
-            if logbook._keep_event(self.hass, e, entities_filter)
+            if logbook._row_to_eventstate(self.hass, e, entities_filter) is not None
         ]
         entries = list(logbook.humanify(self.hass, events))
 
@@ -239,7 +239,7 @@ class TestComponentLogbook(unittest.TestCase):
                 eventA,
                 eventB,
             )
-            if logbook._keep_event(self.hass, e, entities_filter)
+            if logbook._row_to_eventstate(self.hass, e, entities_filter) is not None
         ]
         entries = list(logbook.humanify(self.hass, events))
 
@@ -277,7 +277,7 @@ class TestComponentLogbook(unittest.TestCase):
                 eventA,
                 eventB,
             )
-            if logbook._keep_event(self.hass, e, entities_filter)
+            if logbook._row_to_eventstate(self.hass, e, entities_filter) is not None
         ]
         entries = list(logbook.humanify(self.hass, events))
 
@@ -316,7 +316,7 @@ class TestComponentLogbook(unittest.TestCase):
                 eventA,
                 eventB,
             )
-            if logbook._keep_event(self.hass, e, entities_filter)
+            if logbook._row_to_eventstate(self.hass, e, entities_filter) is not None
         ]
         entries = list(logbook.humanify(self.hass, events))
 
@@ -354,7 +354,7 @@ class TestComponentLogbook(unittest.TestCase):
                 eventA,
                 eventB,
             )
-            if logbook._keep_event(self.hass, e, entities_filter)
+            if logbook._row_to_eventstate(self.hass, e, entities_filter) is not None
         ]
         entries = list(logbook.humanify(self.hass, events))
 
@@ -399,7 +399,7 @@ class TestComponentLogbook(unittest.TestCase):
                 eventA,
                 eventB,
             )
-            if logbook._keep_event(self.hass, e, entities_filter)
+            if logbook._row_to_eventstate(self.hass, e, entities_filter) is not None
         ]
         entries = list(logbook.humanify(self.hass, events))
 
@@ -452,7 +452,7 @@ class TestComponentLogbook(unittest.TestCase):
                 eventB1,
                 eventB2,
             )
-            if logbook._keep_event(self.hass, e, entities_filter)
+            if logbook._row_to_eventstate(self.hass, e, entities_filter) is not None
         ]
         entries = list(logbook.humanify(self.hass, events))
 
@@ -498,7 +498,7 @@ class TestComponentLogbook(unittest.TestCase):
         events = [
             e
             for e in (eventA, eventB)
-            if logbook._keep_event(self.hass, e, entities_filter)
+            if logbook._row_to_eventstate(self.hass, e, entities_filter) is not None
         ]
         entries = list(logbook.humanify(self.hass, events))
 
