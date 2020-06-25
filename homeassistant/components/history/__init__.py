@@ -495,6 +495,10 @@ class HistoryPeriodView(HomeAssistantView):
     ):
         """Fetch significant stats from the database as json."""
         timer_start = time.perf_counter()
+        import cProfile
+
+        pr = cProfile.Profile()
+        pr.enable()
 
         with session_scope(hass=hass) as session:
             result = _get_significant_states(
@@ -527,7 +531,11 @@ class HistoryPeriodView(HomeAssistantView):
             sorted_result.extend(result)
             result = sorted_result
 
-        return self.json(result)
+        result = self.json(result)
+        pr.disable()
+        pr.create_stats()
+        pr.dump_stats("history.cprof")
+        return result
 
 
 class Filters:
@@ -668,6 +676,33 @@ class LazyState(State):
     def last_updated(self, value):
         """Set last updated datetime."""
         self._last_updated = value
+
+    def as_dict(self):
+        """Return a dict representation of the State.
+
+        Async friendly.
+
+        To be used for JSON serialization.
+        """
+        if self._last_changed:
+            last_changed_isoformat = self._last_changed.isoformat()
+        else:
+            last_changed_isoformat = process_timestamp_to_utc_isoformat(
+                self._row.last_changed
+            )
+        if self._last_updated:
+            last_updated_isoformat = self._last_updated.isoformat()
+        else:
+            last_updated_isoformat = process_timestamp_to_utc_isoformat(
+                self._row.last_updated
+            )
+        return {
+            "entity_id": self.entity_id,
+            "state": self.state,
+            "attributes": dict(self._attributes or self.attributes),
+            "last_changed": last_changed_isoformat,
+            "last_updated": last_updated_isoformat,
+        }
 
     def __eq__(self, other):
         """Return the comparison."""
