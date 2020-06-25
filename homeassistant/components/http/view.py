@@ -43,12 +43,15 @@ class HomeAssistantView:
 
     @staticmethod
     def json(
-        result: Any, status_code: int = HTTP_OK, headers: Optional[LooseHeaders] = None,
+        result: Any,
+        status_code: int = HTTP_OK,
+        headers: Optional[LooseHeaders] = None,
+        json_encoder: Any = None,
     ) -> web.Response:
         """Return a JSON response."""
         try:
             msg = json.dumps(
-                result, sort_keys=True, cls=JSONEncoder, allow_nan=False
+                result, sort_keys=True, cls=json_encoder or JSONEncoder, allow_nan=False
             ).encode("UTF-8")
         except (ValueError, TypeError) as err:
             _LOGGER.error("Unable to serialize to JSON: %s\n%s", err, result)

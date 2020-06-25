@@ -28,6 +28,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import Context, State, split_entity_id
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.json import JSONEncoder
 import homeassistant.util.dt as dt_util
 
 # mypy: allow-untyped-defs, no-check-untyped-defs
@@ -60,6 +61,10 @@ _FILTER_SCHEMA = vol.Schema(
 )
 
 CONFIG_SCHEMA = vol.Schema({DOMAIN: _FILTER_SCHEMA}, extra=vol.ALLOW_EXTRA)
+
+STATE_ATTRIBUTES_PLACEHOLDER = "[__STATE_ATTRIBUTES__]"
+
+EMPTY_JSON_OBJECT = "{}"
 
 SIGNIFICANT_DOMAINS = (
     "climate",
@@ -531,7 +536,7 @@ class HistoryPeriodView(HomeAssistantView):
             sorted_result.extend(result)
             result = sorted_result
 
-        result = self.json(result)
+        result = self.json(result, json_encoder=HistoryJSONEncoder)
         pr.disable()
         pr.create_stats()
         pr.dump_stats("history.cprof")
@@ -677,7 +682,7 @@ class LazyState(State):
         """Set last updated datetime."""
         self._last_updated = value
 
-    def as_dict(self):
+    def as_json(self):
         """Return a dict representation of the State.
 
         Async friendly.
@@ -696,13 +701,17 @@ class LazyState(State):
             last_updated_isoformat = process_timestamp_to_utc_isoformat(
                 self._row.last_updated
             )
-        return {
-            "entity_id": self.entity_id,
-            "state": self.state,
-            "attributes": dict(self._attributes or self.attributes),
-            "last_changed": last_changed_isoformat,
-            "last_updated": last_updated_isoformat,
-        }
+        json.dumps(
+            {
+                "entity_id": self.entity_id,
+                "state": self.state,
+                "attributes": STATE_ATTRIBUTES_PLACEHOLDER,
+                "last_changed": last_changed_isoformat,
+                "last_updated": last_updated_isoformat,
+            }
+        ).replace(
+            STATE_ATTRIBUTES_PLACEHOLDER, self._row.attributes or EMPTY_JSON_OBJECT
+        )
 
     def __eq__(self, other):
         """Return the comparison."""
@@ -712,3 +721,18 @@ class LazyState(State):
             and self.state == other.state
             and self.attributes == other.attributes
         )
+
+
+class HistoryJSONEncoder(JSONEncoder):
+    """JSONEncoder that supports Home Assistant objects."""
+
+    # pylint: disable=method-hidden
+    def encode(self, o):
+        """Convert History Objects to json.
+
+        Hand other objects to the original method.
+        """
+        if hasattr(o, "as_json"):
+            return o.as_json()
+
+        return JSONEncoder.encode(self, o)
