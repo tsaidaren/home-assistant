@@ -39,7 +39,7 @@ class Events(Base):  # type: ignore
     event_type = Column(String(32))
     event_data = Column(Text)
     origin = Column(String(32))
-    time_fired = Column(DateTime(timezone=True), index=True)
+    time_fired = Column(DateTime(timezone=True))
     created = Column(DateTime(timezone=True), default=dt_util.utcnow)
     context_id = Column(String(36), index=True)
     context_user_id = Column(String(36), index=True)
@@ -107,10 +107,9 @@ class States(Base):  # type: ignore
     )
 
     @staticmethod
-    def from_event(event):
-        """Create object from a state_changed event."""
+    def from_event_with_attributes(event, state, attributes):
+        """Create object from a state_changed event with a state."""
         entity_id = event.data["entity_id"]
-        state = event.data.get("new_state")
 
         dbstate = States(entity_id=entity_id)
 
@@ -124,11 +123,22 @@ class States(Base):  # type: ignore
         else:
             dbstate.domain = state.domain
             dbstate.state = state.state
-            dbstate.attributes = json.dumps(dict(state.attributes), cls=JSONEncoder)
+            dbstate.attributes = json.dumps(dict(attributes), cls=JSONEncoder)
             dbstate.last_changed = state.last_changed
             dbstate.last_updated = state.last_updated
 
         return dbstate
+
+    @staticmethod
+    def from_event(event):
+        """Create object from a state_changed event."""
+        new_state = event.data.get("new_state")
+        if new_state:
+            return States.from_event_with_attributes(
+                event, new_state, new_state.attributes
+            )
+
+        return States.from_event_with_attributes(event, None, None)
 
     def to_native(self, validate_entity_id=True):
         """Convert to an HA state object."""
