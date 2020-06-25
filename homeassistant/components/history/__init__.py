@@ -735,4 +735,4 @@ class HistoryJSONEncoder(JSONEncoder):
         if hasattr(o, "as_json"):
             return o.as_json()
 
-        return JSONEncoder.iterencode(self, o, kwargs)
+        return JSONEncoder.iterencode(self, o, **kwargs)
