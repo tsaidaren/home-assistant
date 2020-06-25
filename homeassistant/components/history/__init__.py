@@ -727,7 +727,7 @@ class HistoryJSONEncoder(JSONEncoder):
     """JSONEncoder that supports Home Assistant objects."""
 
     # pylint: disable=method-hidden
-    def iterencode(self, o):
+    def iterencode(self, o, **kwargs):
         """Convert History Objects to json.
 
         Hand other objects to the original method.
@@ -735,4 +735,4 @@ class HistoryJSONEncoder(JSONEncoder):
         if hasattr(o, "as_json"):
             return o.as_json()
 
-        return JSONEncoder.iterencode(self, o)
+        return JSONEncoder.iterencode(self, o, kwargs)
