@@ -3,6 +3,7 @@
 from datetime import datetime, timedelta
 
 from astral import Astral
+import asynctest
 import pytest
 
 from homeassistant.components import sun
@@ -38,11 +39,12 @@ def teardown():
     dt_util.set_default_time_zone(DEFAULT_TIME_ZONE)
 
 
-async def test_track_point_in_time(hass):
+async def test_track_point_in_time(hass, advance_time):
     """Test track point in time."""
-    before_birthday = datetime(1985, 7, 9, 12, 0, 0, tzinfo=dt_util.UTC)
-    birthday_paulus = datetime(1986, 7, 9, 12, 0, 0, tzinfo=dt_util.UTC)
-    after_birthday = datetime(1987, 7, 9, 12, 0, 0, tzinfo=dt_util.UTC)
+    now = dt_util.utcnow()
+    before_birthday = datetime(now.year + 1, 7, 9, 12, 0, 0, tzinfo=dt_util.UTC)
+    birthday_paulus = datetime(now.year + 2, 7, 9, 12, 0, 0, tzinfo=dt_util.UTC)
+    after_birthday = datetime(now.year + 3, 7, 9, 12, 0, 0, tzinfo=dt_util.UTC)
 
     runs = []
 
@@ -50,16 +52,20 @@ async def test_track_point_in_time(hass):
         hass, callback(lambda x: runs.append(1)), birthday_paulus
     )
 
-    async_fire_time_changed(hass, before_birthday)
+    await advance_time((before_birthday - dt_util.utcnow()).total_seconds())
     await hass.async_block_till_done()
     assert len(runs) == 0
 
-    async_fire_time_changed(hass, birthday_paulus)
+    new_time = (birthday_paulus - dt_util.utcnow()).total_seconds()
+    import pprint
+
+    pprint.pprint(new_time)
+    await advance_time(new_time)
     await hass.async_block_till_done()
     assert len(runs) == 1
+    assert 0
 
     # A point in time tracker will only fire once, this should do nothing
-    async_fire_time_changed(hass, birthday_paulus)
     await hass.async_block_till_done()
     assert len(runs) == 1
 
@@ -67,7 +73,7 @@ async def test_track_point_in_time(hass):
         hass, callback(lambda x: runs.append(1)), birthday_paulus
     )
 
-    async_fire_time_changed(hass, after_birthday)
+    await advance_time((after_birthday - dt_util.utcnow()).total_seconds())
     await hass.async_block_till_done()
     assert len(runs) == 2
 
@@ -76,6 +82,7 @@ async def test_track_point_in_time(hass):
     )
     unsub()
 
+    await advance_time((after_birthday - dt_util.utcnow()).total_seconds())
     async_fire_time_changed(hass, after_birthday)
     await hass.async_block_till_done()
     assert len(runs) == 2
@@ -311,7 +318,7 @@ async def test_track_template(hass):
     assert len(wildercard_runs) == 2
 
 
-async def test_track_same_state_simple_trigger(hass):
+async def test_track_same_state_simple_trigger(hass, advance_time):
     """Test track_same_change with trigger simple."""
     thread_runs = []
     callback_runs = []
@@ -355,16 +362,16 @@ async def test_track_same_state_simple_trigger(hass):
     assert len(callback_runs) == 0
     assert len(coroutine_runs) == 0
 
+    now = dt_util.utcnow()
     # change time to track and see if they trigger
-    future = dt_util.utcnow() + period
-    async_fire_time_changed(hass, future)
+    await advance_time(((now + period) - now).total_seconds())
     await hass.async_block_till_done()
     assert len(thread_runs) == 1
     assert len(callback_runs) == 1
     assert len(coroutine_runs) == 1
 
 
-async def test_track_same_state_simple_no_trigger(hass):
+async def test_track_same_state_simple_no_trigger(hass, advance_time):
     """Test track_same_change with no trigger."""
     callback_runs = []
     period = timedelta(minutes=1)
@@ -393,12 +400,12 @@ async def test_track_same_state_simple_no_trigger(hass):
 
     # change time to track and see if they trigger
     future = dt_util.utcnow() + period
-    async_fire_time_changed(hass, future)
+    await advance_time((future - dt_util.utcnow()).total_seconds())
     await hass.async_block_till_done()
     assert len(callback_runs) == 0
 
 
-async def test_track_same_state_simple_trigger_check_funct(hass):
+async def test_track_same_state_simple_trigger_check_funct(hass, advance_time):
     """Test track_same_change with trigger and check funct."""
     callback_runs = []
     check_func = []
@@ -430,7 +437,7 @@ async def test_track_same_state_simple_trigger_check_funct(hass):
 
     # change time to track and see if they trigger
     future = dt_util.utcnow() + period
-    async_fire_time_changed(hass, future)
+    await advance_time((future - dt_util.utcnow()).total_seconds())
     await hass.async_block_till_done()
     assert len(callback_runs) == 1
 

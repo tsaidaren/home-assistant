@@ -1,4 +1,5 @@
 """Set up some common test helper things."""
+import asyncio
 import functools
 import logging
 
@@ -315,3 +316,51 @@ async def mqtt_mock(hass, mqtt_client_mock, mqtt_config):
     component = hass.data["mqtt"]
     component.reset_mock()
     return component
+
+
+@pytest.fixture
+async def advance_time(hass):
+    class Clocker:
+
+        time: float = 0
+
+        def __init__(self, loop: asyncio.BaseEventLoop):
+            self.loop = loop
+            self.loop.time = lambda: self.time
+
+        async def advance(self, seconds: float):
+            if seconds < 0:
+                raise ValueError("Advance time must not be negative")
+            await self._drain_loop()
+
+            target_time = self.time + seconds
+            while True:
+                next_time = self._next_scheduled()
+                if next_time is None or next_time > target_time:
+                    break
+
+                self.time = next_time
+                await self._drain_loop()
+
+            self.time = target_time
+            await self._drain_loop()
+
+        def _next_scheduled(self):
+            try:
+                return self.loop._scheduled[0]._when
+            except IndexError:
+                return None
+
+        async def _drain_loop(self):
+            while True:
+                import pprint
+
+                next_time = self._next_scheduled()
+                pprint.pprint(["drain", next_time, self.time, self.loop._ready])
+                if not self.loop._ready and (
+                    next_time is None or next_time > self.time
+                ):
+                    break
+                await asyncio.sleep(0)
+
+    yield Clocker(hass.loop).advance
