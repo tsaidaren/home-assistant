@@ -212,6 +212,8 @@ def process_timestamp_to_utc_isoformat(ts):
     if ts is None:
         return None
     if ts.tzinfo is None:
+        if not dt_util.DEFAULT_TIME_ZONE_IS_UTC:
+            return ts.replace(tzinfo=dt_util.UTC).isoformat()
         return f"{ts.isoformat()}{DB_TIMEZONE}"
 
     return dt_util.as_utc(ts).isoformat()

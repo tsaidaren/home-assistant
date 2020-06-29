@@ -13,7 +13,7 @@ from homeassistant.const import MATCH_ALL
 DATE_STR_FORMAT = "%Y-%m-%d"
 UTC = pytz.utc
 DEFAULT_TIME_ZONE: dt.tzinfo = pytz.utc
-
+DEFAULT_TIME_ZONE_IS_UTC = DEFAULT_TIME_ZONE == pytz.utc
 
 # Copyright (c) Django Software Foundation and individual contributors.
 # All rights reserved.
@@ -32,11 +32,13 @@ def set_default_time_zone(time_zone: dt.tzinfo) -> None:
     Async friendly.
     """
     global DEFAULT_TIME_ZONE  # pylint: disable=global-statement
+    global DEFAULT_TIME_ZONE_IS_UTC  # pylint: disable=global-statement
 
     # NOTE: Remove in the future in favour of typing
     assert isinstance(time_zone, dt.tzinfo)
 
     DEFAULT_TIME_ZONE = time_zone
+    DEFAULT_TIME_ZONE_IS_UTC = DEFAULT_TIME_ZONE == pytz.utc
 
 
 def get_time_zone(time_zone_str: str) -> Optional[dt.tzinfo]:
