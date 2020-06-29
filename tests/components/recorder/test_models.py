@@ -18,7 +18,8 @@ from homeassistant.components.recorder.models import (
 from homeassistant.const import EVENT_STATE_CHANGED
 import homeassistant.core as ha
 from homeassistant.exceptions import InvalidEntityFormatError
-from homeassistant.util import dt
+from homeassistant.util import dt as dt_util
+import homeassistant.util.dt as dt_util
 
 ENGINE = None
 SESSION = None
@@ -241,3 +242,29 @@ async def test_process_timestamp_to_utc_isoformat():
         == "2016-07-09T21:31:00+00:00"
     )
     assert process_timestamp_to_utc_isoformat(None) is None
+
+
+async def test_process_timestamp_to_utc_isoformat_with_non_utc_default_timezone():
+    """Test processing time stamp to UTC isoformat."""
+    datetime_without_tzinfo = datetime(2016, 7, 9, 11, 0, 0)
+
+    time_zone = dt_util.get_time_zone("US/Hawaii")
+    assert time_zone
+
+    dt_util.set_default_time_zone(time_zone)
+    assert dt_util.DEFAULT_TIME_ZONE_IS_UTC is False
+
+    assert (
+        process_timestamp_to_utc_isoformat(datetime_without_tzinfo)
+        == "2016-07-09T11:00:00+00:00"
+    )
+
+    utc_time_zone = dt_util.get_time_zone("UTC")
+
+    dt_util.set_default_time_zone(utc_time_zone)
+    assert dt_util.DEFAULT_TIME_ZONE_IS_UTC is True
+    assert (
+        process_timestamp_to_utc_isoformat(datetime_without_tzinfo)
+        == "2016-07-09T11:00:00+00:00"
+    )
+    assert 0

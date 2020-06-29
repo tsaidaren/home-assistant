@@ -37,6 +37,11 @@ def test_set_default_time_zone():
 
     # We cannot compare the timezones directly because of DST
     assert time_zone.zone == dt_util.now().tzinfo.zone
+    assert dt_util.DEFAULT_TIME_ZONE_IS_UTC is False
+
+    utc_time_zone = dt_util.get_time_zone("UTC")
+    dt_util.set_default_time_zone(utc_time_zone)
+    assert dt_util.DEFAULT_TIME_ZONE_IS_UTC is True
 
 
 def test_utcnow():
