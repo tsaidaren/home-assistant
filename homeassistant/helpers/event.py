@@ -499,15 +499,15 @@ def async_track_utc_time_change(
     matching_minutes = dt_util.parse_time_expression(minute, 0, 59)
     matching_hours = dt_util.parse_time_expression(hour, 0, 23)
 
-    next_time: datetime = dt_util.utcnow()
+    first_now: datetime = dt_util.utcnow()
+    last_now: datetime = first_now
+    next_time: datetime = last_now
     # Store the callback to cancel the TimerHandle
     # in cancel_callback_container so it can be swapped
     # out each time pattern_time_change_listener is called.
     cancel_callback_container: List[asyncio.TimerHandle] = []
     # Make sure rolling back the clock doesn't prevent the timer from
     # triggering.
-    first_now: datetime = next_time
-    last_now: datetime = next_time
 
     def calculate_next(now: datetime) -> None:
         """Calculate and set the next time the trigger should fire."""
