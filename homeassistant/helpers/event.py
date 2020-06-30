@@ -1,9 +1,10 @@
 """Helpers for listening to events."""
+import asyncio
 from datetime import datetime, timedelta
 import functools as ft
 import logging
 import time
-from typing import Any, Awaitable, Callable, Dict, Iterable, Optional, Union
+from typing import Any, Awaitable, Callable, Dict, Iterable, List, Optional, Union
 
 import attr
 
@@ -498,7 +499,15 @@ def async_track_utc_time_change(
     matching_minutes = dt_util.parse_time_expression(minute, 0, 59)
     matching_hours = dt_util.parse_time_expression(hour, 0, 23)
 
-    next_time = None
+    next_time: datetime = dt_util.utcnow()
+    # Store the callback to cancel the TimerHandle
+    # in cancel_callback_container so it can be swapped
+    # out each time pattern_time_change_listener is called.
+    cancel_callback_container: List[asyncio.TimerHandle] = []
+    # Make sure rolling back the clock doesn't prevent the timer from
+    # triggering.
+    first_now: datetime = next_time
+    last_now: datetime = next_time
 
     def calculate_next(now: datetime) -> None:
         """Calculate and set the next time the trigger should fire."""
@@ -509,31 +518,42 @@ def async_track_utc_time_change(
             localized_now, matching_seconds, matching_minutes, matching_hours
         )
 
-    # Make sure rolling back the clock doesn't prevent the timer from
-    # triggering.
-    last_now: Optional[datetime] = None
-
     @callback
-    def pattern_time_change_listener(event: Event) -> None:
+    def pattern_time_change_listener() -> None:
         """Listen for matching time_changed events."""
         nonlocal next_time, last_now
 
-        now = event.data[ATTR_NOW]
+        now = dt_util.utcnow()
 
-        if last_now is None or now < last_now:
-            # Time rolled back or next time not yet calculated
-            calculate_next(now)
+        if last_now <= now:
+            hass.async_run_job(action, dt_util.as_local(now) if local else now)
+            calculate_next(now + timedelta(seconds=1))
 
         last_now = now
 
-        if next_time <= now:
-            hass.async_run_job(action, dt_util.as_local(now) if local else now)
-            calculate_next(now + timedelta(seconds=1))
+        cancel_callback_container[0] = hass.loop.call_at(
+            hass.loop.time() + next_time.timestamp() - time.time(),
+            pattern_time_change_listener,
+        )
+
+    calculate_next(first_now)
 
     # We can't use async_track_point_in_utc_time here because it would
     # break in the case that the system time abruptly jumps backwards.
     # Our custom last_now logic takes care of resolving that scenario.
-    return hass.bus.async_listen(EVENT_TIME_CHANGED, pattern_time_change_listener)
+    cancel_callback_container.append(
+        hass.loop.call_at(
+            hass.loop.time() + next_time.timestamp() - time.time(),
+            pattern_time_change_listener,
+        )
+    )
+
+    @callback
+    def unsub_point_in_time_listener() -> None:
+        """Cancel the call_later."""
+        cancel_callback_container[0].cancel()
+
+    return unsub_point_in_time_listener
 
 
 track_utc_time_change = threaded_listener_factory(async_track_utc_time_change)
