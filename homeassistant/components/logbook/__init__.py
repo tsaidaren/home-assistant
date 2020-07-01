@@ -358,13 +358,14 @@ def _get_events(
                 yield event
 
     with session_scope(hass=hass) as session:
-        apply_sql_filter = True
-        entity_ids = None
-
         if entity_id is not None:
             entity_ids = [entity_id.lower()]
             entities_filter = generate_filter([], entity_ids, [], [])
             apply_sql_filter = False
+        else:
+            entity_ids = None
+            entities_filter = _all_entities_filter
+            apply_sql_filter = True
 
         old_state = aliased(States, name="old_state")
 
