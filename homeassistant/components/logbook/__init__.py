@@ -122,6 +122,8 @@ async def async_setup(hass, config):
 
     conf = config.get(DOMAIN, {})
 
+    _LOGGER.warning("logbook conf: %s", conf)
+
     filters = sqlalchemy_filter_from_include_exclude_conf(conf)
 
     entities_filter = convert_include_exclude_filter(conf)
