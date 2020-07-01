@@ -394,16 +394,9 @@ def get_state(hass, utc_point_in_time, entity_id, run=None):
 
 async def async_setup(hass, config):
     """Set up the history hooks."""
-    filters = Filters()
     conf = config.get(DOMAIN, {})
-    exclude = conf.get(CONF_EXCLUDE)
-    if exclude:
-        filters.excluded_entities = exclude.get(CONF_ENTITIES, [])
-        filters.excluded_domains = exclude.get(CONF_DOMAINS, [])
-    include = conf.get(CONF_INCLUDE)
-    if include:
-        filters.included_entities = include.get(CONF_ENTITIES, [])
-        filters.included_domains = include.get(CONF_DOMAINS, [])
+
+    filters = sqlalchemy_filter_from_include_exclude_conf(conf)
     use_include_order = conf.get(CONF_ORDER)
 
     hass.http.register_view(HistoryPeriodView(filters, use_include_order))
@@ -528,6 +521,20 @@ class HistoryPeriodView(HomeAssistantView):
             result = sorted_result
 
         return self.json(result)
+
+
+def sqlalchemy_filter_from_include_exclude_conf(conf):
+    """Build a sql filter from config."""
+    filters = Filters()
+    exclude = conf.get(CONF_EXCLUDE)
+    if exclude:
+        filters.excluded_entities = exclude.get(CONF_ENTITIES, [])
+        filters.excluded_domains = exclude.get(CONF_DOMAINS, [])
+    include = conf.get(CONF_INCLUDE)
+    if include:
+        filters.included_entities = include.get(CONF_ENTITIES, [])
+        filters.included_domains = include.get(CONF_DOMAINS, [])
+    return filters
 
 
 class Filters:

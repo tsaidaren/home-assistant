@@ -3,15 +3,13 @@ from datetime import timedelta
 from itertools import groupby
 import json
 import logging
-import time
 
 import sqlalchemy
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import aliased
 import voluptuous as vol
 
 from homeassistant.components import sun
-from homeassistant.components.history import Filters
+from homeassistant.components.history import sqlalchemy_filter_from_include_exclude_conf
 from homeassistant.components.http import HomeAssistantView
 from homeassistant.components.recorder.models import (
     Events,
@@ -19,19 +17,13 @@ from homeassistant.components.recorder.models import (
     process_timestamp,
     process_timestamp_to_utc_isoformat,
 )
-from homeassistant.components.recorder.util import (
-    QUERY_RETRY_WAIT,
-    RETRIES,
-    session_scope,
-)
+from homeassistant.components.recorder.util import session_scope
 from homeassistant.const import (
     ATTR_DEVICE_CLASS,
     ATTR_DOMAIN,
     ATTR_ENTITY_ID,
     ATTR_FRIENDLY_NAME,
     ATTR_NAME,
-    CONF_EXCLUDE,
-    CONF_INCLUDE,
     EVENT_HOMEASSISTANT_START,
     EVENT_HOMEASSISTANT_STOP,
     EVENT_LOGBOOK_ENTRY,
@@ -128,18 +120,13 @@ async def async_setup(hass, config):
         "logbook", "logbook", "hass:format-list-bulleted-type"
     )
 
-    filters = Filters()
     conf = config.get(DOMAIN, {})
-    exclude = conf.get(CONF_EXCLUDE)
-    if exclude:
-        filters.excluded_entities = exclude.get(CONF_ENTITIES, [])
-        filters.excluded_domains = exclude.get(CONF_DOMAINS, [])
-    include = conf.get(CONF_INCLUDE)
-    if include:
-        filters.included_entities = include.get(CONF_ENTITIES, [])
-        filters.included_domains = include.get(CONF_DOMAINS, [])
 
-    hass.http.register_view(LogbookView(conf, filters))
+    filters = sqlalchemy_filter_from_include_exclude_conf(conf)
+
+    entities_filter = convert_include_exclude_filter(conf)
+
+    hass.http.register_view(LogbookView(conf, filters, entities_filter))
 
     hass.services.async_register(DOMAIN, "log", log_message, schema=LOG_MESSAGE_SCHEMA)
 
@@ -166,10 +153,11 @@ class LogbookView(HomeAssistantView):
     name = "api:logbook"
     extra_urls = ["/api/logbook/{datetime}"]
 
-    def __init__(self, config, filters):
+    def __init__(self, config, filters, entities_filter):
         """Initialize the logbook view."""
         self.config = config
         self.filters = filters
+        self.entities_filter = entities_filter
 
     async def get(self, request, datetime=None):
         """Retrieve logbook entries."""
@@ -205,7 +193,13 @@ class LogbookView(HomeAssistantView):
             """Fetch events and generate JSON."""
             return self.json(
                 _get_events(
-                    hass, self.config, self.filters, start_day, end_day, entity_id
+                    hass,
+                    self.config,
+                    start_day,
+                    end_day,
+                    entity_id,
+                    self.filters,
+                    self.entities_filter,
                 )
             )
 
@@ -342,40 +336,9 @@ def humanify(hass, events, entity_attr_cache, prev_states=None):
                 }
 
 
-def _get_related_entity_ids(session, entity_filter):
-    timer_start = time.perf_counter()
-
-    query = session.query(States).with_entities(States.entity_id).distinct()
-    xstr = str(query.statement.compile(compile_kwargs={"literal_binds": True}))
-    _LOGGER.warning("Logbook SQL E Query: %s", xstr)
-
-    for tryno in range(RETRIES):
-        try:
-            result = [row.entity_id for row in query if entity_filter(row.entity_id)]
-
-            if _LOGGER.isEnabledFor(logging.DEBUG):
-                elapsed = time.perf_counter() - timer_start
-                _LOGGER.debug(
-                    "fetching %d distinct domain/entity_id pairs took %fs",
-                    len(result),
-                    elapsed,
-                )
-
-            return result
-        except SQLAlchemyError as err:
-            _LOGGER.error("Error executing query: %s", err)
-
-            if tryno == RETRIES - 1:
-                raise
-            time.sleep(QUERY_RETRY_WAIT)
-
-
-def _all_entities_filter(_):
-    """Filter that accepts all entities."""
-    return True
-
-
-def _get_events(hass, config, filters, start_day, end_day, entity_id=None):
+def _get_events(
+    hass, config, start_day, end_day, entity_id=None, filters=None, entities_filter=None
+):
     """Get events for a period of time."""
     import cProfile
 
@@ -392,17 +355,13 @@ def _get_events(hass, config, filters, start_day, end_day, entity_id=None):
                 yield event
 
     with session_scope(hass=hass) as session:
-        apply_filter = False
+        apply_sql_filter = True
+        entity_ids = None
+
         if entity_id is not None:
             entity_ids = [entity_id.lower()]
             entities_filter = generate_filter([], entity_ids, [], [])
-        elif config.get(CONF_EXCLUDE) or config.get(CONF_INCLUDE):
-            entities_filter = convert_include_exclude_filter(config)
-            apply_filter = True
-            entity_ids = None
-        else:
-            entities_filter = _all_entities_filter
-            entity_ids = None
+            apply_sql_filter = False
 
         old_state = aliased(States, name="old_state")
 
@@ -469,7 +428,7 @@ def _get_events(hass, config, filters, start_day, end_day, entity_id=None):
                 | (States.state_id.is_(None))
             )
 
-        if apply_filter:
+        if apply_sql_filter and filters:
             query = filters.apply(query)
 
         xstr = str(query.statement.compile(compile_kwargs={"literal_binds": True}))
