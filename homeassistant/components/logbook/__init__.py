@@ -434,9 +434,6 @@ def _get_events(
         if apply_sql_filter and filters:
             query = filters.apply(query)
 
-        xstr = str(query.statement.compile(compile_kwargs={"literal_binds": True}))
-        _LOGGER.warning("Logbook SQL Query: %s", xstr)
-
         # When all data is schema v8 or later, prev_states can be removed
         prev_states = {}
         return list(humanify(hass, yield_events(query), entity_attr_cache, prev_states))
