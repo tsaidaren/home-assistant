@@ -122,11 +122,12 @@ async def async_setup(hass, config):
 
     conf = config.get(DOMAIN, {})
 
-    _LOGGER.warning("logbook conf: %s", conf)
-
     filters = sqlalchemy_filter_from_include_exclude_conf(conf)
 
-    entities_filter = convert_include_exclude_filter(conf)
+    if conf:
+        entities_filter = convert_include_exclude_filter(conf)
+    else:
+        entities_filter = _all_entities_filter
 
     hass.http.register_view(LogbookView(conf, filters, entities_filter))
 
@@ -336,6 +337,11 @@ def humanify(hass, events, entity_attr_cache, prev_states=None):
                     "domain": domain,
                     "entity_id": entity_id,
                 }
+
+
+def _all_entities_filter(_):
+    """Filter that accepts all entities."""
+    return True
 
 
 def _get_events(
