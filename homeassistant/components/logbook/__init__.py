@@ -356,10 +356,10 @@ def _get_events(
         if entity_id is not None:
             entity_ids = [entity_id.lower()]
             entities_filter = generate_filter([], entity_ids, [], [])
-            apply_sql_filter = False
+            apply_sql_entities_filter = False
         else:
             entity_ids = None
-            apply_sql_filter = True
+            apply_sql_entities_filter = True
 
         old_state = aliased(States, name="old_state")
 
@@ -426,7 +426,7 @@ def _get_events(
                 | (States.state_id.is_(None))
             )
 
-        if apply_sql_filter and filters:
+        if apply_sql_entities_filter and filters:
             entity_filter = filters.entity_filter()
             if entity_filter is not None:
                 query = query.filter(
