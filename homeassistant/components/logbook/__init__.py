@@ -127,7 +127,7 @@ async def async_setup(hass, config):
     if conf:
         entities_filter = convert_include_exclude_filter(conf)
     else:
-        entities_filter = _all_entities_filter
+        entities_filter = None
 
     hass.http.register_view(LogbookView(conf, filters, entities_filter))
 
@@ -339,11 +339,6 @@ def humanify(hass, events, entity_attr_cache, prev_states=None):
                 }
 
 
-def _all_entities_filter(_):
-    """Filter that accepts all entities."""
-    return True
-
-
 def _get_events(
     hass, config, start_day, end_day, entity_id=None, filters=None, entities_filter=None
 ):
@@ -364,7 +359,6 @@ def _get_events(
             apply_sql_filter = False
         else:
             entity_ids = None
-            entities_filter = _all_entities_filter
             apply_sql_filter = True
 
         old_state = aliased(States, name="old_state")
@@ -433,7 +427,11 @@ def _get_events(
             )
 
         if apply_sql_filter and filters:
-            query = filters.apply(query)
+            entity_filter = filters.entity_filter()
+            if entity_filter is not None:
+                query = query.filter(
+                    entity_filter | (Events.event_type != EVENT_STATE_CHANGED)
+                )
 
         # When all data is schema v8 or later, prev_states can be removed
         prev_states = {}
@@ -468,7 +466,7 @@ def _keep_event(hass, event, entities_filter, entity_attr_cache):
                 return False
             entity_id = f"{domain}."
 
-    return entities_filter(entity_id)
+    return entities_filter is None or entities_filter(entity_id)
 
 
 def _entry_message_from_event(hass, entity_id, domain, event, entity_attr_cache):
