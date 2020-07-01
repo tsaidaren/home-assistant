@@ -343,6 +343,10 @@ def _get_events(
     hass, config, start_day, end_day, entity_id=None, filters=None, entities_filter=None
 ):
     """Get events for a period of time."""
+    import cProfile
+
+    pr = cProfile.Profile()
+    pr.enable()
     entity_attr_cache = EntityAttributeCache(hass)
 
     def yield_events(query):
@@ -435,7 +439,13 @@ def _get_events(
 
         # When all data is schema v8 or later, prev_states can be removed
         prev_states = {}
-        return list(humanify(hass, yield_events(query), entity_attr_cache, prev_states))
+        result = list(
+            humanify(hass, yield_events(query), entity_attr_cache, prev_states)
+        )
+        pr.disable()
+        pr.create_stats()
+        pr.dump_stats("logbook.cprof")
+        return result
 
 
 def _keep_event(hass, event, entities_filter, entity_attr_cache):
