@@ -11,6 +11,7 @@ from sqlalchemy.orm import aliased
 import voluptuous as vol
 
 from homeassistant.components import sun
+from homeassistant.components.history import Filters
 from homeassistant.components.http import HomeAssistantView
 from homeassistant.components.recorder.models import (
     Events,
@@ -123,11 +124,22 @@ async def async_setup(hass, config):
         message = message.async_render()
         async_log_entry(hass, name, message, domain, entity_id)
 
-    hass.http.register_view(LogbookView(config.get(DOMAIN, {})))
-
     hass.components.frontend.async_register_built_in_panel(
         "logbook", "logbook", "hass:format-list-bulleted-type"
     )
+
+    filters = Filters()
+    conf = config.get(DOMAIN, {})
+    exclude = conf.get(CONF_EXCLUDE)
+    if exclude:
+        filters.excluded_entities = exclude.get(CONF_ENTITIES, [])
+        filters.excluded_domains = exclude.get(CONF_DOMAINS, [])
+    include = conf.get(CONF_INCLUDE)
+    if include:
+        filters.included_entities = include.get(CONF_ENTITIES, [])
+        filters.included_domains = include.get(CONF_DOMAINS, [])
+
+    hass.http.register_view(LogbookView(conf, filters))
 
     hass.services.async_register(DOMAIN, "log", log_message, schema=LOG_MESSAGE_SCHEMA)
 
@@ -154,9 +166,10 @@ class LogbookView(HomeAssistantView):
     name = "api:logbook"
     extra_urls = ["/api/logbook/{datetime}"]
 
-    def __init__(self, config):
+    def __init__(self, config, filters):
         """Initialize the logbook view."""
         self.config = config
+        self.filters = filters
 
     async def get(self, request, datetime=None):
         """Retrieve logbook entries."""
@@ -191,7 +204,9 @@ class LogbookView(HomeAssistantView):
         def json_events():
             """Fetch events and generate JSON."""
             return self.json(
-                _get_events(hass, self.config, start_day, end_day, entity_id)
+                _get_events(
+                    hass, self.config, self.filters, start_day, end_day, entity_id
+                )
             )
 
         return await hass.async_add_job(json_events)
@@ -331,6 +346,8 @@ def _get_related_entity_ids(session, entity_filter):
     timer_start = time.perf_counter()
 
     query = session.query(States).with_entities(States.entity_id).distinct()
+    xstr = str(query.statement.compile(compile_kwargs={"literal_binds": True}))
+    _LOGGER.warning("Logbook SQL E Query: %s", xstr)
 
     for tryno in range(RETRIES):
         try:
@@ -358,8 +375,13 @@ def _all_entities_filter(_):
     return True
 
 
-def _get_events(hass, config, start_day, end_day, entity_id=None):
+def _get_events(hass, config, filters, start_day, end_day, entity_id=None):
     """Get events for a period of time."""
+    import cProfile
+
+    pr = cProfile.Profile()
+    pr.enable()
+
     entity_attr_cache = EntityAttributeCache(hass)
 
     def yield_events(query):
@@ -370,12 +392,14 @@ def _get_events(hass, config, start_day, end_day, entity_id=None):
                 yield event
 
     with session_scope(hass=hass) as session:
+        apply_filter = False
         if entity_id is not None:
             entity_ids = [entity_id.lower()]
             entities_filter = generate_filter([], entity_ids, [], [])
         elif config.get(CONF_EXCLUDE) or config.get(CONF_INCLUDE):
             entities_filter = convert_include_exclude_filter(config)
-            entity_ids = _get_related_entity_ids(session, entities_filter)
+            apply_filter = True
+            entity_ids = None
         else:
             entities_filter = _all_entities_filter
             entity_ids = None
@@ -445,9 +469,21 @@ def _get_events(hass, config, start_day, end_day, entity_id=None):
                 | (States.state_id.is_(None))
             )
 
+        if apply_filter:
+            query = filters.apply(query)
+
+        xstr = str(query.statement.compile(compile_kwargs={"literal_binds": True}))
+        _LOGGER.warning("Logbook SQL Query: %s", xstr)
+
         # When all data is schema v8 or later, prev_states can be removed
         prev_states = {}
-        return list(humanify(hass, yield_events(query), entity_attr_cache, prev_states))
+        result = list(
+            humanify(hass, yield_events(query), entity_attr_cache, prev_states)
+        )
+        pr.disable()
+        pr.create_stats()
+        pr.dump_stats("logbook.cprof")
+        return result
 
 
 def _keep_event(hass, event, entities_filter, entity_attr_cache):
