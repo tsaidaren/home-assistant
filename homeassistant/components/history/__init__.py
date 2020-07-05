@@ -19,7 +19,7 @@ from homeassistant.components.recorder.models import (
     process_timestamp,
     process_timestamp_to_utc_isoformat,
 )
-from homeassistant.components.recorder.util import execute, session_scope
+from homeassistant.components.recorder.util import execute, readonly_session_scope
 from homeassistant.const import (
     CONF_DOMAINS,
     CONF_ENTITIES,
@@ -94,7 +94,7 @@ HISTORY_BAKERY = "history_bakery"
 
 def get_significant_states(hass, *args, **kwargs):
     """Wrap _get_significant_states with a sql session."""
-    with session_scope(hass=hass) as session:
+    with readonly_session_scope(hass) as session:
         return _get_significant_states(hass, session, *args, **kwargs)
 
 
@@ -185,7 +185,7 @@ def _significant_states_query(
 
 def state_changes_during_period(hass, start_time, end_time=None, entity_id=None):
     """Return states changes during UTC period start_time - end_time."""
-    with session_scope(hass=hass) as session:
+    with readonly_session_scope(hass) as session:
         baked_query = hass.data[HISTORY_BAKERY](
             lambda session: session.query(*QUERY_STATES)
         )
@@ -221,7 +221,7 @@ def get_last_state_changes(hass, number_of_states, entity_id):
     """Return the last number_of_states."""
     start_time = dt_util.utcnow()
 
-    with session_scope(hass=hass) as session:
+    with readonly_session_scope(hass) as session:
         baked_query = hass.data[HISTORY_BAKERY](
             lambda session: session.query(*QUERY_STATES)
         )
@@ -270,7 +270,7 @@ def _yield_states(hass, utc_point_in_time, entity_ids=None, run=None, filters=No
             yield from ()
             return
 
-    with session_scope(hass=hass) as session:
+    with readonly_session_scope(hass) as session:
         yield from _yield_states_with_session(
             hass, session, utc_point_in_time, entity_ids, run, filters
         )
@@ -564,9 +564,13 @@ class HistoryPeriodView(HomeAssistantView):
         minimal_response,
     ):
         """Fetch significant stats from the database as json."""
+        import cProfile
+
+        pr = cProfile.Profile()
+        pr.enable()
         timer_start = time.perf_counter()
 
-        with session_scope(hass=hass) as session:
+        with readonly_session_scope(hass) as session:
             result = _get_significant_states(
                 hass,
                 session,
@@ -597,7 +601,11 @@ class HistoryPeriodView(HomeAssistantView):
             sorted_result.extend(result)
             result = sorted_result
 
-        return self.json(result)
+        result = self.json(result)
+        pr.disable()
+        pr.create_stats()
+        pr.dump_stats("logbook.cprof")
+        return result
 
 
 def sqlalchemy_filter_from_include_exclude_conf(conf):

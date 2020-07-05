@@ -14,6 +14,15 @@ QUERY_RETRY_WAIT = 0.1
 
 
 @contextmanager
+def readonly_session_scope(hass):
+    """Provide a read-only session around a series of read operations."""
+    session = hass.data[DATA_INSTANCE].get_session()
+
+    yield session
+    session.close()
+
+
+@contextmanager
 def session_scope(*, hass=None, session=None):
     """Provide a transactional scope around a series of operations."""
     if session is None and hass is not None:
