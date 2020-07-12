@@ -7,6 +7,13 @@ from homeassistant.setup import async_setup_component
 
 from tests.async_mock import Mock, patch
 
+HASS_NS = "homeassistant"
+COMPONENTS_NS = f"{HASS_NS}.components"
+ZONE_NS = f"{COMPONENTS_NS}.zone"
+GROUP_NS = f"{COMPONENTS_NS}.group"
+CONFIGED_NS = "otherlibx"
+UNCONFIG_NS = "unconfigurednamespace"
+
 
 async def test_setting_level(hass):
     """Test we set log levels."""
@@ -79,112 +86,197 @@ async def test_setting_level(hass):
 
 async def test_loading_integration_after_can_set_level(hass):
     """Test logger propagation."""
-    assert await async_setup_component(hass, "history", {})
+    assert await async_setup_component(hass, "group", {})
     await hass.async_block_till_done()
 
     assert await async_setup_component(
         hass,
         "logger",
         {
-            "logger": {"default": "critical"},
-            "logs": {
-                "homeassistant": "warning",
-                "homeassistant.components": "info",
-                "homeassistant.components.logbook": "debug",
-                "homeassistant.components.history": "info",
-            },
+            "logger": {
+                "default": "critical",
+                "logs": {
+                    CONFIGED_NS: "warning",
+                    f"{CONFIGED_NS}.info": "info",
+                    f"{CONFIGED_NS}.debug": "debug",
+                    HASS_NS: "warning",
+                    COMPONENTS_NS: "info",
+                    ZONE_NS: "debug",
+                    GROUP_NS: "info",
+                },
+            }
         },
     )
     await hass.async_block_till_done()
-    assert await async_setup_component(hass, "logbook", {})
+    assert await async_setup_component(hass, "zone", {})
     await hass.async_block_till_done()
 
     assert logging.getLogger("").isEnabledFor(logging.DEBUG) is False
     assert logging.getLogger("").isEnabledFor(logging.CRITICAL) is True
 
-    assert logging.getLogger("homeassistant").isEnabledFor(logging.DEBUG) is False
-    assert logging.getLogger("homeassistant").isEnabledFor(logging.WARNING) is True
-
+    assert logging.getLogger(UNCONFIG_NS).isEnabledFor(logging.DEBUG) is False
+    assert logging.getLogger(f"{UNCONFIG_NS}.any").isEnabledFor(logging.DEBUG) is False
     assert (
-        logging.getLogger("homeassistant.components").isEnabledFor(logging.DEBUG)
+        logging.getLogger(f"{UNCONFIG_NS}.any.any").isEnabledFor(logging.DEBUG) is False
+    )
+
+    assert logging.getLogger(UNCONFIG_NS).isEnabledFor(logging.CRITICAL) is True
+    assert (
+        logging.getLogger(f"{UNCONFIG_NS}.any").isEnabledFor(logging.CRITICAL) is True
+    )
+    assert (
+        logging.getLogger(f"{UNCONFIG_NS}.any.any").isEnabledFor(logging.CRITICAL)
+        is True
+    )
+
+    assert logging.getLogger(CONFIGED_NS).isEnabledFor(logging.DEBUG) is False
+    assert logging.getLogger(CONFIGED_NS).isEnabledFor(logging.WARNING) is True
+    assert logging.getLogger(f"{CONFIGED_NS}.any").isEnabledFor(logging.WARNING) is True
+    assert (
+        logging.getLogger(f"{CONFIGED_NS}.any.any").isEnabledFor(logging.WARNING)
+        is True
+    )
+    assert logging.getLogger(f"{CONFIGED_NS}.info").isEnabledFor(logging.DEBUG) is False
+    assert logging.getLogger(f"{CONFIGED_NS}.info").isEnabledFor(logging.INFO) is True
+    assert (
+        logging.getLogger(f"{CONFIGED_NS}.info.any").isEnabledFor(logging.DEBUG)
         is False
     )
     assert (
-        logging.getLogger("homeassistant.components").isEnabledFor(logging.WARNING)
-        is True
+        logging.getLogger(f"{CONFIGED_NS}.info.any").isEnabledFor(logging.INFO) is True
     )
+    assert logging.getLogger(f"{CONFIGED_NS}.debug").isEnabledFor(logging.DEBUG) is True
     assert (
-        logging.getLogger("homeassistant.components").isEnabledFor(logging.INFO) is True
-    )
-
-    assert (
-        logging.getLogger("homeassistant.components.logbook").isEnabledFor(
-            logging.DEBUG
-        )
-        is True
-    )
-    assert (
-        logging.getLogger("homeassistant.components.logbook").isEnabledFor(
-            logging.WARNING
-        )
-        is True
-    )
-    assert (
-        logging.getLogger("homeassistant.components.logbook").isEnabledFor(logging.INFO)
+        logging.getLogger(f"{CONFIGED_NS}.debug.any").isEnabledFor(logging.DEBUG)
         is True
     )
 
+    assert logging.getLogger(HASS_NS).isEnabledFor(logging.DEBUG) is False
+    assert logging.getLogger(HASS_NS).isEnabledFor(logging.WARNING) is True
+
+    assert logging.getLogger(COMPONENTS_NS).isEnabledFor(logging.DEBUG) is False
+    assert logging.getLogger(COMPONENTS_NS).isEnabledFor(logging.WARNING) is True
+    assert logging.getLogger(COMPONENTS_NS).isEnabledFor(logging.INFO) is True
+
+    assert logging.getLogger(GROUP_NS).isEnabledFor(logging.DEBUG) is False
+    assert logging.getLogger(GROUP_NS).isEnabledFor(logging.WARNING) is True
+    assert logging.getLogger(GROUP_NS).isEnabledFor(logging.INFO) is True
+
+    assert logging.getLogger(f"{GROUP_NS}.any").isEnabledFor(logging.DEBUG) is False
+    assert logging.getLogger(f"{GROUP_NS}.any").isEnabledFor(logging.WARNING) is True
+    assert logging.getLogger(f"{GROUP_NS}.any").isEnabledFor(logging.INFO) is True
+
+    assert logging.getLogger(ZONE_NS).isEnabledFor(logging.DEBUG) is True
+    assert logging.getLogger(f"{ZONE_NS}.any").isEnabledFor(logging.DEBUG) is True
+
+    await hass.services.async_call(
+        logger.DOMAIN, "set_level", {f"{UNCONFIG_NS}.any": "debug"}
+    )
+    await hass.async_block_till_done()
+
+    assert logging.getLogger(UNCONFIG_NS).isEnabledFor(logging.DEBUG) is False
+    assert logging.getLogger(f"{UNCONFIG_NS}.any").isEnabledFor(logging.DEBUG) is True
     assert (
-        logging.getLogger("homeassistant.components.logbook.unset").isEnabledFor(
-            logging.DEBUG
-        )
-        is True
+        logging.getLogger(f"{UNCONFIG_NS}.any.any").isEnabledFor(logging.DEBUG) is True
+    )
+
+    await hass.services.async_call(
+        logger.DOMAIN, "set_default_level", {"level": "debug"}
+    )
+    await hass.async_block_till_done()
+
+    assert logging.getLogger(UNCONFIG_NS).isEnabledFor(logging.DEBUG) is True
+    assert logging.getLogger(f"{UNCONFIG_NS}.any").isEnabledFor(logging.DEBUG) is True
+    assert (
+        logging.getLogger(f"{UNCONFIG_NS}.any.any").isEnabledFor(logging.DEBUG) is True
+    )
+    assert logging.getLogger("").isEnabledFor(logging.DEBUG) is True
+
+    assert logging.getLogger(COMPONENTS_NS).isEnabledFor(logging.DEBUG) is False
+    assert logging.getLogger(GROUP_NS).isEnabledFor(logging.DEBUG) is False
+
+
+async def test_loading_integration_after_can_set_level_with_default_debug(hass):
+    """Test logger propagation."""
+    assert await async_setup_component(hass, "group", {})
+    await hass.async_block_till_done()
+
+    assert await async_setup_component(
+        hass,
+        "logger",
+        {
+            "logger": {
+                "default": "debug",
+                "logs": {
+                    CONFIGED_NS: "warning",
+                    f"{CONFIGED_NS}.info": "info",
+                    f"{CONFIGED_NS}.debug": "debug",
+                    HASS_NS: "warning",
+                    COMPONENTS_NS: "info",
+                    ZONE_NS: "debug",
+                    GROUP_NS: "info",
+                },
+            }
+        },
+    )
+    await hass.async_block_till_done()
+    assert await async_setup_component(hass, "zone", {})
+    await hass.async_block_till_done()
+
+    assert logging.getLogger("").isEnabledFor(logging.DEBUG) is True
+    assert logging.getLogger("").isEnabledFor(logging.CRITICAL) is True
+
+    assert logging.getLogger(UNCONFIG_NS).isEnabledFor(logging.DEBUG) is True
+    assert logging.getLogger(f"{UNCONFIG_NS}.any").isEnabledFor(logging.DEBUG) is True
+    assert (
+        logging.getLogger(f"{UNCONFIG_NS}.any.any").isEnabledFor(logging.DEBUG) is True
+    )
+
+    assert logging.getLogger(UNCONFIG_NS).isEnabledFor(logging.CRITICAL) is True
+    assert (
+        logging.getLogger(f"{UNCONFIG_NS}.any").isEnabledFor(logging.CRITICAL) is True
     )
     assert (
-        logging.getLogger("homeassistant.components.logbook.unset").isEnabledFor(
-            logging.WARNING
-        )
-        is True
-    )
-    assert (
-        logging.getLogger("homeassistant.components.logbook.unset").isEnabledFor(
-            logging.INFO
-        )
+        logging.getLogger(f"{UNCONFIG_NS}.any.any").isEnabledFor(logging.CRITICAL)
         is True
     )
 
+    assert logging.getLogger(CONFIGED_NS).isEnabledFor(logging.DEBUG) is False
+    assert logging.getLogger(CONFIGED_NS).isEnabledFor(logging.WARNING) is True
+    assert logging.getLogger(f"{CONFIGED_NS}.any").isEnabledFor(logging.WARNING) is True
     assert (
-        logging.getLogger("homeassistant.components.history").isEnabledFor(
-            logging.DEBUG
-        )
+        logging.getLogger(f"{CONFIGED_NS}.any.any").isEnabledFor(logging.WARNING)
+        is True
+    )
+    assert logging.getLogger(f"{CONFIGED_NS}.info").isEnabledFor(logging.DEBUG) is False
+    assert logging.getLogger(f"{CONFIGED_NS}.info").isEnabledFor(logging.INFO) is True
+    assert (
+        logging.getLogger(f"{CONFIGED_NS}.info.any").isEnabledFor(logging.DEBUG)
         is False
     )
     assert (
-        logging.getLogger("homeassistant.components.history").isEnabledFor(
-            logging.WARNING
-        )
-        is True
+        logging.getLogger(f"{CONFIGED_NS}.info.any").isEnabledFor(logging.INFO) is True
     )
+    assert logging.getLogger(f"{CONFIGED_NS}.debug").isEnabledFor(logging.DEBUG) is True
     assert (
-        logging.getLogger("homeassistant.components.history").isEnabledFor(logging.INFO)
+        logging.getLogger(f"{CONFIGED_NS}.debug.any").isEnabledFor(logging.DEBUG)
         is True
     )
 
-    assert (
-        logging.getLogger("homeassistant.components.history.unset").isEnabledFor(
-            logging.DEBUG
-        )
-        is False
-    )
-    assert (
-        logging.getLogger("homeassistant.components.history.unset").isEnabledFor(
-            logging.WARNING
-        )
-        is True
-    )
-    assert (
-        logging.getLogger("homeassistant.components.history.unset").isEnabledFor(
-            logging.INFO
-        )
-        is True
-    )
+    assert logging.getLogger(HASS_NS).isEnabledFor(logging.DEBUG) is False
+    assert logging.getLogger(HASS_NS).isEnabledFor(logging.WARNING) is True
+
+    assert logging.getLogger(COMPONENTS_NS).isEnabledFor(logging.DEBUG) is False
+    assert logging.getLogger(COMPONENTS_NS).isEnabledFor(logging.WARNING) is True
+    assert logging.getLogger(COMPONENTS_NS).isEnabledFor(logging.INFO) is True
+
+    assert logging.getLogger(GROUP_NS).isEnabledFor(logging.DEBUG) is False
+    assert logging.getLogger(GROUP_NS).isEnabledFor(logging.WARNING) is True
+    assert logging.getLogger(GROUP_NS).isEnabledFor(logging.INFO) is True
+
+    assert logging.getLogger(f"{GROUP_NS}.any").isEnabledFor(logging.DEBUG) is False
+    assert logging.getLogger(f"{GROUP_NS}.any").isEnabledFor(logging.WARNING) is True
+    assert logging.getLogger(f"{GROUP_NS}.any").isEnabledFor(logging.INFO) is True
+
+    assert logging.getLogger(ZONE_NS).isEnabledFor(logging.DEBUG) is True
+    assert logging.getLogger(f"{ZONE_NS}.any").isEnabledFor(logging.DEBUG) is True
