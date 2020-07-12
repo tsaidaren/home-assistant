@@ -3,6 +3,7 @@ from collections import defaultdict
 import logging
 
 from homeassistant.components import logger
+from homeassistant.helpers.logging import LOGSEVERITY
 from homeassistant.setup import async_setup_component
 
 from tests.async_mock import Mock, patch
@@ -39,20 +40,17 @@ async def test_setting_level(hass):
     assert len(mocks) == 4
 
     assert len(mocks[""].setLevel.mock_calls) == 1
-    assert mocks[""].setLevel.mock_calls[0][1][0] == logger.LOGSEVERITY["WARNING"]
+    assert mocks[""].setLevel.mock_calls[0][1][0] == LOGSEVERITY["WARNING"]
 
     assert len(mocks["test"].setLevel.mock_calls) == 1
-    assert mocks["test"].setLevel.mock_calls[0][1][0] == logger.LOGSEVERITY["INFO"]
+    assert mocks["test"].setLevel.mock_calls[0][1][0] == LOGSEVERITY["INFO"]
 
     assert len(mocks["test.child"].setLevel.mock_calls) == 1
-    assert (
-        mocks["test.child"].setLevel.mock_calls[0][1][0] == logger.LOGSEVERITY["DEBUG"]
-    )
+    assert mocks["test.child"].setLevel.mock_calls[0][1][0] == LOGSEVERITY["DEBUG"]
 
     assert len(mocks["test.child.child"].setLevel.mock_calls) == 1
     assert (
-        mocks["test.child.child"].setLevel.mock_calls[0][1][0]
-        == logger.LOGSEVERITY["WARNING"]
+        mocks["test.child.child"].setLevel.mock_calls[0][1][0] == LOGSEVERITY["WARNING"]
     )
 
     # Test set default level
@@ -61,7 +59,7 @@ async def test_setting_level(hass):
             "logger", "set_default_level", {"level": "fatal"}, blocking=True
         )
     assert len(mocks[""].setLevel.mock_calls) == 2
-    assert mocks[""].setLevel.mock_calls[1][1][0] == logger.LOGSEVERITY["FATAL"]
+    assert mocks[""].setLevel.mock_calls[1][1][0] == LOGSEVERITY["FATAL"]
 
     # Test update other loggers
     with patch("logging.getLogger", mocks.__getitem__):
@@ -74,14 +72,10 @@ async def test_setting_level(hass):
     assert len(mocks) == 5
 
     assert len(mocks["test.child"].setLevel.mock_calls) == 2
-    assert (
-        mocks["test.child"].setLevel.mock_calls[1][1][0] == logger.LOGSEVERITY["INFO"]
-    )
+    assert mocks["test.child"].setLevel.mock_calls[1][1][0] == LOGSEVERITY["INFO"]
 
     assert len(mocks["new_logger"].setLevel.mock_calls) == 1
-    assert (
-        mocks["new_logger"].setLevel.mock_calls[0][1][0] == logger.LOGSEVERITY["NOTSET"]
-    )
+    assert mocks["new_logger"].setLevel.mock_calls[0][1][0] == LOGSEVERITY["NOTSET"]
 
 
 async def test_loading_integration_after_can_set_level(hass):
