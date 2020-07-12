@@ -13,7 +13,7 @@ DATA_LOGGER = "logger"
 SERVICE_SET_DEFAULT_LEVEL = "set_default_level"
 SERVICE_SET_LEVEL = "set_level"
 
-HIGHEST_LOG_LEVEL = logging.CRITICAL
+DEFAULT_LOGSEVERITY = "DEBUG"
 
 LOGSEVERITY = {
     "CRITICAL": 50,
@@ -64,7 +64,7 @@ async def async_setup(hass, config):
             logging.getLogger(key).setLevel(LOGSEVERITY[value])
 
     # Set default log severity
-    set_default_log_level(config[DOMAIN].get(LOGGER_DEFAULT, "DEBUG"))
+    set_default_log_level(config[DOMAIN].get(LOGGER_DEFAULT, DEFAULT_LOGSEVERITY))
 
     if LOGGER_LOGS in config[DOMAIN]:
         set_log_levels(config[DOMAIN][LOGGER_LOGS])
