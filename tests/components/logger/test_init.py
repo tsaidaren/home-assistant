@@ -114,6 +114,7 @@ async def test_loading_integration_after_can_set_level(hass):
     assert logging.getLogger("").isEnabledFor(logging.DEBUG) is False
     assert logging.getLogger("").isEnabledFor(logging.CRITICAL) is True
 
+    logging.getLogger(UNCONFIG_NS).level == logging.NOTSET
     assert logging.getLogger(UNCONFIG_NS).isEnabledFor(logging.DEBUG) is False
     assert logging.getLogger(f"{UNCONFIG_NS}.any").isEnabledFor(logging.DEBUG) is False
     assert (
@@ -175,10 +176,13 @@ async def test_loading_integration_after_can_set_level(hass):
     await hass.async_block_till_done()
 
     assert logging.getLogger(UNCONFIG_NS).isEnabledFor(logging.DEBUG) is False
+    logging.getLogger(UNCONFIG_NS).level == logging.NOTSET
     assert logging.getLogger(f"{UNCONFIG_NS}.any").isEnabledFor(logging.DEBUG) is True
+    logging.getLogger(f"{UNCONFIG_NS}.any").level == logging.DEBUG
     assert (
         logging.getLogger(f"{UNCONFIG_NS}.any.any").isEnabledFor(logging.DEBUG) is True
     )
+    logging.getLogger(UNCONFIG_NS).level == logging.NOTSET
 
     await hass.services.async_call(
         logger.DOMAIN, "set_default_level", {"level": "debug"}
