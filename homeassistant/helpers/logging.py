@@ -23,7 +23,7 @@ LOGSEVERITY = {
 @bind_hass
 def set_default_log_level(hass: HomeAssistant, ns: str, loglevel: int) -> None:
     """Set the log level as long as logger has not overridden it."""
-    if LOGGER_LEVELS not in hass.data or ns not in hass.data[LOGGER_LEVELS]:
+    if LOGGER_LEVELS not in hass.data or ns in hass.data[LOGGER_LEVELS]:
         return
 
     logging.getLogger(ns).setLevel(loglevel)
