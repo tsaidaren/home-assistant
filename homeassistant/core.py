@@ -174,6 +174,10 @@ class Job:
         self.target = target
         self.job_type = get_target_job_type(target)
 
+    def __repr__(self) -> str:
+        """Return the job."""
+        return f"<Job {self.job_type} {self.target}>"  # type: ignore
+
 
 class CoreState(enum.Enum):
     """Represent the current state of Home Assistant."""
@@ -391,22 +395,13 @@ class HomeAssistant:
 
     @callback
     def async_run_job(
-        self, target: Union[Job, Callable[..., Union[None, Awaitable]]], *args: Any
+        self, target: Callable[..., Union[None, Awaitable]], *args: Any
     ) -> None:
         """Run a job from within the event loop.
-
         This method must be run in the event loop.
-
         target: target to call.
         args: parameters for method to call.
         """
-        if isinstance(target, Job):
-            if target.job_type == JobType.Callback:
-                target.target(*args)
-            else:
-                self.async_add_job(target, *args)
-            return
-
         if (
             not asyncio.iscoroutine(target)
             and not asyncio.iscoroutinefunction(target)
@@ -775,7 +770,11 @@ class EventBus(IndexedEventJobListeners):
             setattr(onetime_listener, "run", True)
             assert job is not None
             self._async_remove_job_listener(event_type, job)
-            self._hass.async_run_job(job, event)
+
+            if job.job_type == JobType.Callback:
+                job.target(event)
+            else:
+                self._hass.async_add_job(job, event)
 
         job = Job(onetime_listener)
 
