@@ -22,6 +22,7 @@ from homeassistant.core import (
     Event,
     HomeAssistant,
     IndexedEventJobListeners,
+    Job,
     State,
     callback,
 )
@@ -184,7 +185,7 @@ def async_track_state_change_event(
 
     entity_ids = [entity_id.lower() for entity_id in entity_ids]
 
-    return event_job_listeners.async_add_listener(entity_ids, action)  # type: ignore
+    return event_job_listeners.async_add_job_listener(entity_ids, Job(action))  # type: ignore
 
 
 @bind_hass
@@ -219,7 +220,7 @@ def async_track_entity_registry_updated_event(
 
     entity_ids = [entity_id.lower() for entity_id in entity_ids]
 
-    return event_job_listeners.async_add_listener(entity_ids, action)  # type: ignore
+    return event_job_listeners.async_add_job_listener(entity_ids, Job(action))  # type: ignore
 
 
 @callback
