@@ -592,7 +592,7 @@ class Event:
         )
 
 
-class IndexedJobListeners:
+class IndexedEventJobListeners:
     """Object to represent a group of listeners.
 
     Listeners are indexed by key and how they will run.
@@ -604,17 +604,46 @@ class IndexedJobListeners:
         self._hass = hass
 
     @callback
-    def async_add_listener(self, listener_key: str, listener: Callable) -> Callable:
+    def async_run_event_callbacks(self, listener_key: str, event: Event) -> None:
+        """Run event callbacks."""
+        if listener_key not in self._listeners:
+            return
+
+        listeners_by_type = self._listeners.get(listener_key, {})
+
+        for job_type in dict(listeners_by_type):
+            for func in listeners_by_type.get(job_type, [])[:]:
+                if job_type == JobType.Callback:
+                    try:
+                        func(event)
+                    except Exception:  # pylint: disable=broad-except
+                        _LOGGER.exception(
+                            "Error while processing job for %s", listener_key
+                        )
+                else:
+                    self._hass.async_add_job_by_type(job_type, func, event)
+
+    @callback
+    def async_add_listener(
+        self, listener_keys: Union[str, Iterable[str]], listener: Callable
+    ) -> Callable[[], None]:
         """Add a listener."""
         job_type = get_target_job_type(listener)
 
-        self._listeners.setdefault(listener_key, {}).setdefault(job_type, []).append(
-            listener
-        )
+        if isinstance(listener_keys, str):
+            listener_keys = [listener_keys]
+
+        for listener_key in listener_keys:
+            self._listeners.setdefault(listener_key, {}).setdefault(
+                job_type, []
+            ).append(listener)
 
         def remove_listener() -> None:
             """Remove the listener."""
-            self._async_remove_listener_by_job_type(listener_key, job_type, listener)
+            for listener_key in listener_keys:
+                self._async_remove_listener_by_job_type(
+                    listener_key, job_type, listener
+                )
 
         return remove_listener
 
@@ -665,7 +694,7 @@ class IndexedJobListeners:
         )
 
 
-class EventBus(IndexedJobListeners):
+class EventBus(IndexedEventJobListeners):
     """Allow the firing of and listening for events."""
 
     def fire(
@@ -707,15 +736,15 @@ class EventBus(IndexedJobListeners):
         if not listeners_by_type and not match_all_listeners:
             return
 
-        for job_type in listeners_by_type:
-            for func in listeners_by_type[job_type][:]:
+        for job_type in dict(listeners_by_type):
+            for func in listeners_by_type.get(job_type, [])[:]:
                 self._hass.async_add_job_by_type(job_type, func, event)
 
         if not match_all_listeners:
             return
 
-        for job_type in match_all_listeners:
-            for func in match_all_listeners[job_type][:]:
+        for job_type in dict(match_all_listeners):
+            for func in match_all_listeners.get(job_type, [])[:]:
                 self._hass.async_add_job_by_type(job_type, func, event)
 
     def listen(self, event_type: str, listener: Callable) -> CALLBACK_TYPE:

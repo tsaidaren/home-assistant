@@ -17,7 +17,14 @@ from homeassistant.const import (
     SUN_EVENT_SUNRISE,
     SUN_EVENT_SUNSET,
 )
-from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, State, callback
+from homeassistant.core import (
+    CALLBACK_TYPE,
+    Event,
+    HomeAssistant,
+    IndexedEventJobListeners,
+    State,
+    callback,
+)
 from homeassistant.helpers.entity_registry import EVENT_ENTITY_REGISTRY_UPDATED
 from homeassistant.helpers.sun import get_astral_event_next
 from homeassistant.helpers.template import Template
@@ -156,7 +163,9 @@ def async_track_state_change_event(
     do a fast dict lookup to route events.
     """
 
-    entity_callbacks = hass.data.setdefault(TRACK_STATE_CHANGE_CALLBACKS, {})
+    event_job_listeners = hass.data.setdefault(
+        TRACK_STATE_CHANGE_CALLBACKS, IndexedEventJobListeners(hass)
+    )
 
     if TRACK_STATE_CHANGE_LISTENER not in hass.data:
 
@@ -164,17 +173,7 @@ def async_track_state_change_event(
         def _async_state_change_dispatcher(event: Event) -> None:
             """Dispatch state changes by entity_id."""
             entity_id = event.data.get("entity_id")
-
-            if entity_id not in entity_callbacks:
-                return
-
-            for action in entity_callbacks[entity_id][:]:
-                try:
-                    hass.async_run_job(action, event)
-                except Exception:  # pylint: disable=broad-except
-                    _LOGGER.exception(
-                        "Error while processing state changed for %s", entity_id
-                    )
+            event_job_listeners.async_run_event_callbacks(entity_id, event)
 
         hass.data[TRACK_STATE_CHANGE_LISTENER] = hass.bus.async_listen(
             EVENT_STATE_CHANGED, _async_state_change_dispatcher
@@ -185,43 +184,7 @@ def async_track_state_change_event(
 
     entity_ids = [entity_id.lower() for entity_id in entity_ids]
 
-    for entity_id in entity_ids:
-        entity_callbacks.setdefault(entity_id, []).append(action)
-
-    @callback
-    def remove_listener() -> None:
-        """Remove state change listener."""
-        _async_remove_entity_listeners(
-            hass,
-            TRACK_STATE_CHANGE_CALLBACKS,
-            TRACK_STATE_CHANGE_LISTENER,
-            entity_ids,
-            action,
-        )
-
-    return remove_listener
-
-
-@callback
-def _async_remove_entity_listeners(
-    hass: HomeAssistant,
-    storage_key: str,
-    listener_key: str,
-    entity_ids: Iterable[str],
-    action: Callable[[Event], Any],
-) -> None:
-    """Remove a listener."""
-
-    entity_callbacks = hass.data[storage_key]
-
-    for entity_id in entity_ids:
-        entity_callbacks[entity_id].remove(action)
-        if len(entity_callbacks[entity_id]) == 0:
-            del entity_callbacks[entity_id]
-
-    if not entity_callbacks:
-        hass.data[listener_key]()
-        del hass.data[listener_key]
+    return event_job_listeners.async_add_listener(entity_ids, action)  # type: ignore
 
 
 @bind_hass
@@ -235,7 +198,9 @@ def async_track_entity_registry_updated_event(
     Similar to async_track_state_change_event.
     """
 
-    entity_callbacks = hass.data.setdefault(TRACK_ENTITY_REGISTRY_UPDATED_CALLBACKS, {})
+    event_job_listeners = hass.data.setdefault(
+        TRACK_ENTITY_REGISTRY_UPDATED_CALLBACKS, IndexedEventJobListeners(hass)
+    )
 
     if TRACK_ENTITY_REGISTRY_UPDATED_LISTENER not in hass.data:
 
@@ -243,18 +208,7 @@ def async_track_entity_registry_updated_event(
         def _async_entity_registry_updated_dispatcher(event: Event) -> None:
             """Dispatch entity registry updates by entity_id."""
             entity_id = event.data.get("old_entity_id", event.data["entity_id"])
-
-            if entity_id not in entity_callbacks:
-                return
-
-            for action in entity_callbacks[entity_id][:]:
-                try:
-                    hass.async_run_job(action, event)
-                except Exception:  # pylint: disable=broad-except
-                    _LOGGER.exception(
-                        "Error while processing entity registry update for %s",
-                        entity_id,
-                    )
+            event_job_listeners.async_run_event_callbacks(entity_id, event)
 
         hass.data[TRACK_ENTITY_REGISTRY_UPDATED_LISTENER] = hass.bus.async_listen(
             EVENT_ENTITY_REGISTRY_UPDATED, _async_entity_registry_updated_dispatcher
@@ -265,21 +219,7 @@ def async_track_entity_registry_updated_event(
 
     entity_ids = [entity_id.lower() for entity_id in entity_ids]
 
-    for entity_id in entity_ids:
-        entity_callbacks.setdefault(entity_id, []).append(action)
-
-    @callback
-    def remove_listener() -> None:
-        """Remove state change listener."""
-        _async_remove_entity_listeners(
-            hass,
-            TRACK_ENTITY_REGISTRY_UPDATED_CALLBACKS,
-            TRACK_ENTITY_REGISTRY_UPDATED_LISTENER,
-            entity_ids,
-            action,
-        )
-
-    return remove_listener
+    return event_job_listeners.async_add_listener(entity_ids, action)  # type: ignore
 
 
 @callback
