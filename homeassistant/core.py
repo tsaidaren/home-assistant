@@ -114,6 +114,11 @@ SOURCE_YAML = "yaml"
 # How long to wait until things that run on startup have to finish.
 TIMEOUT_EVENT_START = 15
 
+JOB_TYPE_COROUTINE = "coroutine"
+JOB_TYPE_COROUTINEFUNCTION = "coroutinefunction"
+JOB_TYPE_CALLBACK = "callback"
+JOB_TYPE_EXECUTOR = "executor"
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -147,6 +152,16 @@ def callback(func: CALLABLE_T) -> CALLABLE_T:
 def is_callback(func: Callable[..., Any]) -> bool:
     """Check if function is safe to be called in the event loop."""
     return getattr(func, "_hass_callback", False) is True
+
+
+@enum.unique
+class JobType(enum.Enum):
+    """Represent a job type."""
+
+    Coroutine = 1
+    Coroutinefunction = 2
+    Callback = 3
+    Executor = 4
 
 
 class CoreState(enum.Enum):
@@ -301,26 +316,52 @@ class HomeAssistant:
         target: target to call.
         args: parameters for method to call.
         """
-        task = None
+        job_type = get_target_job_type(target)
 
-        # Check for partials to properly determine if coroutine function
-        check_target = target
-        while isinstance(check_target, functools.partial):
-            check_target = check_target.func
-
-        if asyncio.iscoroutine(check_target):
+        if job_type == JobType.Coroutine:
             task = self.loop.create_task(target)  # type: ignore
-        elif asyncio.iscoroutinefunction(check_target):
+        elif job_type == JobType.Coroutinefunction:
             task = self.loop.create_task(target(*args))
-        elif is_callback(check_target):
+        elif job_type == JobType.Callback:
             self.loop.call_soon(target, *args)
+            return None
         else:
             task = self.loop.run_in_executor(  # type: ignore
                 None, target, *args
             )
 
         # If a task is scheduled
-        if self._track_task and task is not None:
+        if self._track_task:
+            self._pending_tasks.append(task)
+
+        return task
+
+    @callback
+    def async_add_job_by_type(
+        self, job_type: JobType, target: Callable[..., Any], *args: Any
+    ) -> Optional[asyncio.Future]:
+        """Add a job from within the event loop.
+
+        This method must be run in the event loop.
+
+        target: target to call.
+        job_type: one of JobType
+        args: parameters for method to call.
+        """
+        if job_type == JobType.Coroutine:
+            task = self.loop.create_task(target)  # type: ignore
+        elif job_type == JobType.Coroutinefunction:
+            task = self.loop.create_task(target(*args))
+        elif job_type == JobType.Callback:
+            self.loop.call_soon(target, *args)
+            return None
+        else:
+            task = self.loop.run_in_executor(  # type: ignore
+                None, target, *args
+            )
+
+        # If a task is scheduled
+        if self._track_task:
             self._pending_tasks.append(task)
 
         return task
@@ -551,13 +592,31 @@ class Event:
         )
 
 
-class EventBus:
-    """Allow the firing of and listening for events."""
+class IndexedJobListeners:
+    """Object to represent a group of listeners.
+
+    Listeners are indexed by key and how they will run.
+    """
 
     def __init__(self, hass: HomeAssistant) -> None:
         """Initialize a new event bus."""
-        self._listeners: Dict[str, List[Callable]] = {}
+        self._listeners: Dict[str, Dict[JobType, List[Callable]]] = {}
         self._hass = hass
+
+    @callback
+    def async_add_listener(self, listener_key: str, listener: Callable) -> Callable:
+        """Add a listener."""
+        job_type = get_target_job_type(listener)
+
+        self._listeners.setdefault(listener_key, {}).setdefault(job_type, []).append(
+            listener
+        )
+
+        def remove_listener() -> None:
+            """Remove the listener."""
+            self.async_remove_listener_by_job_type(listener_key, job_type, listener)
+
+        return remove_listener
 
     @callback
     def async_listeners(self) -> Dict[str, int]:
@@ -565,12 +624,46 @@ class EventBus:
 
         This method must be run in the event loop.
         """
-        return {key: len(self._listeners[key]) for key in self._listeners}
+        totals = {}
+
+        for key in self._listeners:
+            totals[key] = 0
+            for job_type in self._listeners[key]:
+                totals[key] += len(self._listeners[key][job_type])
+
+        return totals
 
     @property
     def listeners(self) -> Dict[str, int]:
         """Return dictionary with events and the number of listeners."""
         return run_callback_threadsafe(self._hass.loop, self.async_listeners).result()
+
+    @callback
+    def async_remove_listener_by_job_type(
+        self, listener_key: str, job_type: JobType, listener: Callable
+    ) -> None:
+        """Remove a listener by job type."""
+        try:
+            self._listeners[listener_key][job_type].remove(listener)
+            if not self._listeners[listener_key][job_type]:
+                self._listeners[listener_key].pop(job_type)
+            if not self._listeners[listener_key]:
+                self._listeners.pop(listener_key)
+        except (KeyError, ValueError):
+            # KeyError is key event_type listener did not exist
+            # ValueError if listener did not exist within event_type
+            _LOGGER.warning("Unable to remove unknown listener %s", listener)
+
+    @callback
+    def async_remove_listener(self, listener_key: str, listener: Callable) -> None:
+        """Remove a listener."""
+        self.async_remove_listener_by_job_type(
+            listener_key, get_target_job_type(listener), listener
+        )
+
+
+class EventBus(IndexedJobListeners):
+    """Allow the firing of and listening for events."""
 
     def fire(
         self,
@@ -596,23 +689,31 @@ class EventBus:
 
         This method must be run in the event loop.
         """
-        listeners = self._listeners.get(event_type, [])
+        listeners_by_type = self._listeners.get(event_type, {})
+        match_all_listeners = None
 
         # EVENT_HOMEASSISTANT_CLOSE should go only to his listeners
-        match_all_listeners = self._listeners.get(MATCH_ALL)
-        if match_all_listeners is not None and event_type != EVENT_HOMEASSISTANT_CLOSE:
-            listeners = match_all_listeners + listeners
+        if event_type != EVENT_HOMEASSISTANT_CLOSE:
+            match_all_listeners = self._listeners.get(MATCH_ALL)
 
         event = Event(event_type, event_data, origin, None, context)
 
         if event_type != EVENT_TIME_CHANGED:
             _LOGGER.debug("Bus:Handling %s", event)
 
-        if not listeners:
+        if not listeners_by_type and not match_all_listeners:
             return
 
-        for func in listeners:
-            self._hass.async_add_job(func, event)
+        for job_type in listeners_by_type:
+            for func in listeners_by_type[job_type][:]:
+                self._hass.async_add_job_by_type(job_type, func, event)
+
+        if not match_all_listeners:
+            return
+
+        for job_type in match_all_listeners:
+            for func in match_all_listeners[job_type][:]:
+                self._hass.async_add_job_by_type(job_type, func, event)
 
     def listen(self, event_type: str, listener: Callable) -> CALLBACK_TYPE:
         """Listen for all events or events of a specific type.
@@ -639,16 +740,7 @@ class EventBus:
 
         This method must be run in the event loop.
         """
-        if event_type in self._listeners:
-            self._listeners[event_type].append(listener)
-        else:
-            self._listeners[event_type] = [listener]
-
-        def remove_listener() -> None:
-            """Remove the listener."""
-            self._async_remove_listener(event_type, listener)
-
-        return remove_listener
+        return self.async_add_listener(event_type, listener)
 
     def listen_once(self, event_type: str, listener: Callable) -> CALLBACK_TYPE:
         """Listen once for event of a specific type.
@@ -702,16 +794,7 @@ class EventBus:
 
         This method must be run in the event loop.
         """
-        try:
-            self._listeners[event_type].remove(listener)
-
-            # delete event_type list if empty
-            if not self._listeners[event_type]:
-                self._listeners.pop(event_type)
-        except (KeyError, ValueError):
-            # KeyError is key event_type listener did not exist
-            # ValueError if listener did not exist within event_type
-            _LOGGER.warning("Unable to remove unknown listener %s", listener)
+        return self.async_remove_listener(event_type, listener)
 
 
 class State:
@@ -1597,3 +1680,19 @@ def _async_create_timer(hass: HomeAssistant) -> None:
 
     _LOGGER.info("Timer:starting")
     schedule_tick(dt_util.utcnow())
+
+
+def get_target_job_type(target: Callable) -> JobType:
+    """Determine the job type from the callable."""
+    # Check for partials to properly determine if coroutine function
+    check_target = target
+    while isinstance(check_target, functools.partial):
+        check_target = check_target.func
+
+    if asyncio.iscoroutine(check_target):
+        return JobType.Coroutine
+    if asyncio.iscoroutinefunction(check_target):
+        return JobType.Coroutinefunction
+    if is_callback(check_target):
+        return JobType.Callback
+    return JobType.Executor

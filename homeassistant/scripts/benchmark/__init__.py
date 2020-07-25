@@ -175,12 +175,19 @@ async def state_changed_event_helper(hass):
         "new_state": core.State(entity_id, "on"),
     }
 
+    import cProfile
+
+    pr = cProfile.Profile()
+    pr.enable()
     for _ in range(10 ** 6):
         hass.bus.async_fire(EVENT_STATE_CHANGED, event_data)
 
     start = timer()
 
     await event.wait()
+    pr.disable()
+    pr.create_stats()
+    pr.dump_stats("events.cprof")
 
     return timer() - start
 
