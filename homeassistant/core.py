@@ -614,7 +614,7 @@ class IndexedJobListeners:
 
         def remove_listener() -> None:
             """Remove the listener."""
-            self.async_remove_listener_by_job_type(listener_key, job_type, listener)
+            self._async_remove_listener_by_job_type(listener_key, job_type, listener)
 
         return remove_listener
 
@@ -639,7 +639,7 @@ class IndexedJobListeners:
         return run_callback_threadsafe(self._hass.loop, self.async_listeners).result()
 
     @callback
-    def async_remove_listener_by_job_type(
+    def _async_remove_listener_by_job_type(
         self, listener_key: str, job_type: JobType, listener: Callable
     ) -> None:
         """Remove a listener by job type."""
@@ -655,9 +655,12 @@ class IndexedJobListeners:
             _LOGGER.warning("Unable to remove unknown listener %s", listener)
 
     @callback
-    def async_remove_listener(self, listener_key: str, listener: Callable) -> None:
-        """Remove a listener."""
-        self.async_remove_listener_by_job_type(
+    def _async_remove_listener(self, listener_key: str, listener: Callable) -> None:
+        """Remove a listener of a specific listener_key.
+
+        This method must be run in the event loop.
+        """
+        self._async_remove_listener_by_job_type(
             listener_key, get_target_job_type(listener), listener
         )
 
@@ -787,14 +790,6 @@ class EventBus(IndexedJobListeners):
             self._hass.async_run_job(listener, event)
 
         return self.async_listen(event_type, onetime_listener)
-
-    @callback
-    def _async_remove_listener(self, event_type: str, listener: Callable) -> None:
-        """Remove a listener of a specific event_type.
-
-        This method must be run in the event loop.
-        """
-        return self.async_remove_listener(event_type, listener)
 
 
 class State:
