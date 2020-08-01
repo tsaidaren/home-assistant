@@ -2,6 +2,7 @@
 import asyncio
 import hashlib
 import logging
+import time
 
 from homeassistant import core
 from homeassistant.components import (
@@ -66,9 +67,16 @@ from homeassistant.const import (
     STATE_ON,
     STATE_UNAVAILABLE,
 )
+from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.util.network import is_local
 
 _LOGGER = logging.getLogger(__name__)
+
+# How long an entry state's cache will be valid for in seconds.
+STATE_CACHED_TIMEOUT = 2.0
+# Index value when accessing a cached state.
+STATE_CACHE_STATE = 0
+STATE_CACHE_TIME = 1
 
 STATE_BRIGHTNESS = "bri"
 STATE_COLORMODE = "colormode"
@@ -520,7 +528,9 @@ class HueOneLightChangeView(HomeAssistantView):
             # they'll map to "on". Thus, instead of reporting its actual
             # status, we report what Alexa will want to see, which is the same
             # as the actual requested command.
-            config.cached_states[entity_id] = parsed
+            config.cached_states[entity_id] = [parsed, None]
+        else:
+            config.cached_states[entity_id] = [parsed, time.time()]
 
         # Separate call to turn on needed
         if turn_on_needed:
@@ -534,9 +544,34 @@ class HueOneLightChangeView(HomeAssistantView):
             )
 
         if service is not None:
+            state_will_change = parsed[STATE_ON] != (entity.state != STATE_OFF)
+
             hass.async_create_task(
                 hass.services.async_call(domain, service, data, blocking=True)
             )
+
+            if state_will_change:
+                # Wait for the state to change.
+                asyncevent = asyncio.Event()
+
+                @core.callback
+                def async_event_changed(event):
+                    asyncevent.set()
+
+                async def wait_on_change():
+                    await asyncevent.wait()
+
+                unsub = async_track_state_change_event(
+                    hass, [entity_id], async_event_changed
+                )
+
+                try:
+                    await asyncio.wait_for(
+                        wait_on_change(), timeout=STATE_CACHED_TIMEOUT
+                    )
+                except asyncio.TimeoutError:
+                    pass
+                unsub()
 
         # Create success responses for all received keys
         json_response = [
@@ -556,16 +591,27 @@ class HueOneLightChangeView(HomeAssistantView):
                     create_hue_success_response(entity_number, val, parsed[key])
                 )
 
-        # Echo fetches the state immediately after the PUT method returns.
-        # Waiting for a short time allows the changes to propagate.
-        await asyncio.sleep(0.25)
-
         return self.json(json_response)
 
 
 def get_entity_state(config, entity):
     """Retrieve and convert state and brightness values for an entity."""
-    cached_state = config.cached_states.get(entity.entity_id, None)
+    cached_state_entry = config.cached_states.get(entity.entity_id, None)
+    cached_state = None
+
+    # Check if we have a cached entry, and if so if it hasn't expired.
+    if cached_state_entry is not None:
+        if cached_state_entry[STATE_CACHE_TIME] is None:
+            # Handle the where the entity is listed in config.off_maps_to_on_domains.
+            cached_state = cached_state_entry[STATE_CACHE_STATE]
+        elif time.time() - cached_state_entry[STATE_CACHE_TIME] < STATE_CACHED_TIMEOUT:
+            # We do want to report the actual state of the entity.
+            cached_state = cached_state_entry[STATE_CACHE_STATE]
+            cached_state[STATE_ON] = entity.state != STATE_OFF
+        else:
+            # Remove the now stale cached entry.
+            config.cached_states.pop(entity.entity_id)
+
     data = {
         STATE_ON: False,
         STATE_BRIGHTNESS: None,
