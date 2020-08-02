@@ -552,26 +552,9 @@ class HueOneLightChangeView(HomeAssistantView):
 
             if state_will_change:
                 # Wait for the state to change.
-                asyncevent = asyncio.Event()
-
-                @core.callback
-                def async_event_changed(event):
-                    asyncevent.set()
-
-                async def wait_on_change():
-                    await asyncevent.wait()
-
-                unsub = async_track_state_change_event(
-                    hass, [entity_id], async_event_changed
+                await wait_for_state_change_or_timeout(
+                    hass, entity_id, STATE_CACHED_TIMEOUT
                 )
-
-                try:
-                    await asyncio.wait_for(
-                        wait_on_change(), timeout=STATE_CACHED_TIMEOUT
-                    )
-                except asyncio.TimeoutError:
-                    pass
-                unsub()
 
         # Create success responses for all received keys
         json_response = [
@@ -601,13 +584,15 @@ def get_entity_state(config, entity):
 
     # Check if we have a cached entry, and if so if it hasn't expired.
     if cached_state_entry is not None:
-        if cached_state_entry[STATE_CACHE_TIME] is None:
+        entry_state, entry_time = cached_state_entry
+        if entry_time is None:
             # Handle the where the entity is listed in config.off_maps_to_on_domains.
-            cached_state = cached_state_entry[STATE_CACHE_STATE]
-        elif time.time() - cached_state_entry[STATE_CACHE_TIME] < STATE_CACHED_TIMEOUT:
-            # We do want to report the actual state of the entity.
-            cached_state = cached_state_entry[STATE_CACHE_STATE]
-            cached_state[STATE_ON] = entity.state != STATE_OFF
+            cached_state = entry_state
+        elif time.time() - entry_time < STATE_CACHED_TIMEOUT and entry_state[
+            STATE_ON
+        ] == (entity.state != STATE_OFF):
+            # We do want to report the actual state of the entity if the state is in sync.
+            cached_state = entry_state
         else:
             # Remove the now stale cached entry.
             config.cached_states.pop(entity.entity_id)
@@ -837,3 +822,21 @@ def hue_brightness_to_hass(value):
 def hass_to_hue_brightness(value):
     """Convert hass brightness 0..255 to hue 1..254 scale."""
     return max(1, round((value / 255) * HUE_API_STATE_BRI_MAX))
+
+
+async def wait_for_state_change_or_timeout(hass, entity_id, timeout):
+    """Wait for an entity to change state."""
+    ev = asyncio.Event()
+
+    @core.callback
+    def _async_event_changed(_):
+        ev.set()
+
+    unsub = async_track_state_change_event(hass, [entity_id], _async_event_changed)
+
+    try:
+        await asyncio.wait_for(ev.wait(), timeout=STATE_CACHED_TIMEOUT)
+    except asyncio.TimeoutError:
+        pass
+    finally:
+        unsub()
