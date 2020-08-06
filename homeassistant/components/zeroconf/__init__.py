@@ -29,6 +29,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.network import NoURLAvailableError, get_url
 from homeassistant.helpers.singleton import singleton
 from homeassistant.loader import async_get_homekit, async_get_zeroconf
+from homeassistant.util import unicode_slug
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -140,8 +141,12 @@ def setup(hass, config):
         hass.helpers.instance_id.async_get(), hass.loop
     ).result()
 
+    zeroconf_safe_location_name = unicode_slug.slugify(
+        hass.config.location_name, lowercase=False, separator=" "
+    )
+
     params = {
-        "location_name": hass.config.location_name,
+        "location_name": zeroconf_safe_location_name,
         "uuid": uuid,
         "version": __version__,
         "external_url": "",
@@ -175,7 +180,7 @@ def setup(hass, config):
 
     info = ServiceInfo(
         ZEROCONF_TYPE,
-        name=f"{hass.config.location_name}.{ZEROCONF_TYPE}",
+        name=f"{zeroconf_safe_location_name}.{ZEROCONF_TYPE}",
         server=f"{uuid}.local.",
         addresses=[host_ip_pton],
         port=hass.http.server_port,
