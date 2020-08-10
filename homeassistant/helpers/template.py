@@ -208,6 +208,10 @@ class Template:
         """
         compiled = self._compiled or self._ensure_compiled()
 
+        import pprint
+
+        pprint.pprint(compiled)
+
         if variables is not None:
             kwargs.update(variables)
 
@@ -223,6 +227,69 @@ class Template:
         """Render the template and collect an entity filter."""
         assert self.hass and _RENDER_INFO not in self.hass.data
         render_info = self.hass.data[_RENDER_INFO] = RenderInfo(self)
+        # TODO, handle expand
+
+        # All states
+        # Filter(node=Name(name='states', ctx='load'), ....)
+        # Output(nodes=[Name(name='states', ctx='load')])
+        try:
+            nodes = self._env.parse(self.template)
+        except TemplateError as ex:
+            render_info._exception = ex
+
+        domains = set()
+        entities = set()
+
+        # Looks for states[''], states.
+        GETATTR_NODES = {"states"}
+        getattr_node_list = list(nodes.find_all(jinja2.nodes.Getattr))
+        if getattr_node_list:
+            getattr_node_list.reverse()
+            prev_state_type = None
+            for getattr_node in getattr_node_list:
+                next_node = next(getattr_node.iter_child_nodes())
+                if not next_node:
+                    continue
+
+                if isinstance(next_node, jinja2.nodes.Name):
+                    # May be a domain
+                    # Getattr(node=Name(name='states', ctx='load'), attr='light', ctx='load'
+                    if next_node.name not in GETATTR_NODES:
+                        continue
+                    # If the previous Getattr was an entity_id and this is a domain, ignore it as its
+                    # just one depth up
+                    if prev_state_type == "entity_id":
+                        prev_state_type = "domain"
+                        continue
+                    prev_state_type = "domain"
+                    domains.add(getattr_node.attr)
+                elif isinstance(next_node, jinja2.nodes.Getattr):
+                    # May be an entity
+                    # Getattr(node=Getattr(node=Name(name='states', ctx='load'), attr='light', ctx='load'), attr='b', ctx='load')
+                    next_next_node = next(next_node.iter_child_nodes())
+                    if not isinstance(next_next_node, jinja2.nodes.Name):
+                        continue
+                    if next_next_node.name not in GETATTR_NODES:
+                        continue
+                    entities.add(f"{next_node.attr}.{getattr_node.attr}")
+                    prev_state_type = "entity_id"
+
+        CALL_NODES = {"states", "is_state", "state_attr", "is_state_attr"}
+        # Looks for states(, is_state(, state_attr(, is_state_attr(
+        call_node_list = list(nodes.find_all(jinja2.nodes.Call))
+        if call_node_list:
+            for call_node in call_node_list:
+                next_node = next(call_node.iter_child_nodes())
+                if not next_node:
+                    continue
+                if not isinstance(next_node, jinja2.nodes.Name):
+                    continue
+                if next_node.name not in CALL_NODES:
+                    continue
+                if not call_node.args:
+                    continue
+                entities.add(call_node.args[0].value)
+
         # pylint: disable=protected-access
         try:
             render_info._result = self.async_render(variables, **kwargs)
@@ -368,9 +435,17 @@ class DomainStates:
         """Initialize the domain states."""
         self._hass = hass
         self._domain = domain
+        import pprint
+
+        pprint.pprint(["DomainStates", domain])
 
     def __getattr__(self, name):
         """Return the states."""
+
+        import pprint
+
+        pprint.pprint(["DomainStates", self._domain, name])
+
         entity_id = f"{self._domain}.{name}"
         if not valid_entity_id(entity_id):
             raise TemplateError(f"Invalid entity ID '{entity_id}'")
@@ -414,6 +489,9 @@ class TemplateState(State):
         """Initialize template state."""
         self._hass = hass
         self._state = state
+        import pprint
+
+        pprint.pprint(["TemplateState", state])
 
     def _access_state(self):
         state = object.__getattribute__(self, "_state")

@@ -1871,6 +1871,34 @@ def test_extract_entities_domain_states_outer_with_group(hass):
     ) == {"light.switch", "light.switch2", "light.switch3", "group.lights"}
 
 
+def test_extract_entities_with_branching(hass):
+    """Test extract entities function by domain."""
+    hass.states.async_set("light.a", "off")
+    hass.states.async_set("light.b", "on")
+    hass.states.async_set("light.c", "off")
+
+    assert (
+        set(
+            template.extract_entities(
+                hass,
+                """
+{% if states.light.a == "on" %}
+  {{ states.light.b.state }}
+{% elif states.light.a == "on" %}
+  {{ states["light"] | selectattr('entity_id', 'in', state_attr('group.lights', 'entity_id')) | list | count > 0 }}
+{% elif states.light.a == "on" %}
+  {{ states }}
+{% else %}
+  {{ states | list }}
+{% endif %}
+""",
+                {},
+            )
+        )
+        == {"light.a", "light.b", "light.c"}
+    )
+
+
 def test_jinja_namespace(hass):
     """Test Jinja's namespace command can be used."""
     test_template = template.Template(
