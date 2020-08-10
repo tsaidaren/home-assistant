@@ -176,14 +176,79 @@ class Template:
         if _RE_NONE_ENTITIES.search(self.template):
             return MATCH_ALL
 
-        info = self.async_render_to_info(variables)
+        # TODO, handle expand
 
-        if info.all_states:
+        # All states
+        # Filter(node=Name(name='states', ctx='load'), ....)
+        # Output(nodes=[Name(name='states', ctx='load')])
+        nodes = self._env.parse(self.template)
+
+        domains = set()
+        entities = set()
+        import pprint
+
+        # Looks for states[''], states.
+        GETATTR_NODES = {"states"}
+        getattr_node_list = list(nodes.find_all(jinja2.nodes.Getattr))
+        if getattr_node_list:
+            getattr_node_list.reverse()
+            prev_state_type = None
+            for getattr_node in getattr_node_list:
+                pprint.pprint(getattr_node)
+
+                next_node = next(getattr_node.iter_child_nodes())
+                if not next_node:
+                    continue
+
+                if isinstance(next_node, jinja2.nodes.Name):
+                    # May be a domain
+                    # Getattr(node=Name(name='states', ctx='load'), attr='light', ctx='load'
+                    if next_node.name not in GETATTR_NODES:
+                        continue
+                    # If the previous Getattr was an entity_id and this is a domain, ignore it as its
+                    # just one depth up
+                    if prev_state_type == "entity_id":
+                        prev_state_type = "domain"
+                        continue
+                    prev_state_type = "domain"
+                    domains.add(getattr_node.attr)
+                elif isinstance(next_node, jinja2.nodes.Getattr):
+                    # May be an entity
+                    # Getattr(node=Getattr(node=Name(name='states', ctx='load'), attr='light', ctx='load'), attr='b', ctx='load')
+                    next_next_node = next(next_node.iter_child_nodes())
+                    if not isinstance(next_next_node, jinja2.nodes.Name):
+                        continue
+                    if next_next_node.name not in GETATTR_NODES:
+                        continue
+                    entities.add(f"{next_node.attr}.{getattr_node.attr}")
+                    prev_state_type = "entity_id"
+
+        CALL_NODES = {"states", "is_state", "state_attr", "is_state_attr"}
+        # Looks for states(, is_state(, state_attr(, is_state_attr(
+        call_node_list = list(nodes.find_all(jinja2.nodes.Call))
+        if call_node_list:
+            for call_node in call_node_list:
+                pprint.pprint(call_node)
+                if not call_node.args:
+                    continue
+                if not hasattr(call_node.args[0],"value"):
+                    continue                
+                next_node = next(call_node.iter_child_nodes())
+                if not next_node:
+                    continue
+                if not isinstance(next_node, jinja2.nodes.Name):
+                    continue
+                if next_node.name not in CALL_NODES:
+                    continue
+
+                pprint.pprint(["node args",call_node.args])
+                entities.add(call_node.args[0].value)
+
+        if not domains and not entities:
             return MATCH_ALL
 
-        entities = set(info.entities)
-        if info.domains:
-            for entity_id in self.hass.states.async_entity_ids(info.domains):
+        if domains:
+            for entity_id in self.hass.states.async_entity_ids(domains):
                 entities.add(entity_id)
 
         # For backwards compatibility
@@ -227,69 +292,6 @@ class Template:
         """Render the template and collect an entity filter."""
         assert self.hass and _RENDER_INFO not in self.hass.data
         render_info = self.hass.data[_RENDER_INFO] = RenderInfo(self)
-        # TODO, handle expand
-
-        # All states
-        # Filter(node=Name(name='states', ctx='load'), ....)
-        # Output(nodes=[Name(name='states', ctx='load')])
-        nodes = self._env.parse(self.template)
-
-
-        domains = set()
-        entities = set()
-
-        # Looks for states[''], states.
-        GETATTR_NODES = {"states"}
-        getattr_node_list = list(nodes.find_all(jinja2.nodes.Getattr))
-        if getattr_node_list:
-            getattr_node_list.reverse()
-            prev_state_type = None
-            for getattr_node in getattr_node_list:
-                next_node = next(getattr_node.iter_child_nodes())
-                if not next_node:
-                    continue
-
-                if isinstance(next_node, jinja2.nodes.Name):
-                    # May be a domain
-                    # Getattr(node=Name(name='states', ctx='load'), attr='light', ctx='load'
-                    if next_node.name not in GETATTR_NODES:
-                        continue
-                    # If the previous Getattr was an entity_id and this is a domain, ignore it as its
-                    # just one depth up
-                    if prev_state_type == "entity_id":
-                        prev_state_type = "domain"
-                        continue
-                    prev_state_type = "domain"
-                    domains.add(getattr_node.attr)
-                elif isinstance(next_node, jinja2.nodes.Getattr):
-                    # May be an entity
-                    # Getattr(node=Getattr(node=Name(name='states', ctx='load'), attr='light', ctx='load'), attr='b', ctx='load')
-                    next_next_node = next(next_node.iter_child_nodes())
-                    if not isinstance(next_next_node, jinja2.nodes.Name):
-                        continue
-                    if next_next_node.name not in GETATTR_NODES:
-                        continue
-                    entities.add(f"{next_node.attr}.{getattr_node.attr}")
-                    prev_state_type = "entity_id"
-
-        CALL_NODES = {"states", "is_state", "state_attr", "is_state_attr"}
-        # Looks for states(, is_state(, state_attr(, is_state_attr(
-        call_node_list = list(nodes.find_all(jinja2.nodes.Call))
-        if call_node_list:
-            for call_node in call_node_list:
-                next_node = next(call_node.iter_child_nodes())
-                if not next_node:
-                    continue
-                if not isinstance(next_node, jinja2.nodes.Name):
-                    continue
-                if next_node.name not in CALL_NODES:
-                    continue
-                if not call_node.args:
-                    continue
-                entities.add(call_node.args[0].value)
-
-        import pprint
-        pprint.pprint(["domains", domains, "entities", entities])
 
         # pylint: disable=protected-access
         try:
