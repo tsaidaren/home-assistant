@@ -1882,12 +1882,15 @@ def test_extract_entities_with_branching(hass):
             template.extract_entities(
                 hass,
                 """
+{% set domain = "lock" %}       
 {% if states.light.a == "on" %}
   {{ states.light.b.state }}
 {% elif states.light.a == "on" %}
   {{ states["light"] | selectattr('entity_id', 'in', state_attr('group.lights', 'entity_id')) | list | count > 0 }}
 {% elif states.light.a == "on" %}
   {{ states }}
+{% elif states.light.a == "on" %}
+  {{ states[domain] }}  
 {% else %}
   {{ states | list }}
 {% endif %}

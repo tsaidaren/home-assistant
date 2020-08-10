@@ -232,10 +232,8 @@ class Template:
         # All states
         # Filter(node=Name(name='states', ctx='load'), ....)
         # Output(nodes=[Name(name='states', ctx='load')])
-        try:
-            nodes = self._env.parse(self.template)
-        except TemplateError as ex:
-            render_info._exception = ex
+        nodes = self._env.parse(self.template)
+
 
         domains = set()
         entities = set()
@@ -289,6 +287,9 @@ class Template:
                 if not call_node.args:
                     continue
                 entities.add(call_node.args[0].value)
+
+        import pprint
+        pprint.pprint(["domains", domains, "entities", entities])
 
         # pylint: disable=protected-access
         try:
