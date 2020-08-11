@@ -5,7 +5,6 @@ from typing import Optional
 from aioesphomeapi import APIClient, APIConnectionError
 import voluptuous as vol
 
-from homeassistant.components import zeroconf
 from homeassistant.config_entries import CONN_CLASS_LOCAL_PUSH, ConfigFlow
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PASSWORD, CONF_PORT
 from homeassistant.core import callback
@@ -166,14 +165,7 @@ class EsphomeFlowHandler(ConfigFlow, domain=DOMAIN):
 
     async def fetch_device_info(self):
         """Fetch device info from API and return any errors."""
-        zeroconf_instance = await zeroconf.async_get_instance(self.hass)
-        cli = APIClient(
-            self.hass.loop,
-            self._host,
-            self._port,
-            "",
-            zeroconf_instance=zeroconf_instance,
-        )
+        cli = APIClient(self.hass.loop, self._host, self._port, "")
 
         try:
             await cli.connect()
@@ -189,14 +181,7 @@ class EsphomeFlowHandler(ConfigFlow, domain=DOMAIN):
 
     async def try_login(self):
         """Try logging in to device and return any errors."""
-        zeroconf_instance = await zeroconf.async_get_instance(self.hass)
-        cli = APIClient(
-            self.hass.loop,
-            self._host,
-            self._port,
-            self._password,
-            zeroconf_instance=zeroconf_instance,
-        )
+        cli = APIClient(self.hass.loop, self._host, self._port, self._password)
 
         try:
             await cli.connect(login=True)
