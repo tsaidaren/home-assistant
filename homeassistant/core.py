@@ -909,9 +909,7 @@ class StateMachine:
         return future.result()
 
     @callback
-    def async_entity_ids(
-        self, domain_filter: Optional[Union[str, Iterable]] = None
-    ) -> List[str]:
+    def async_entity_ids(self, domain_filter: Optional[str] = None) -> List[str]:
         """List of entity ids that are being tracked.
 
         This method must be run in the event loop.
@@ -919,13 +917,12 @@ class StateMachine:
         if domain_filter is None:
             return list(self._states.keys())
 
-        if isinstance(domain_filter, str):
-            domain_filter = [domain_filter.lower()]
+        domain_filter = domain_filter.lower()
 
         return [
             state.entity_id
             for state in self._states.values()
-            if state.domain in domain_filter
+            if state.domain == domain_filter
         ]
 
     def all(self) -> List[State]:
