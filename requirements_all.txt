@@ -246,7 +246,7 @@ ambiclimate==0.2.1
 amcrest==1.7.0
 
 # homeassistant.components.androidtv
-androidtv[async]==0.0.48
+androidtv[async]==0.0.49
 
 # homeassistant.components.anel_pwrctrl
 anel_pwrctrl-homeassistant==0.0.1.dev2
@@ -334,7 +334,7 @@ beautifulsoup4==4.9.0
 beewi_smartclim==0.0.7
 
 # homeassistant.components.zha
-bellows==0.18.0
+bellows==0.18.1
 
 # homeassistant.components.bmw_connected_drive
 bimmer_connected==0.7.7
@@ -1005,7 +1005,7 @@ oemthermostat==1.1
 onkyo-eiscp==1.2.7
 
 # homeassistant.components.onvif
-onvif-zeep-async==0.4.0
+onvif-zeep-async==0.5.0
 
 # homeassistant.components.opengarage
 open-garage==0.1.4
@@ -1834,7 +1834,7 @@ pyversasense==0.0.6
 pyvesync==1.1.0
 
 # homeassistant.components.vizio
-pyvizio==0.1.49
+pyvizio==0.1.51
 
 # homeassistant.components.velux
 pyvlx==0.2.16
@@ -1913,6 +1913,9 @@ rokuecp==0.5.0
 
 # homeassistant.components.roomba
 roombapy==1.6.1
+
+# homeassistant.components.roon
+roonapi==0.0.21
 
 # homeassistant.components.rova
 rova==0.1.0
