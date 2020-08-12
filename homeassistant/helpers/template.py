@@ -46,8 +46,6 @@ _ENVIRONMENT = "template.environment"
 
 _RE_NONE_ENTITIES = re.compile(r"distance\(|closest\(", re.I | re.M)
 _RE_JINJA_DELIMITERS = re.compile(r"\{%|\{\{")
-_RE_JINJA_IF_ELIF = re.compile("{[ \t]*%[ \t]+(?:if|elif)")
-_RE_JINJA_ELSE_ENDIF = re.compile("{[ \t]*%[ \t]+(?:else|endif)")
 
 _RESERVED_NAMES = {"contextfunction", "evalcontextfunction", "environmentfunction"}
 
@@ -178,10 +176,12 @@ class Template:
         # so we collect entities/domains that appear in code branches
         # that would not normally be transversed.
         template_without_conditionals = re.sub(
-            _RE_JINJA_IF_ELIF, "{% print", self.template
+            r"{[ \t]*%[ \t]+(?:if|elif)", "{% print", self.template
         )
         template_without_conditionals = re.sub(
-            _RE_JINJA_ELSE_ENDIF, '{% print ""', template_without_conditionals,
+            r"{[ \t]*%[ \t]+(?:else|endif)",
+            '{% print ""',
+            template_without_conditionals,
         )
 
         try:
