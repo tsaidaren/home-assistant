@@ -68,7 +68,8 @@ class HassEventLoopPolicy(PolicyBase):  # type: ignore
         # We use a hybird approach with a little bit extra
         # to ensure we have enough regardless of the python version
         # since there are a lot of integrations that tend to do
-        # process updates in the executor.
+        # process updates in the executor which can block for
+        # a long time.
         #
         executor = ThreadPoolExecutor(
             thread_name_prefix="SyncWorker",
