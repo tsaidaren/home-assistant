@@ -463,16 +463,32 @@ class TrackTemplateResultInfo:
         self._create_listeners()
         self._last_info = self._info
 
+    @property
+    def _needs_all_listener(self) -> bool:
+        # Tracking all states
+        if self._info.all_states:
+            return True
+
+        # Previous call had an exception
+        # so we do not know which states
+        # to track
+        if self._info.exception:
+            return True
+
+        # There are no entities in the template
+        # to track so this template will
+        # re-render on EVERY state change
+        if not self._info.domains and not self._info.entities:
+            return True
+
+        return False
+
     @callback
     def _create_listeners(self) -> None:
         if self._info.is_static:
             return
 
-        if (
-            self._info.all_states
-            or self._info.exception
-            or (not self._info.domains and not self._info.entities)
-        ):
+        if self._needs_all_listener:
             self._setup_all_listener()
             return
 
@@ -505,11 +521,7 @@ class TrackTemplateResultInfo:
 
     @callback
     def _update_listeners(self) -> None:
-        if (
-            self._info.all_states
-            or self._info.exception
-            or (not self._info.domains and not self._info.entities)
-        ):
+        if self._needs_all_listener:
             if self._all_listener:
                 return
             self._cancel_domains_listener()
@@ -517,13 +529,21 @@ class TrackTemplateResultInfo:
             self._setup_all_listener()
             return
 
-        domains_changed = False
-        if self._info.domains != self._last_info.domains:
+        had_all_listner = True if self._all_listener else False
+        if had_all_listner:
+            self._cancel_all_listener()
+
+        domains_changed = self._info.domains != self._last_info.domains
+        if had_all_listner or domains_changed:
             domains_changed = True
             self._cancel_domains_listener()
             self._setup_domains_listener()
 
-        if domains_changed or self._info.entities != self._last_info.entities:
+        if (
+            had_all_listner
+            or domains_changed
+            or self._info.entities != self._last_info.entities
+        ):
             self._cancel_entities_listener()
             self._setup_entities_listener()
 
@@ -533,19 +553,19 @@ class TrackTemplateResultInfo:
         for entity_id in self.hass.states.async_entity_ids(self._info.domains):
             entities.add(entity_id)
         self._entities_listener = async_track_state_change_event(
-            self.hass, entities, self._state_changed_listener
+            self.hass, entities, self._refresh
         )
 
     @callback
     def _setup_domains_listener(self) -> None:
         self._domains_listener = async_track_state_added_domain(
-            self.hass, self._info.domains, self._state_changed_listener
+            self.hass, self._info.domains, self._refresh
         )
 
     @callback
     def _setup_all_listener(self) -> None:
         self._all_listener = self.hass.bus.async_listen(
-            EVENT_STATE_CHANGED, self._state_changed_listener
+            EVENT_STATE_CHANGED, self._refresh
         )
 
     @callback
@@ -560,28 +580,9 @@ class TrackTemplateResultInfo:
         """Force recalculate the template."""
         if variables is not _UNCHANGED:
             self._variables = variables
-        self._refresh()
+        self._refresh(None)
 
-    @callback
-    def _state_changed_listener(self, event: Event) -> None:
-        """Check if condition is correct and run action."""
-        # Optimisation: if the old and new states are not None then this is
-        # a state change rather than a life-cycle event, and therefore we
-        # only need to check the include entities.
-        old_state = event.data.get("old_state")
-        new_state = event.data.get("new_state")
-        entity_id = event.data["entity_id"]
-
-        if self._info.domains or self._info.entities:
-            if old_state is not None and new_state is not None:
-                if not self._info.filter(entity_id):
-                    return
-            elif not self._info.filter_lifecycle(entity_id):
-                return
-
-        self._refresh(event)
-
-    def _refresh(self, event: Optional[Event] = None) -> None:
+    def _refresh(self, event: Optional[Event]) -> None:
         self._info = self._template.async_render_to_info(self._variables)
         self._update_listeners()
         self._last_info = self._info
