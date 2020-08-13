@@ -3,7 +3,6 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import dataclasses
 import logging
-import os
 import sys
 import threading
 from typing import Any, Dict, Optional
@@ -58,23 +57,17 @@ class HassEventLoopPolicy(PolicyBase):  # type: ignore
         if self.debug:
             loop.set_debug(True)
 
-        cpu_count = os.cpu_count() or 1
-
-        # On an RPi4:
         #
-        # Python 3.7 defaults to 20 max_workers (cpu_count * 5)
-        # Python 3.8 defaults to  8 max_workers min(32, (cpu_count + 4))
+        # Python 3.8 has significantly less workers by default
+        # than Python 3.7.  In order to be consistent between
+        # supported versions, we need to set max_workers.
         #
-        # We use a hybird approach with a little bit extra
-        # to ensure we have enough regardless of the python version
-        # since there are a lot of integrations that tend to do
-        # process updates in the executor which can block for
-        # a long time.
+        # In most cases the workers are not I/O bound, as they
+        # are sleeping/blocking waiting for data from integrations
+        # updating so this number should be higher than the default
+        # use case.
         #
-        executor = ThreadPoolExecutor(
-            thread_name_prefix="SyncWorker",
-            max_workers=min(32, max(cpu_count + 6, cpu_count * 6)),
-        )
+        executor = ThreadPoolExecutor(thread_name_prefix="SyncWorker", max_workers=64)
         loop.set_default_executor(executor)
         loop.set_default_executor = warn_use(  # type: ignore
             loop.set_default_executor, "sets default executor on the event loop"
