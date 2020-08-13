@@ -1411,7 +1411,7 @@ def test_async_render_to_info_with_branching(hass):
     assert_result_info(info, "on", {"light.a", "light.b"})
 
 
-def test_extract_entities_with_complex_branching(hass):
+def test_async_render_to_info_with_complex_branching(hass):
     """Test async_render_to_info function by domain."""
     hass.states.async_set("light.a", "off")
     hass.states.async_set("light.b", "on")
@@ -1447,6 +1447,95 @@ def test_extract_entities_with_complex_branching(hass):
     assert_result_info(info, "['sensor.a']", {"light.a", "light.b"}, {"sensor"})
 
 
+async def test_async_render_to_info_with_wildcard_matching_entity_id(hass):
+    """Test tracking template with a wildcard."""
+    template_complex_str = r"""
+
+{% for state in states %}
+  {% if state.entity_id | regex_match('.*\.office_') %}
+    {{ state.entity_id }}={{ state.state }}
+  {% endif %}
+{% endfor %}
+
+"""
+    hass.states.async_set("cover.office_drapes", "closed")
+    hass.states.async_set("cover.office_window", "closed")
+    hass.states.async_set("cover.office_skylight", "open")
+    info = render_to_info(hass, template_complex_str)
+
+    assert not info.domains
+    assert info.entities == {
+        "cover.office_drapes",
+        "cover.office_window",
+        "cover.office_skylight",
+    }
+    assert info.all_states is True
+
+
+async def test_async_render_to_info_with_wildcard_matching_state(hass):
+    """Test tracking template with a wildcard."""
+    template_complex_str = """
+
+{% for state in states %}
+  {% if state.state | regex_match('ope.*') %}
+    {{ state.entity_id }}={{ state.state }}
+  {% endif %}
+{% endfor %}
+
+"""
+    hass.states.async_set("cover.office_drapes", "closed")
+    hass.states.async_set("cover.office_window", "closed")
+    hass.states.async_set("cover.office_skylight", "open")
+    hass.states.async_set("cover.x_skylight", "open")
+    hass.states.async_set("binary_sensor.door", "open")
+
+    info = render_to_info(hass, template_complex_str)
+
+    assert not info.domains
+    assert info.entities == {
+        "cover.x_skylight",
+        "binary_sensor.door",
+        "cover.office_drapes",
+        "cover.office_window",
+        "cover.office_skylight",
+    }
+    assert info.all_states is True
+
+    hass.states.async_set("binary_sensor.door", "closed")
+    info = render_to_info(hass, template_complex_str)
+
+    assert not info.domains
+    assert info.entities == {
+        "cover.x_skylight",
+        "binary_sensor.door",
+        "cover.office_drapes",
+        "cover.office_window",
+        "cover.office_skylight",
+    }
+    assert info.all_states is True
+
+    template_cover_str = """
+
+{% for state in states.cover %}
+  {% if state.state | regex_match('ope.*') %}
+    {{ state.entity_id }}={{ state.state }}
+  {% endif %}
+{% endfor %}
+
+"""
+    hass.states.async_set("cover.x_skylight", "closed")
+    info = render_to_info(hass, template_cover_str)
+
+    assert info.domains == {"cover"}
+    assert info.entities == {
+        "cover.x_skylight",
+        "cover.office_drapes",
+        "cover.office_window",
+        "cover.office_skylight",
+    }
+    assert info.all_states is False
+
+
 def test_nested_async_render_to_info_case(hass):
     """Test a deeply nested state with async_render_to_info."""
 
@@ -1457,6 +1546,31 @@ def test_nested_async_render_to_info_case(hass):
         hass, "{{ states[states['input_select.picker'].state].state }}", {}
     )
     assert_result_info(info, "off", {"input_select.picker", "vacuum.a"})
+
+
+def test_result_as_boolean(hass):
+    """Test converting a template result to a boolean."""
+
+    template.result_as_boolean(True) is True
+    template.result_as_boolean(" 1 ") is True
+    template.result_as_boolean(" true ") is True
+    template.result_as_boolean(" TrUE ") is True
+    template.result_as_boolean(" YeS ") is True
+    template.result_as_boolean(" On ") is True
+    template.result_as_boolean(" Enable ") is True
+    template.result_as_boolean(1) is True
+    template.result_as_boolean(-1) is True
+    template.result_as_boolean(500) is True
+
+    template.result_as_boolean(False) is False
+    template.result_as_boolean(" 0 ") is False
+    template.result_as_boolean(" false ") is False
+    template.result_as_boolean(" FaLsE ") is False
+    template.result_as_boolean(" no ") is False
+    template.result_as_boolean(" off ") is False
+    template.result_as_boolean(" disable ") is False
+    template.result_as_boolean(0) is False
+    template.result_as_boolean(None) is False
 
 
 def test_closest_function_to_entity_id(hass):
