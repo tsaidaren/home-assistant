@@ -1,5 +1,11 @@
 """Test Zeroconf component setup process."""
-from zeroconf import InterfaceChoice, IPVersion, ServiceInfo, ServiceStateChange
+from zeroconf import (
+    BadTypeInNameException,
+    InterfaceChoice,
+    IPVersion,
+    ServiceInfo,
+    ServiceStateChange,
+)
 
 from homeassistant.components import zeroconf
 from homeassistant.components.zeroconf import CONF_DEFAULT_INTERFACE, CONF_IPV6
@@ -167,6 +173,20 @@ async def test_setup_with_ipv6_default(hass, mock_zeroconf):
     assert mock_zeroconf.called_with()
 
 
+async def test_service_with_invalid_name(hass, mock_zeroconf, caplog):
+    """Test we do not crash on service with an invalid name."""
+    with patch.object(
+        zeroconf, "HaServiceBrowser", side_effect=service_update_mock
+    ) as mock_service_browser:
+        mock_zeroconf.get_service_info.side_effect = BadTypeInNameException
+        assert await async_setup_component(hass, zeroconf.DOMAIN, {zeroconf.DOMAIN: {}})
+        hass.bus.async_fire(EVENT_HOMEASSISTANT_STARTED)
+        await hass.async_block_till_done()
+
+    assert len(mock_service_browser.mock_calls) == 1
+    assert "Failed to get info for device name" in caplog.text
+
+
 async def test_homekit_match_partial_space(hass, mock_zeroconf):
     """Test configured options for a device are loaded via config entry."""
     with patch.dict(
@@ -329,54 +349,3 @@ async def test_get_instance(hass, mock_zeroconf):
     hass.bus.async_fire(EVENT_HOMEASSISTANT_STOP)
     await hass.async_block_till_done()
     assert len(mock_zeroconf.ha_close.mock_calls) == 1
-
-
-async def test_multiple_zeroconf_instances(hass, mock_zeroconf, caplog):
-    """Test creating multiple zeroconf throws without an integration."""
-
-    assert await async_setup_component(hass, zeroconf.DOMAIN, {zeroconf.DOMAIN: {}})
-    await hass.async_block_till_done()
-
-    zeroconf_instance = await zeroconf.async_get_instance(hass)
-
-    new_zeroconf_instance = zeroconf.Zeroconf()
-    assert new_zeroconf_instance == zeroconf_instance
-
-    assert "Zeroconf" in caplog.text
-
-
-async def test_multiple_zeroconf_instances_gives_shared(hass, mock_zeroconf, caplog):
-    """Test creating multiple zeroconf gives the shared instance to an integration."""
-
-    assert await async_setup_component(hass, zeroconf.DOMAIN, {zeroconf.DOMAIN: {}})
-    await hass.async_block_till_done()
-
-    zeroconf_instance = await zeroconf.async_get_instance(hass)
-
-    correct_frame = Mock(
-        filename="/config/custom_components/burncpu/light.py",
-        lineno="23",
-        line="self.light.is_on",
-    )
-    with patch(
-        "homeassistant.helpers.frame.extract_stack",
-        return_value=[
-            Mock(
-                filename="/home/dev/homeassistant/core.py",
-                lineno="23",
-                line="do_something()",
-            ),
-            correct_frame,
-            Mock(
-                filename="/home/dev/homeassistant/components/zeroconf/usage.py",
-                lineno="23",
-                line="self.light.is_on",
-            ),
-            Mock(filename="/home/dev/mdns/lights.py", lineno="2", line="something()",),
-        ],
-    ):
-        assert zeroconf.Zeroconf() == zeroconf_instance
-
-    assert "custom_components/burncpu/light.py" in caplog.text
-    assert "23" in caplog.text
-    assert "self.light.is_on" in caplog.text
