@@ -406,7 +406,7 @@ keyring==21.2.0
 keyrings.alt==3.4.0
 
 # homeassistant.components.konnected
-konnected==1.1.0
+konnected==1.2.0
 
 # homeassistant.components.dyson
 libpurecool==0.6.3
@@ -671,7 +671,7 @@ pyinsteon==1.0.7
 pyipma==2.0.5
 
 # homeassistant.components.ipp
-pyipp==0.10.1
+pyipp==0.11.0
 
 # homeassistant.components.iqvia
 pyiqvia==0.2.1
@@ -866,7 +866,7 @@ rflink==0.0.52
 ring_doorbell==0.6.0
 
 # homeassistant.components.roku
-rokuecp==0.5.0
+rokuecp==0.6.0
 
 # homeassistant.components.roomba
 roombapy==1.6.1
@@ -893,7 +893,7 @@ sentry-sdk==0.13.5
 simplehound==0.3
 
 # homeassistant.components.simplisafe
-simplisafe-python==9.2.2
+simplisafe-python==9.3.0
 
 # homeassistant.components.sleepiq
 sleepyq==0.7
