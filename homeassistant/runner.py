@@ -21,7 +21,7 @@ from homeassistant.helpers.frame import warn_use
 # updating so this number should be higher than the default
 # use case.
 #
-MAX_EXECUTOR_WORKERS = 64
+MAX_EXECUTOR_WORKERS = 128
 
 
 @dataclasses.dataclass
