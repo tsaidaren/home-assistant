@@ -60,9 +60,14 @@ class HassEventLoopPolicy(PolicyBase):  # type: ignore
 
         cpu_count = os.cpu_count() or 1
 
-        # Python 3.7 has 20 max_workers on an RPi4
-        # Python 3.8 defaults to 8 max_works on an RPi4
+        # On an RPi4:
+        #
+        # Python 3.7 defaults to 20 max_workers (cpu_count * 5)
+        # Python 3.8 defaults to  8 max_workers min(32, (cpu_count + 4))
+        #
         # We use a hyrbird approach to ensure we have enough
+        # regardless of the python version
+        #
         executor = ThreadPoolExecutor(
             thread_name_prefix="SyncWorker",
             max_workers=min(32, max(cpu_count + 4, cpu_count * 5)),
