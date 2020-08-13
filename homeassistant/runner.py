@@ -65,12 +65,14 @@ class HassEventLoopPolicy(PolicyBase):  # type: ignore
         # Python 3.7 defaults to 20 max_workers (cpu_count * 5)
         # Python 3.8 defaults to  8 max_workers min(32, (cpu_count + 4))
         #
-        # We use a hyrbird approach to ensure we have enough
-        # regardless of the python version
+        # We use a hybird approach with a little bit extra
+        # to ensure we have enough regardless of the python version
+        # since there are a lot of integrations that tend to do
+        # process updates in the executor.
         #
         executor = ThreadPoolExecutor(
             thread_name_prefix="SyncWorker",
-            max_workers=min(32, max(cpu_count + 4, cpu_count * 5)),
+            max_workers=min(32, max(cpu_count + 6, cpu_count * 6)),
         )
         loop.set_default_executor(executor)
         loop.set_default_executor = warn_use(  # type: ignore
