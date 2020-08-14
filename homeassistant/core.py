@@ -537,7 +537,7 @@ class EventOrigin(enum.Enum):
 class Event:
     """Representation of an event within the bus."""
 
-    __slots__ = ["event_type", "data", "origin", "time_fired", "context"]
+    __slots__ = ["event_type", "data", "origin", "time_fired", "context", "_as_dict"]
 
     def __init__(
         self,
@@ -553,19 +553,22 @@ class Event:
         self.origin = origin
         self.time_fired = time_fired or dt_util.utcnow()
         self.context: Context = context or Context()
+        self._as_dict: Optional[Dict[str, Any]] = None
 
     def as_dict(self) -> Dict:
         """Create a dict representation of this Event.
 
         Async friendly.
         """
-        return {
-            "event_type": self.event_type,
-            "data": dict(self.data),
-            "origin": str(self.origin),
-            "time_fired": self.time_fired,
-            "context": self.context.as_dict(),
-        }
+        if self._as_dict is None:
+            self._as_dict = {
+                "event_type": self.event_type,
+                "data": dict(self.data),
+                "origin": str(self.origin),
+                "time_fired": self.time_fired,
+                "context": self.context.as_dict(),
+            }
+        return self._as_dict
 
     def __repr__(self) -> str:
         """Return the representation."""
