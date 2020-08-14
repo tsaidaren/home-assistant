@@ -78,6 +78,7 @@ class WebSocketHandler:
 
                 try:
                     dumped = JSON_DUMP(message)
+                    self._logger.warning("JSON: %s", dumped)
                 except (ValueError, TypeError):
                     await self.wsock.send_json(
                         error_message(
