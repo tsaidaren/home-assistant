@@ -179,7 +179,7 @@ aioguardian==1.0.1
 aioharmony==0.2.6
 
 # homeassistant.components.homekit_controller
-aiohomekit[IP]==0.2.46
+aiohomekit[IP]==0.2.47
 
 # homeassistant.components.emulated_hue
 # homeassistant.components.http
@@ -261,7 +261,7 @@ apcaccess==0.0.13
 apns2==0.3.0
 
 # homeassistant.components.apprise
-apprise==0.8.5
+apprise==0.8.7
 
 # homeassistant.components.aprs
 aprslib==0.6.46
@@ -697,7 +697,7 @@ greenwavereality==0.5.1
 griddypower==0.1.0
 
 # homeassistant.components.growatt_server
-growattServer==0.0.4
+growattServer==0.1.1
 
 # homeassistant.components.gstreamer
 gstreamer-player==1.1.2
@@ -911,7 +911,7 @@ messagebird==1.2.0
 meteoalertapi==0.1.6
 
 # homeassistant.components.meteo_france
-meteofrance-api==0.1.0
+meteofrance-api==0.1.1
 
 # homeassistant.components.mfi
 mficlient==0.3.0
@@ -1038,7 +1038,7 @@ oru==0.1.11
 orvibo==1.1.1
 
 # homeassistant.components.ovo_energy
-ovoenergy==1.1.6
+ovoenergy==1.1.7
 
 # homeassistant.components.mqtt
 # homeassistant.components.shiftr
