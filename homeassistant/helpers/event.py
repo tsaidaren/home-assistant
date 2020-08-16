@@ -484,10 +484,6 @@ class TrackTemplateResultInfo:
             return
 
         if self._needs_all_listener:
-            _LOGGER.warning(
-                "The following template is listening for all state change events: %s",
-                self._template.template,
-            )
             self._setup_all_listener()
             return
 
