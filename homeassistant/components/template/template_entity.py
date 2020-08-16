@@ -7,10 +7,11 @@ import voluptuous as vol
 
 from homeassistant.core import callback
 from homeassistant.exceptions import TemplateError
+import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.config_validation import match_all
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.event import Event, async_track_template_result
-from homeassistant.helpers.template import Template
+from homeassistant.helpers.template import Template, result_as_boolean
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -131,6 +132,11 @@ class TemplateEntity(Entity):
         """Template Entity."""
         self._template_attrs = []
 
+    @property
+    def should_poll(self):
+        """No polling needed."""
+        return False
+
     def add_template_attribute(
         self,
         attribute: str,
@@ -175,3 +181,77 @@ class TemplateEntity(Entity):
         for attribute in self._template_attrs:
             if attribute.async_update:
                 attribute.async_update()
+
+
+class TemplateEntityWithAvailability(TemplateEntity):
+    """Entity that uses templates to calculate attributes with an availability template."""
+
+    def __init__(self, availability_template):
+        """Template Entity."""
+        self._availability_template = availability_template
+        self._available = True
+        super().__init__()
+
+    @callback
+    def _update_available(self, result):
+        if isinstance(result, TemplateError):
+            self._available = True
+            return
+
+        self._available = result_as_boolean(result)
+
+    @callback
+    def _update_state(self, result):
+        if self._availability_template:
+            return
+
+        self._available = not isinstance(result, TemplateError)
+
+    @property
+    def available(self) -> bool:
+        """Return if the device is available."""
+        return self._available
+
+    async def async_added_to_hass(self):
+        """Register callbacks."""
+        if self._availability_template is not None:
+            self.add_template_attribute(
+                "_available", self._availability_template, None, self._update_available
+            )
+
+        await super().async_added_to_hass()
+
+
+class TemplateEntityWithAvailabilityAndImages(TemplateEntityWithAvailability):
+    """Entity that uses templates to calculate attributes with an availability, icon, and images template."""
+
+    def __init__(self, availability_template, icon_template, entity_picture_template):
+        """Template Entity."""
+        self._icon_template = icon_template
+        self._entity_picture_template = entity_picture_template
+        self._icon = None
+        self._entity_picture = None
+        super().__init__(availability_template)
+
+    @property
+    def icon(self):
+        """Return the icon to use in the frontend, if any."""
+        return self._icon
+
+    @property
+    def entity_picture(self):
+        """Return the entity_picture to use in the frontend, if any."""
+        return self._entity_picture
+
+    async def async_added_to_hass(self):
+        """Register callbacks."""
+        if self._icon_template is not None:
+            self.add_template_attribute(
+                "_icon", self._icon_template, vol.Or(cv.whitespace, cv.icon)
+            )
+        if self._entity_picture_template is not None:
+            self.add_template_attribute(
+                "_entity_picture", self._entity_picture_template
+            )
+
+        await super().async_added_to_hass()
