@@ -157,8 +157,7 @@ def validate_sqlite_database(dbpath: str) -> bool:
         conn = sqlite3.connect(dbpath)
         cursor = conn.cursor()
         if not last_run_was_recently_clean(cursor) or not basic_sanity_check(cursor):
-            return False
-        cursor.execute("PRAGMA QUICK_CHECK")
+            cursor.execute("PRAGMA QUICK_CHECK")
         conn.close()
     except sqlite3.DatabaseError:
         _LOGGER.exception("The database at %s is corrupt or malformed.", dbpath)
