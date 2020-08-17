@@ -156,7 +156,14 @@ def validate_sqlite_database(dbpath: str) -> bool:
     try:
         conn = sqlite3.connect(dbpath)
         cursor = conn.cursor()
-        if not last_run_was_recently_clean(cursor) or not basic_sanity_check(cursor):
+        if last_run_was_recently_clean(cursor) or basic_sanity_check(cursor):
+            _LOGGER.debug(
+                "The quick_check will be skipped as the system was restarted cleanly and passed the basic sanity check"
+            )
+        else:
+            _LOGGER.debug(
+                "A quick_check is being performed on the sqlite3 database at %s", dbpath
+            )
             cursor.execute("PRAGMA QUICK_CHECK")
         conn.close()
     except sqlite3.DatabaseError:
