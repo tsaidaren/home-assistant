@@ -259,7 +259,8 @@ class Template:
 
         This method must be run in the event loop.
         """
-        assert self.hass and _RENDER_INFO not in self.hass.data
+        assert self.hass
+        assert _RENDER_INFO not in self.hass.data
         render_info = self.hass.data[_RENDER_INFO] = RenderInfo(self)
         # pylint: disable=protected-access
         try:
