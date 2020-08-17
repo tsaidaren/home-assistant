@@ -121,7 +121,7 @@ class SensorTemplate(TemplateEntityWithAvailabilityAndImages, Entity):
         self._friendly_name_template = friendly_name_template
         self._unit_of_measurement = unit_of_measurement
         self._template = state_template
-        self._state = True
+        self._state = None
         self._device_class = device_class
         self._attribute_templates = attribute_templates
         self._attributes = {}
