@@ -107,7 +107,7 @@ class _TemplateAttribute:
         self._write_update_if_added()
 
     @callback
-    def async_added_to_hass(self) -> None:
+    def async_template_startup(self) -> None:
         """Call from containing entity when added to hass."""
         result_info = async_track_template_result(
             self._entity.hass, self.template, self._handle_result
@@ -165,6 +165,8 @@ class TemplateEntity(Entity):
     async def _async_template_startup(self, _) -> None:
         # async_update will not write state
         # until "add_complete" is set on the attribute
+        for attribute in self._template_attrs:
+            self.async_on_remove(attribute.async_template_startup())
         await self.async_update()
         for attribute in self._template_attrs:
             attribute.add_complete = True
@@ -172,9 +174,6 @@ class TemplateEntity(Entity):
 
     async def async_added_to_hass(self) -> None:
         """Run when entity about to be added to hass."""
-        for attribute in self._template_attrs:
-            self.async_on_remove(attribute.async_added_to_hass())
-
         self.hass.bus.async_listen_once(
             EVENT_HOMEASSISTANT_START, self._async_template_startup
         )
