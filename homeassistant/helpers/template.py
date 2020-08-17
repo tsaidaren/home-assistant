@@ -8,6 +8,7 @@ import logging
 import math
 import random
 import re
+import threading
 from typing import Any, Iterable, List, Optional, Union
 from urllib.parse import urlencode as urllib_urlencode
 import weakref
@@ -238,6 +239,8 @@ class Template:
 
         This method must be run in the event loop.
         """
+        assert threading.current_thread() is threading.main_thread()
+
         compiled = self._compiled or self._ensure_compiled()
 
         if variables is not None:
@@ -252,7 +255,10 @@ class Template:
     def async_render_to_info(
         self, variables: TemplateVarsType = None, **kwargs: Any
     ) -> RenderInfo:
-        """Render the template and collect an entity filter."""
+        """Render the template and collect an entity filter.
+
+        This method must be run in the event loop.
+        """
         assert self.hass and _RENDER_INFO not in self.hass.data
         render_info = self.hass.data[_RENDER_INFO] = RenderInfo(self)
         # pylint: disable=protected-access
