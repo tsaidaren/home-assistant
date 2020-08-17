@@ -132,7 +132,7 @@ def last_run_was_recently_clean(cursor):
     if not end_time or not end_time[0]:
         return False
 
-    last_run_end_time = process_timestamp(dt_util.parse_datetime(end_time[0]))
+    last_run_end_time = process_timestamp(dt_util.parse_datetime(f"{end_time[0]}Z"))
 
     _LOGGER.debug(
         "The last run ended at: %s (now: %s)", last_run_end_time, dt_util.utcnow()
