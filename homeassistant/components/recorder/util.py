@@ -156,7 +156,7 @@ def validate_sqlite_database(dbpath: str) -> bool:
     try:
         conn = sqlite3.connect(dbpath)
         cursor = conn.cursor()
-        if last_run_was_recently_clean(cursor) or basic_sanity_check(cursor):
+        if last_run_was_recently_clean(cursor) and basic_sanity_check(cursor):
             _LOGGER.debug(
                 "The quick_check will be skipped as the system was restarted cleanly and passed the basic sanity check"
             )
