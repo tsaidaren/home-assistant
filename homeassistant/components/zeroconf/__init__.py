@@ -378,12 +378,12 @@ def info_from_service(service):
 def _suppress_invalid_properties(properties):
     """Suppress any properties that will cause zeroconf to fail to startup."""
 
-    for prop in properties[:]:
-        if len(properties[prop]) > MAX_PROPERTY_VALUE_LEN:
+    for prop, prop_value in properties.items():
+        if len(prop_value) > MAX_PROPERTY_VALUE_LEN:
             _LOGGER.error(
                 "The property '%s' was suppressed because it is longer than the maximum length of %d bytes: %s",
                 prop,
                 MAX_PROPERTY_VALUE_LEN,
-                properties[prop],
+                prop_value,
             )
             properties[prop] = ""
