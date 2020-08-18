@@ -383,7 +383,7 @@ class TemplateFan(TemplateEntityWithAvailability, FanEntity):
 
     @callback
     def _update_direction(self, direction):
-        # Validate speed
+        # Validate direction
         if direction in _VALID_DIRECTIONS:
             self._direction = direction
         elif direction in [STATE_UNAVAILABLE, STATE_UNKNOWN]:
