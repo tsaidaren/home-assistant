@@ -152,20 +152,10 @@ def setup(hass, config):
         hass.helpers.instance_id.async_get(), hass.loop
     ).result()
 
-    if len(hass.config.location_name.encode("utf-8")) > MAX_NAME_LEN:
-        _LOGGER.warning(
-            "The location name was truncated because it is longer than the maximum length of %d bytes: %s",
-            MAX_NAME_LEN,
-            hass.config.location_name,
-        )
-        safe_location_name = hass.config.location_name.encode("utf-8")[
-            :MAX_NAME_LEN
-        ].decode("utf-8", "ignore")
-    else:
-        safe_location_name = hass.config.location_name
+    valid_location_name = _truncate_location_name_to_valid(hass.config.location_name)
 
     params = {
-        "location_name": safe_location_name,
+        "location_name": valid_location_name,
         "uuid": uuid,
         "version": __version__,
         "external_url": "",
@@ -201,7 +191,7 @@ def setup(hass, config):
 
     info = ServiceInfo(
         ZEROCONF_TYPE,
-        name=f"{safe_location_name}.{ZEROCONF_TYPE}",
+        name=f"{valid_location_name}.{ZEROCONF_TYPE}",
         server=f"{uuid}.local.",
         addresses=[host_ip_pton],
         port=hass.http.server_port,
@@ -396,3 +386,16 @@ def _suppress_invalid_properties(properties):
                 prop_value,
             )
             properties[prop] = ""
+
+
+def _truncate_location_name_to_valid(location_name):
+    """Truncate or return the location name usable for zeroconf."""
+    if len(location_name.encode("utf-8")) < MAX_NAME_LEN:
+        return location_name
+
+    _LOGGER.warning(
+        "The location name was truncated because it is longer than the maximum length of %d bytes: %s",
+        MAX_NAME_LEN,
+        location_name,
+    )
+    return location_name.encode("utf-8")[:MAX_NAME_LEN].decode("utf-8", "ignore")
