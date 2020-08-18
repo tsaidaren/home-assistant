@@ -3,8 +3,11 @@ from abc import abstractmethod
 from datetime import timedelta
 import logging
 
+import voluptuous as vol
+
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.core import callback
+from homeassistant.helpers import config_validation as cv, entity_platform
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.event import async_track_point_in_utc_time
 from homeassistant.util.dt import as_timestamp, now, parse_datetime, utc_from_timestamp
@@ -28,8 +31,11 @@ from .const import (
     KEY_SCHEDULE_ID,
     KEY_SUBTYPE,
     KEY_SUMMARY,
+    KEY_TYPE,
     KEY_ZONE_ID,
     KEY_ZONE_NUMBER,
+    SCHEDULE_TYPE_FLEX,
+    SERVICE_SET_ZONE_MOISTURE,
     SIGNAL_RACHIO_CONTROLLER_UPDATE,
     SIGNAL_RACHIO_RAIN_DELAY_UPDATE,
     SIGNAL_RACHIO_SCHEDULE_UPDATE,
@@ -55,9 +61,11 @@ from .webhooks import (
 
 _LOGGER = logging.getLogger(__name__)
 
+ATTR_PERCENT = "percent"
 ATTR_SCHEDULE_SUMMARY = "Summary"
 ATTR_SCHEDULE_ENABLED = "Enabled"
 ATTR_SCHEDULE_DURATION = "Duration"
+ATTR_SCHEDULE_TYPE = "Type"
 ATTR_ZONE_NUMBER = "Zone number"
 ATTR_ZONE_SHADE = "Shade"
 ATTR_ZONE_SLOPE = "Slope"
@@ -67,10 +75,22 @@ ATTR_ZONE_TYPE = "Type"
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the Rachio switches."""
-    # Add all zones from all controllers as switches
+    has_flex_sched = False
     entities = await hass.async_add_executor_job(_create_entities, hass, config_entry)
+    for entity in entities:
+        if isinstance(entity, RachioSchedule) and entity.type == SCHEDULE_TYPE_FLEX:
+            has_flex_sched = True
+
     async_add_entities(entities)
     _LOGGER.info("%d Rachio switch(es) added", len(entities))
+
+    platform = entity_platform.current_platform.get()
+    if has_flex_sched:
+        platform.async_register_entity_service(
+            SERVICE_SET_ZONE_MOISTURE,
+            {vol.Required(ATTR_PERCENT): cv.positive_int},
+            "set_moisture_percent",
+        )
 
 
 def _create_entities(hass, config_entry):
@@ -355,6 +375,11 @@ class RachioZone(RachioSwitch):
         """Stop watering all zones."""
         self._controller.stop_watering()
 
+    def set_moisture_percent(self, percent) -> None:
+        """Set the zone moisture percent."""
+        _LOGGER.info("Setting %s moisture to %s percent", self._zone_name, percent)
+        self._controller.rachio.zone.setMoisturePercent(self._id, percent / 100)
+
     @callback
     def _async_handle_update(self, *args, **kwargs) -> None:
         """Handle incoming webhook zone data."""
@@ -391,6 +416,7 @@ class RachioSchedule(RachioSwitch):
         self._duration = data[KEY_DURATION]
         self._schedule_enabled = data[KEY_ENABLED]
         self._summary = data[KEY_SUMMARY]
+        self.type = data.get(KEY_TYPE)
         self._current_schedule = current_schedule
         super().__init__(controller)
 
@@ -412,11 +438,16 @@ class RachioSchedule(RachioSwitch):
     @property
     def device_state_attributes(self) -> dict:
         """Return the optional state attributes."""
-        return {
+        props = {
             ATTR_SCHEDULE_SUMMARY: self._summary,
             ATTR_SCHEDULE_ENABLED: self.schedule_is_enabled,
             ATTR_SCHEDULE_DURATION: f"{round(self._duration / 60)} minutes",
         }
+        if self.type:
+            props[ATTR_SCHEDULE_TYPE] = self.type
+        else:
+            props[ATTR_SCHEDULE_TYPE] = "FIXED"
+        return props
 
     @property
     def schedule_is_enabled(self) -> bool:
