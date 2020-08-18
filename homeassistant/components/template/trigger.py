@@ -83,7 +83,7 @@ async def async_attach_trigger(
             period,
             call_action,
             lambda _, _2, _3: condition.async_template(hass, value_template),
-            value_template.extract_entities(),
+            entity_id,
         )
 
     unsub = async_track_template(hass, value_template, template_listener)
