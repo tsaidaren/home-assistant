@@ -55,7 +55,11 @@ HOMEKIT_PROPERTIES = "properties"
 HOMEKIT_PAIRED_STATUS_FLAG = "sf"
 HOMEKIT_MODEL = "md"
 
-MAX_PROPERTY_VALUE_LEN = 200
+# Property key=value has a max length of 255
+# so we use 230 to leave space for key=
+MAX_PROPERTY_VALUE_LEN = 230
+
+# Dns label max length
 MAX_NAME_LEN = 63
 
 CONFIG_SCHEMA = vol.Schema(
