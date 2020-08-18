@@ -148,13 +148,15 @@ def setup(hass, config):
         hass.helpers.instance_id.async_get(), hass.loop
     ).result()
 
-    if len(hass.config.location_name) > MAX_NAME_LEN:
+    if len(hass.config.location_name.encode("utf-8")) > MAX_NAME_LEN:
         _LOGGER.warning(
             "The location name was truncated because it is longer than the maximum length of %d bytes: %s",
             MAX_NAME_LEN,
             hass.config.location_name,
         )
-        safe_location_name = hass.config.location_name[:MAX_NAME_LEN]
+        safe_location_name = hass.config.location_name.encode("utf-8")[
+            :MAX_NAME_LEN
+        ].decode("utf-8", "ignore")
     else:
         safe_location_name = hass.config.location_name
 
@@ -382,7 +384,7 @@ def _suppress_invalid_properties(properties):
         if not isinstance(prop_value, str):
             continue
 
-        if len(prop_value) > MAX_PROPERTY_VALUE_LEN:
+        if len(prop_value.encode("utf-8")) > MAX_PROPERTY_VALUE_LEN:
             _LOGGER.error(
                 "The property '%s' was suppressed because it is longer than the maximum length of %d bytes: %s",
                 prop,
