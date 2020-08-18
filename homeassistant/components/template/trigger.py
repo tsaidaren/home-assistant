@@ -78,12 +78,14 @@ async def async_attach_trigger(
             )
             return
 
+        # This is wrong as it should be tracking if the template
+        # changes not the entities
         unsub_track_same = async_track_same_state(
             hass,
             period,
             call_action,
             lambda _, _2, _3: condition.async_template(hass, value_template),
-            entity_id,
+            value_template.extract_entities(),
         )
 
     unsub = async_track_template(hass, value_template, template_listener)
