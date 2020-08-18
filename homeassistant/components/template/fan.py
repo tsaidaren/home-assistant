@@ -329,7 +329,11 @@ class TemplateFan(TemplateEntityWithAvailability, FanEntity):
         self.add_template_attribute("_state", self._template, None, self._update_state)
         if self._speed_template is not None:
             self.add_template_attribute(
-                "_speed", self._speed_template, None, self._update_speed
+                "_speed",
+                self._speed_template,
+                None,
+                self._update_speed,
+                none_on_template_error=True,
             )
         if self._oscillating_template is not None:
             self.add_template_attribute(
@@ -337,19 +341,20 @@ class TemplateFan(TemplateEntityWithAvailability, FanEntity):
                 self._oscillating_template,
                 None,
                 self._update_oscillating,
+                none_on_template_error=True,
             )
         if self._direction_template is not None:
             self.add_template_attribute(
-                "_direction", self._direction_template, None, self._update_direction
+                "_direction",
+                self._direction_template,
+                None,
+                self._update_direction,
+                none_on_template_error=True,
             )
         await super().async_added_to_hass()
 
     @callback
     def _update_speed(self, speed):
-        if isinstance(speed, TemplateError):
-            self._speed = None
-            return
-
         # Validate speed
         if speed in self._speed_list:
             self._speed = speed
@@ -363,10 +368,6 @@ class TemplateFan(TemplateEntityWithAvailability, FanEntity):
 
     @callback
     def _update_oscillating(self, oscillating):
-        if isinstance(oscillating, TemplateError):
-            self._oscillating = None
-            return
-
         # Validate osc
         if oscillating == "True" or oscillating is True:
             self._oscillating = True
@@ -382,11 +383,7 @@ class TemplateFan(TemplateEntityWithAvailability, FanEntity):
 
     @callback
     def _update_direction(self, direction):
-        if isinstance(direction, TemplateError):
-            self._direction = None
-            return
-
-        # Validate speed
+        # Validate direction
         if direction in _VALID_DIRECTIONS:
             self._direction = direction
         elif direction in [STATE_UNAVAILABLE, STATE_UNKNOWN]:
