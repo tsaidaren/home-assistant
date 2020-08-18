@@ -55,6 +55,9 @@ HOMEKIT_PROPERTIES = "properties"
 HOMEKIT_PAIRED_STATUS_FLAG = "sf"
 HOMEKIT_MODEL = "md"
 
+MAX_PROPERTY_VALUE_LEN = 200
+MAX_NAME_LEN = 200
+
 CONFIG_SCHEMA = vol.Schema(
     {
         DOMAIN: vol.Schema(
@@ -145,8 +148,18 @@ def setup(hass, config):
         hass.helpers.instance_id.async_get(), hass.loop
     ).result()
 
+    if len(hass.config.location_name) > MAX_NAME_LEN:
+        _LOGGER.warning(
+            "The location name was truncated because it is longer than the maximum length of %d bytes: %s",
+            MAX_NAME_LEN,
+            hass.config.location_name,
+        )
+        safe_location_name = hass.config.location_name[:MAX_NAME_LEN]
+    else:
+        safe_location_name = hass.config.location_name
+
     params = {
-        "location_name": hass.config.location_name,
+        "location_name": safe_location_name,
         "uuid": uuid,
         "version": __version__,
         "external_url": "",
@@ -178,9 +191,11 @@ def setup(hass, config):
     except OSError:
         host_ip_pton = socket.inet_pton(socket.AF_INET6, host_ip)
 
+    _suppress_invalid_properties(params)
+
     info = ServiceInfo(
         ZEROCONF_TYPE,
-        name=f"{hass.config.location_name}.{ZEROCONF_TYPE}",
+        name=f"{safe_location_name}.{ZEROCONF_TYPE}",
         server=f"{uuid}.local.",
         addresses=[host_ip_pton],
         port=hass.http.server_port,
@@ -358,3 +373,17 @@ def info_from_service(service):
     }
 
     return info
+
+
+def _suppress_invalid_properties(properties):
+    """Suppress any properties that will cause zeroconf to fail to startup."""
+
+    for prop in properties[:]:
+        if len(properties[prop]) > MAX_PROPERTY_VALUE_LEN:
+            _LOGGER.error(
+                "The property '%s' was suppressed because it is longer than the maximum length of %d bytes: %s",
+                prop,
+                MAX_PROPERTY_VALUE_LEN,
+                properties[prop],
+            )
+            properties[prop] = ""
