@@ -15,7 +15,6 @@ from .const import (
     DOMAIN,
     ELECTRIC_METER,
     ESIID,
-    ICON,
     METER_NUMBER,
 )
 
@@ -51,11 +50,6 @@ class SmartMeterTexasSensor(RestoreEntity, Entity):
     def name(self):
         """Device Name."""
         return f"{ELECTRIC_METER} {self.meter.meter}"
-
-    @property
-    def icon(self):
-        """Device Ice."""
-        return ICON
 
     @property
     def unique_id(self):

@@ -49,7 +49,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     try:
         await smartmetertexas.client.authenticate()
     except SmartMeterTexasAuthError:
-        _LOGGER("Username or password was not accepted")
+        _LOGGER.error("Username or password was not accepted")
         return False
     except asyncio.TimeoutError:
         raise ConfigEntryNotReady
@@ -57,6 +57,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     await smartmetertexas.setup()
 
     async def async_update_data():
+        _LOGGER.debug("Fetching latest data")
         await smartmetertexas.read_meters()
         return smartmetertexas
 
@@ -103,17 +104,8 @@ class SmartMeterTexasData:
 
     async def setup(self):
         """Fetch all of the user's meters."""
-        try:
-            self.meters = await self.account.fetch_meters(self.client)
-        except SmartMeterTexasAuthError as error:
-            _LOGGER.error("Error authenticating: %s", error)
-
+        self.meters = await self.account.fetch_meters(self.client)
         _LOGGER.debug("Discovered %s meter(s)", len(self.meters))
-
-        if not self.meters:
-            return False
-
-        return True
 
     async def read_meters(self):
         """Read each meter."""

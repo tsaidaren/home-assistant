@@ -8,7 +8,6 @@ DATA_COORDINATOR = "coordinator"
 DATA_SMART_METER = "smart_meter_data"
 
 DOMAIN = "smart_meter_texas"
-ICON = "mdi:counter"
 
 METER_NUMBER = "meter_number"
 ESIID = "electric_service_identifier"
