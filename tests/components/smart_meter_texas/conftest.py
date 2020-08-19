@@ -13,9 +13,17 @@ from smart_meter_texas.const import (
     OD_READ_ENDPOINT,
 )
 
-from homeassistant.components.smart_meter_texas.const import DATA_COORDINATOR, DOMAIN
+from homeassistant.components.homeassistant import (
+    DOMAIN as HA_DOMAIN,
+    SERVICE_UPDATE_ENTITY,
+)
+from homeassistant.components.smart_meter_texas.const import DOMAIN
+from homeassistant.const import ATTR_ENTITY_ID
+from homeassistant.setup import async_setup_component
 
 from tests.common import MockConfigEntry, load_fixture
+
+TEST_ENTITY_ID = "sensor.electric_meter_123456789"
 
 
 def load_smt_fixture(name):
@@ -32,39 +40,51 @@ async def setup_integration(hass, config_entry, aioclient_mock):
 
 
 async def refresh_data(hass, config_entry, aioclient_mock):
-    """Mock a DataUpdateCoordinator async_refresh."""
+    """Request a DataUpdateCoordinator refresh."""
     mock_connection(aioclient_mock)
-    coordinator = hass.data[DOMAIN][config_entry.entry_id][DATA_COORDINATOR]
-    await coordinator.async_refresh()
+    await async_setup_component(hass, HA_DOMAIN, {})
+    await hass.services.async_call(
+        HA_DOMAIN,
+        SERVICE_UPDATE_ENTITY,
+        {ATTR_ENTITY_ID: TEST_ENTITY_ID},
+        blocking=True,
+    )
     await hass.async_block_till_done()
 
 
-def mock_connection(aioclient_mock, auth_fail=False, auth_timeout=False):
+def mock_connection(
+    aioclient_mock, auth_fail=False, auth_timeout=False, bad_reading=False
+):
     """Mock all calls to the API."""
     aioclient_mock.get(BASE_URL)
 
     auth_endpoint = f"{BASE_ENDPOINT}{AUTH_ENDPOINT}"
-    if auth_fail:
+    if not auth_fail and not auth_timeout:
+        aioclient_mock.post(
+            auth_endpoint, json={"token": "token123"},
+        )
+    elif auth_fail:
         aioclient_mock.post(
             auth_endpoint,
             status=400,
             json={"errormessage": "ERR-USR-INVALIDPASSWORDERROR"},
         )
-    elif auth_timeout:
+    else:  # auth_timeout
         aioclient_mock.post(auth_endpoint, exc=asyncio.TimeoutError)
-    else:
-        aioclient_mock.post(
-            auth_endpoint, json={"token": "token123"},
-        )
 
     aioclient_mock.post(
         f"{BASE_ENDPOINT}{METER_ENDPOINT}", json=load_smt_fixture("meter"),
     )
     aioclient_mock.post(f"{BASE_ENDPOINT}{OD_READ_ENDPOINT}", json={"data": None})
-    aioclient_mock.post(
-        f"{BASE_ENDPOINT}{LATEST_OD_READ_ENDPOINT}",
-        json=load_smt_fixture("latestodrread"),
-    )
+    if not bad_reading:
+        aioclient_mock.post(
+            f"{BASE_ENDPOINT}{LATEST_OD_READ_ENDPOINT}",
+            json=load_smt_fixture("latestodrread"),
+        )
+    else:
+        aioclient_mock.post(
+            f"{BASE_ENDPOINT}{LATEST_OD_READ_ENDPOINT}", json={},
+        )
 
 
 @pytest.fixture(name="config_entry")
