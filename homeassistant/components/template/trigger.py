@@ -78,8 +78,6 @@ async def async_attach_trigger(
             )
             return
 
-        # This is wrong as it should be tracking if the template
-        # changes not the entities
         unsub_track_same = async_track_same_state(
             hass,
             period,
