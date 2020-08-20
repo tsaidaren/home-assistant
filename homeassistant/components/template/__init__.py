@@ -50,27 +50,15 @@ async def async_setup_platform_reloadable(
 async def _async_setup_for_reload(hass, async_add_entities, platform, process_config):
     async def _reload_platform(*_):
         """Reload the template platform config."""
-        _LOGGER.error(["_reload_platform", platform.domain])
-
         try:
             conf = await conf_util.async_hass_config_yaml(hass)
         except HomeAssistantError as err:
             _LOGGER.error(err)
             return
 
-        _LOGGER.error(["_reload_platform", platform.domain, "conf", conf])
-
         integration = await async_get_integration(hass, DOMAIN)
 
         conf = await conf_util.async_process_component_config(hass, conf, integration)
-        _LOGGER.error(
-            [
-                "_reload_platform",
-                platform.domain,
-                "async_process_component_config",
-                conf,
-            ]
-        )
 
         if not conf:
             return
@@ -79,8 +67,6 @@ async def _async_setup_for_reload(hass, async_add_entities, platform, process_co
 
         # Extract only the config for the template, ignore the rest.
         for p_type, p_config in config_per_platform(conf, platform.domain):
-            _LOGGER.error(["_reload_platform", "p_type", p_type, "p_config", p_config])
-
             if p_type != DOMAIN:
                 continue
             _LOGGER.error(
