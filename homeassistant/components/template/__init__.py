@@ -36,10 +36,8 @@ async def async_setup_platform_reloadable(
     """Template platform with reloadability."""
     # This platform can be loaded multiple times. Only first time register the service.
     await _async_setup_reload_service(hass)
-    platform_name = platform.platform_name
 
-    data_key = f"{DOMAIN}.{platform_name}"
-    _LOGGER.error(["async_setup_platform_reloadable", platform_name, platform.domain])
+    data_key = f"{DOMAIN}.{platform.domain}"
 
     if data_key not in hass.data:
         hass.data[data_key] = await _async_setup_for_reload(
@@ -50,11 +48,9 @@ async def async_setup_platform_reloadable(
 
 
 async def _async_setup_for_reload(hass, async_add_entities, platform, process_config):
-    platform_name = platform.platform_name
-
     async def _reload_platform(*_):
         """Reload the template platform config."""
-        _LOGGER.error(["_reload_platform", platform_name])
+        _LOGGER.error(["_reload_platform", platform.domain])
 
         try:
             conf = await conf_util.async_hass_config_yaml(hass)
@@ -62,13 +58,18 @@ async def _async_setup_for_reload(hass, async_add_entities, platform, process_co
             _LOGGER.error(err)
             return
 
-        _LOGGER.error(["_reload_platform", platform_name, "conf", conf])
+        _LOGGER.error(["_reload_platform", platform.domain, "conf", conf])
 
         integration = await async_get_integration(hass, DOMAIN)
 
         conf = await conf_util.async_process_component_config(hass, conf, integration)
         _LOGGER.error(
-            ["_reload_platform", platform_name, "async_process_component_config", conf]
+            [
+                "_reload_platform",
+                platform.domain,
+                "async_process_component_config",
+                conf,
+            ]
         )
 
         if not conf:
@@ -77,7 +78,7 @@ async def _async_setup_for_reload(hass, async_add_entities, platform, process_co
         await platform.async_reset()
 
         # Extract only the config for the template, ignore the rest.
-        for p_type, p_config in config_per_platform(conf, platform_name):
+        for p_type, p_config in config_per_platform(conf, platform.domain):
             _LOGGER.error(["_reload_platform", "p_type", p_type, "p_config", p_config])
 
             if p_type != DOMAIN:
