@@ -45,15 +45,15 @@ async def _async_setup_reload_service(hass):
             _LOGGER.error(
                 "entities for %s %s",
                 platform.domain,
-                hass.data[PLATFORM_STORAGE_KEY][platform.domain],
+                hass.data[ENTITIES_STORAGE_KEY][platform.domain],
             )
 
             old_entity_ids = [
                 entity.entity_id
-                for entity in hass.data[PLATFORM_STORAGE_KEY][platform.domain]
+                for entity in hass.data[ENTITIES_STORAGE_KEY][platform.domain]
             ]
 
-            hass.data[PLATFORM_STORAGE_KEY][platform.domain] = []
+            hass.data[ENTITIES_STORAGE_KEY][platform.domain] = []
 
             tasks = [
                 platform.async_remove_entity(entity_id) for entity_id in old_entity_ids
