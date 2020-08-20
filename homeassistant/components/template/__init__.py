@@ -63,16 +63,9 @@ async def _async_setup_reload_service(hass):
 async def async_setup_platform_reloadable(hass, config, async_add_entities, platform):
     """Template platform with reloadability."""
 
-    _LOGGER.error(
-        "async_setup_platform_reloadable: platform.domain=%s platform.platform=%s platform.platform_name=%s",
-        platform.domain,
-        platform.platform,
-        platform.platform_name,
-    )
-
     await _async_setup_reload_service(hass)
 
-    hass.data.setdefault(PLATFORM_STORAGE_KEY, {})
+    hass.data.setdefault(PLATFORM_STORAGE_KEY, [])
     # This platform can be loaded multiple times. Only first time register the service.
     if platform.domain not in hass.data[PLATFORM_STORAGE_KEY]:
         hass.data[PLATFORM_STORAGE_KEY].append(platform)
