@@ -53,18 +53,12 @@ async def _async_setup_reload_service(hass):
     )
 
 
-async def async_setup_platform_reloadable(hass, platform):
+async def async_setup_platform_reloadable(hass):
     """Template platform with reloadability."""
 
     await _async_setup_reload_service(hass)
 
-    platform2 = entity_platform.current_platform.get()
-    _LOGGER.error(
-        "async_setup_platform_reloadable: platform.domain=%s platform.platform=%s platform.platform_name=%s",
-        platform2.domain,
-        platform2.platform,
-        platform2.platform_name,
-    )
+    platform = entity_platform.current_platform.get()
 
     if platform not in hass.data.setdefault(PLATFORM_STORAGE_KEY, []):
         hass.data[PLATFORM_STORAGE_KEY].append(platform)

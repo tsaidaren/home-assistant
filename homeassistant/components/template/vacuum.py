@@ -39,7 +39,6 @@ from homeassistant.const import (
 )
 from homeassistant.core import callback
 from homeassistant.exceptions import TemplateError
-from homeassistant.helpers import entity_platform
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import async_generate_entity_id
 from homeassistant.helpers.script import Script
@@ -146,7 +145,7 @@ async def async_create_entities(hass, config):
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the template vacuums."""
 
-    await async_setup_platform_reloadable(hass, entity_platform.current_platform.get())
+    await async_setup_platform_reloadable(hass)
     async_add_entities(await async_create_entities(hass, config))
 
 
