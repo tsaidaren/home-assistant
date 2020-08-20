@@ -9,12 +9,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_per_platform
 from homeassistant.loader import async_get_integration
 
-from .const import (
-    DOMAIN,
-    ENTITIES_STORAGE_KEY,
-    EVENT_TEMPLATE_RELOADED,
-    PLATFORM_STORAGE_KEY,
-)
+from .const import DOMAIN, EVENT_TEMPLATE_RELOADED, PLATFORM_STORAGE_KEY
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -58,8 +53,6 @@ async def _async_setup_reload_service(hass):
                     hass.async_create_task(platform.async_add_entities(entities))
                 )
 
-                hass.data[ENTITIES_STORAGE_KEY][platform.domain].extend(entities)
-
         await asyncio.gather(*add_tasks)
 
         hass.bus.async_fire(EVENT_TEMPLATE_RELOADED, context=call.context)
@@ -82,7 +75,6 @@ async def async_setup_platform_reloadable(
     )
 
     hass.data.setdefault(PLATFORM_STORAGE_KEY, {})
-    hass.data.setdefault(ENTITIES_STORAGE_KEY, {}).setdefault(platform.domain, [])
 
     await _async_setup_reload_service(hass)
 
@@ -93,8 +85,4 @@ async def async_setup_platform_reloadable(
             create_entities,
         )
 
-    entities = await create_entities(hass, config)
-
-    hass.data[ENTITIES_STORAGE_KEY][platform.domain].extend(entities)
-
-    async_add_entities(entities)
+    async_add_entities(await create_entities(hass, config))
