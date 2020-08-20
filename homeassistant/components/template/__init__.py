@@ -31,8 +31,11 @@ async def _async_setup_reload_service(hass):
             _LOGGER.error(err)
             return
 
+        remove_tasks = []
+        add_tasks = []
+
         for platform_setup in hass.data[PLATFORM_STORAGE_KEY].values():
-            async_add_entities, platform, process_config = platform_setup
+            platform, create_entities = platform_setup
 
             integration = await async_get_integration(hass, platform.domain)
 
@@ -55,11 +58,12 @@ async def _async_setup_reload_service(hass):
 
             hass.data[ENTITIES_STORAGE_KEY][platform.domain] = []
 
-            tasks = [
-                platform.async_remove_entity(entity_id) for entity_id in old_entity_ids
-            ]
-
-            await asyncio.gather(*tasks)
+            remove_tasks.extend(
+                [
+                    platform.async_remove_entity(entity_id)
+                    for entity_id in old_entity_ids
+                ]
+            )
 
             # Extract only the config for the template, ignore the rest.
             for p_type, p_config in config_per_platform(conf, platform.domain):
@@ -69,11 +73,16 @@ async def _async_setup_reload_service(hass):
                     ["_reload_platform", "want", "p_type", p_type, "p_config", p_config]
                 )
 
-                entities = await process_config(hass, p_config)
+                entities = await create_entities(hass, p_config)
+
+                add_tasks.append(
+                    hass.async_create_task(platform.async_add_entities(entities))
+                )
 
                 hass.data[ENTITIES_STORAGE_KEY][platform.domain].extend(entities)
 
-            async_add_entities(hass.data[PLATFORM_STORAGE_KEY][platform.domain])
+        await asyncio.gather(*remove_tasks)
+        await asyncio.gather(*add_tasks)
 
         hass.bus.async_fire(EVENT_TEMPLATE_RELOADED, context=call.context)
 
@@ -83,7 +92,7 @@ async def _async_setup_reload_service(hass):
 
 
 async def async_setup_platform_reloadable(
-    hass, config, async_add_entities, platform, process_config
+    hass, config, async_add_entities, platform, create_entities
 ):
     """Template platform with reloadability."""
     hass.data.setdefault(PLATFORM_STORAGE_KEY, {})
@@ -94,12 +103,11 @@ async def async_setup_platform_reloadable(
     # This platform can be loaded multiple times. Only first time register the service.
     if platform.domain not in hass.data[PLATFORM_STORAGE_KEY]:
         hass.data[PLATFORM_STORAGE_KEY][platform.domain] = (
-            async_add_entities,
             platform,
-            process_config,
+            create_entities,
         )
 
-    entities = await process_config(hass, config)
+    entities = await create_entities(hass, config)
 
     hass.data[ENTITIES_STORAGE_KEY][platform.domain].extend(entities)
 
