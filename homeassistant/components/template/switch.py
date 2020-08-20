@@ -21,11 +21,13 @@ from homeassistant.const import (
 )
 from homeassistant.core import callback
 from homeassistant.exceptions import TemplateError
+from homeassistant.helpers import entity_platform
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import async_generate_entity_id
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.script import Script
 
+from . import async_setup_platform_reloadable
 from .const import CONF_AVAILABILITY_TEMPLATE
 from .template_entity import TemplateEntityWithAvailabilityAndImages
 
@@ -54,8 +56,8 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 )
 
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Set up the Template switch."""
+async def async_create_entities(hass, config):
+    """Create the Template switches."""
     switches = []
 
     for device, device_config in config[CONF_SWITCHES].items():
@@ -83,7 +85,14 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
             )
         )
 
-    async_add_entities(switches)
+    return switches
+
+
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+    """Set up the template switches."""
+
+    await async_setup_platform_reloadable(hass, entity_platform.current_platform.get())
+    async_add_entities(await async_create_entities(hass, config))
 
 
 class SwitchTemplate(
