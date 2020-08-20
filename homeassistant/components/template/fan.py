@@ -82,7 +82,7 @@ PLATFORM_SCHEMA = cv.PLATFORM_SCHEMA.extend(
 )
 
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+async def _async_setup_platform(hass, config):
     """Set up the Template Fans."""
     fans = []
 
@@ -124,10 +124,10 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
             )
         )
 
-    async_add_entities(fans)
+    return fans
 
 
-async def _async_setup_platform(hass, config, async_add_entities):
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the template sensors."""
 
     return await async_setup_platform_reloadable(

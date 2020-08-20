@@ -43,26 +43,24 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 )
 
 
-async def _async_setup_platform(hass, config, async_add_entities):
+async def _async_setup_platform(hass, config):
     """Set up the Template lock."""
     device = config.get(CONF_NAME)
     value_template = config.get(CONF_VALUE_TEMPLATE)
     availability_template = config.get(CONF_AVAILABILITY_TEMPLATE)
 
-    async_add_entities(
-        [
-            TemplateLock(
-                hass,
-                device,
-                value_template,
-                availability_template,
-                config.get(CONF_LOCK),
-                config.get(CONF_UNLOCK),
-                config.get(CONF_OPTIMISTIC),
-                config.get(CONF_UNIQUE_ID),
-            )
-        ]
-    )
+    return [
+        TemplateLock(
+            hass,
+            device,
+            value_template,
+            availability_template,
+            config.get(CONF_LOCK),
+            config.get(CONF_UNLOCK),
+            config.get(CONF_OPTIMISTIC),
+            config.get(CONF_UNIQUE_ID),
+        )
+    ]
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):

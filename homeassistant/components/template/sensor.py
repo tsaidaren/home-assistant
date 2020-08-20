@@ -58,10 +58,8 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 )
 
 
-async def _async_setup_platform(hass, config, async_add_entities):
+async def _async_setup_platform(hass, config):
     sensors = []
-
-    _LOGGER.error(["_async_setup_platform-CONFIG", config])
 
     for device, device_config in config[CONF_SENSORS].items():
         state_template = device_config[CONF_VALUE_TEMPLATE]
@@ -92,9 +90,7 @@ async def _async_setup_platform(hass, config, async_add_entities):
             )
         )
 
-    async_add_entities(sensors)
-
-    return True
+    return sensors
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):

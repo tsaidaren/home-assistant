@@ -1,5 +1,6 @@
 """The template component."""
 
+import asyncio
 import logging
 
 from homeassistant import config as conf_util
@@ -8,7 +9,12 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_per_platform
 from homeassistant.loader import async_get_integration
 
-from .const import DOMAIN, EVENT_TEMPLATE_RELOADED, PLATFORM_STORAGE_KEY
+from .const import (
+    DOMAIN,
+    ENTITIES_STORAGE_KEY,
+    EVENT_TEMPLATE_RELOADED,
+    PLATFORM_STORAGE_KEY,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,7 +42,18 @@ async def _async_setup_reload_service(hass):
             if not conf:
                 continue
 
-            await platform.async_reset()
+            old_entity_ids = [
+                entity.entity_id
+                for entity in hass.data[PLATFORM_STORAGE_KEY][platform.domain]
+            ]
+
+            hass.data[PLATFORM_STORAGE_KEY][platform.domain] = []
+
+            tasks = [
+                platform.async_remove_entity(entity_id) for entity_id in old_entity_ids
+            ]
+
+            await asyncio.gather(*tasks)
 
             # Extract only the config for the template, ignore the rest.
             for p_type, p_config in config_per_platform(conf, platform.domain):
@@ -46,7 +63,11 @@ async def _async_setup_reload_service(hass):
                     ["_reload_platform", "want", "p_type", p_type, "p_config", p_config]
                 )
 
-                await process_config(hass, p_config, async_add_entities)
+                entities = await process_config(hass, p_config)
+
+                hass.data[ENTITIES_STORAGE_KEY][platform.domain].extend(entities)
+
+            async_add_entities(hass.data[PLATFORM_STORAGE_KEY][platform.domain])
 
         hass.bus.async_fire(EVENT_TEMPLATE_RELOADED, context=call.context)
 
@@ -60,6 +81,7 @@ async def async_setup_platform_reloadable(
 ):
     """Template platform with reloadability."""
     hass.data.setdefault(PLATFORM_STORAGE_KEY, {})
+    hass.data.setdefault(ENTITIES_STORAGE_KEY, {}).setdefault(platform.domain, [])
 
     await _async_setup_reload_service(hass)
 
@@ -71,4 +93,8 @@ async def async_setup_platform_reloadable(
             process_config,
         )
 
-    return await process_config(hass, config, async_add_entities)
+    entities = await process_config(hass, config)
+
+    hass.data[ENTITIES_STORAGE_KEY][platform.domain].extend(entities)
+
+    async_add_entities(entities)

@@ -94,7 +94,7 @@ PLATFORM_SCHEMA = cv.PLATFORM_SCHEMA.extend(
 )
 
 
-async def _async_setup_platform(hass, config, async_add_entities):
+async def _async_setup_platform(hass, config):
     """Set up the Template Vacuums."""
     vacuums = []
 
@@ -140,7 +140,7 @@ async def _async_setup_platform(hass, config, async_add_entities):
             )
         )
 
-    async_add_entities(vacuums)
+    return vacuums
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):

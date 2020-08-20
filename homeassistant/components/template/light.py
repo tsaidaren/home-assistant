@@ -79,7 +79,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 )
 
 
-async def _async_setup_platform(hass, config, async_add_entities):
+async def _async_setup_platform(hass, config):
     """Set up the Template Lights."""
     lights = []
 
@@ -130,7 +130,7 @@ async def _async_setup_platform(hass, config, async_add_entities):
             )
         )
 
-    async_add_entities(lights)
+    return lights
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):

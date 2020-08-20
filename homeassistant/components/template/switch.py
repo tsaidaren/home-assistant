@@ -56,7 +56,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 )
 
 
-async def _async_setup_platform(hass, config, async_add_entities):
+async def _async_setup_platform(hass, config):
     """Set up the Template switch."""
     switches = []
 
@@ -85,7 +85,7 @@ async def _async_setup_platform(hass, config, async_add_entities):
             )
         )
 
-    async_add_entities(switches)
+    return switches
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
