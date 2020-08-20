@@ -36,11 +36,6 @@ async def _async_setup_reload_service(hass):
 
         for platform_setup in hass.data[PLATFORM_STORAGE_KEY].values():
             platform, _ = platform_setup
-            _LOGGER.error(
-                "entities for %s %s",
-                platform.domain,
-                hass.data[ENTITIES_STORAGE_KEY][platform.domain],
-            )
 
             old_entity_ids = [
                 entity.entity_id
@@ -76,18 +71,6 @@ async def _async_setup_reload_service(hass):
 
                 entities = await create_entities(hass, p_config)
 
-                _LOGGER.error(
-                    [
-                        "_reload_platform",
-                        "want",
-                        "p_type",
-                        p_type,
-                        "p_config",
-                        p_config,
-                        "entities",
-                        entities,
-                    ]
-                )
                 add_tasks.append(
                     hass.async_create_task(platform.async_add_entities(entities))
                 )
