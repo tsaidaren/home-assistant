@@ -66,9 +66,8 @@ async def async_create_entities(hass, config):
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the template lock."""
 
-    return await async_setup_platform_reloadable(
-        hass, config, async_add_entities, entity_platform.current_platform.get(),
-    )
+    await async_setup_platform_reloadable(hass, entity_platform.current_platform.get())
+    async_add_entities(await async_create_entities(hass, config))
 
 
 class TemplateLock(TemplateEntityWithAvailability, LockEntity):

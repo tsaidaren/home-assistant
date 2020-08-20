@@ -53,14 +53,10 @@ async def _async_setup_reload_service(hass):
     )
 
 
-async def async_setup_platform_reloadable(hass, config, async_add_entities, platform):
+async def async_setup_platform_reloadable(hass, platform):
     """Template platform with reloadability."""
 
     await _async_setup_reload_service(hass)
 
     if platform not in hass.data.setdefault(PLATFORM_STORAGE_KEY, []):
         hass.data[PLATFORM_STORAGE_KEY].append(platform)
-
-    entities = await platform.platform.async_create_entities(hass, config)
-
-    async_add_entities(entities)
