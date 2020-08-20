@@ -59,7 +59,7 @@ async def _async_setup_for_reload(hass, async_add_entities, platform, process_co
         integration = await async_get_integration(hass, DOMAIN)
 
         conf = await conf_util.async_process_component_config(hass, conf, integration)
-
+        _LOGGER.error("processed conf = %s", conf)
         if not conf:
             return
 
