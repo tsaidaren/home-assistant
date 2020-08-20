@@ -14,9 +14,11 @@ from homeassistant.const import (
 )
 from homeassistant.core import callback
 from homeassistant.exceptions import TemplateError
+from homeassistant.helpers import entity_platform
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.script import Script
 
+from . import async_setup_platform_reloadable
 from .const import CONF_AVAILABILITY_TEMPLATE
 from .template_entity import TemplateEntityWithAvailability
 
@@ -41,13 +43,13 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 )
 
 
-async def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
+async def _async_setup_platform(hass, config, async_add_entities):
     """Set up the Template lock."""
     device = config.get(CONF_NAME)
     value_template = config.get(CONF_VALUE_TEMPLATE)
     availability_template = config.get(CONF_AVAILABILITY_TEMPLATE)
 
-    async_add_devices(
+    async_add_entities(
         [
             TemplateLock(
                 hass,
@@ -60,6 +62,18 @@ async def async_setup_platform(hass, config, async_add_devices, discovery_info=N
                 config.get(CONF_UNIQUE_ID),
             )
         ]
+    )
+
+
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+    """Set up the template sensors."""
+
+    return await async_setup_platform_reloadable(
+        hass,
+        config,
+        async_add_entities,
+        entity_platform.current_platform.get(),
+        _async_setup_platform,
     )
 
 

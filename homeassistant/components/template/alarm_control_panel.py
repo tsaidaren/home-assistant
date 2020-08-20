@@ -29,10 +29,12 @@ from homeassistant.const import (
 )
 from homeassistant.core import callback
 from homeassistant.exceptions import TemplateError
+from homeassistant.helpers import entity_platform
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import async_generate_entity_id
 from homeassistant.helpers.script import Script
 
+from . import async_setup_platform_reloadable
 from .template_entity import TemplateEntity
 
 _LOGGER = logging.getLogger(__name__)
@@ -75,8 +77,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 )
 
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Set up the Template Alarm Control Panels."""
+async def _async_setup_platform(hass, config, async_add_entities):
     alarm_control_panels = []
 
     for device, device_config in config[CONF_ALARM_CONTROL_PANELS].items():
@@ -105,6 +106,18 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         )
 
     async_add_entities(alarm_control_panels)
+
+
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+    """Set up the Template Alarm Control Panels."""
+
+    return await async_setup_platform_reloadable(
+        hass,
+        config,
+        async_add_entities,
+        entity_platform.current_platform.get(),
+        _async_setup_platform,
+    )
 
 
 class AlarmControlPanelTemplate(TemplateEntity, AlarmControlPanelEntity):
