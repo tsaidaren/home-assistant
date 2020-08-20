@@ -25,6 +25,7 @@ async def _async_setup_reload_service(hass):
 
     async def _reload_config(call):
         """Reload the template platform config."""
+
         try:
             unprocessed_conf = await conf_util.async_hass_config_yaml(hass)
         except HomeAssistantError as err:
@@ -36,6 +37,14 @@ async def _async_setup_reload_service(hass):
 
         for platform_setup in hass.data[PLATFORM_STORAGE_KEY].values():
             platform, _ = platform_setup
+
+            _LOGGER.error(
+                "_reload_config: platform.domain=%s platform.platform=%s platform.platform_name=%s platform.entities=%s",
+                platform.domain,
+                platform.platform,
+                platform.platform_name,
+                platform.entities,
+            )
 
             old_entity_ids = [
                 entity.entity_id
@@ -90,6 +99,14 @@ async def async_setup_platform_reloadable(
     hass, config, async_add_entities, platform, create_entities
 ):
     """Template platform with reloadability."""
+
+    _LOGGER.error(
+        "async_setup_platform_reloadable: platform.domain=%s platform.platform=%s platform.platform_name=%s",
+        platform.domain,
+        platform.platform,
+        platform.platform_name,
+    )
+
     hass.data.setdefault(PLATFORM_STORAGE_KEY, {})
     hass.data.setdefault(ENTITIES_STORAGE_KEY, {}).setdefault(platform.domain, [])
 
