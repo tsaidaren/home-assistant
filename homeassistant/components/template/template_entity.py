@@ -5,7 +5,7 @@ from typing import Any, Callable, Optional, Union
 
 import voluptuous as vol
 
-from homeassistant.core import EVENT_HOMEASSISTANT_START, callback
+from homeassistant.core import EVENT_HOMEASSISTANT_START, CoreState, callback
 from homeassistant.exceptions import TemplateError
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.config_validation import match_all
@@ -183,6 +183,10 @@ class TemplateEntity(Entity):
 
     async def async_added_to_hass(self) -> None:
         """Run when entity about to be added to hass."""
+        if self.hass.state == CoreState.running:
+            await self._async_template_startup()
+            return
+
         self.hass.bus.async_listen_once(
             EVENT_HOMEASSISTANT_START, self._async_template_startup
         )
