@@ -42,6 +42,12 @@ async def _async_setup_reload_service(hass):
             if not conf:
                 continue
 
+            _LOGGER.error(
+                "entities for %s %s",
+                platform.domain,
+                hass.data[PLATFORM_STORAGE_KEY][platform.domain],
+            )
+
             old_entity_ids = [
                 entity.entity_id
                 for entity in hass.data[PLATFORM_STORAGE_KEY][platform.domain]
