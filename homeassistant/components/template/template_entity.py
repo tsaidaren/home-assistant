@@ -171,7 +171,7 @@ class TemplateEntity(Entity):
         attribute.async_setup()
         self._template_attrs.append(attribute)
 
-    async def _async_template_startup(self, _) -> None:
+    async def _async_template_startup(self, *_) -> None:
         # async_update will not write state
         # until "add_complete" is set on the attribute
         for attribute in self._template_attrs:
