@@ -35,16 +35,7 @@ async def _async_setup_reload_service(hass):
         add_tasks = []
 
         for platform_setup in hass.data[PLATFORM_STORAGE_KEY].values():
-            platform, create_entities = platform_setup
-
-            integration = await async_get_integration(hass, platform.domain)
-
-            conf = await conf_util.async_process_component_config(
-                hass, unprocessed_conf, integration
-            )
-            if not conf:
-                continue
-
+            platform, _ = platform_setup
             _LOGGER.error(
                 "entities for %s %s",
                 platform.domain,
@@ -65,23 +56,44 @@ async def _async_setup_reload_service(hass):
                 ]
             )
 
+        await asyncio.gather(*remove_tasks)
+
+        for platform_setup in hass.data[PLATFORM_STORAGE_KEY].values():
+            platform, create_entities = platform_setup
+
+            integration = await async_get_integration(hass, platform.domain)
+
+            conf = await conf_util.async_process_component_config(
+                hass, unprocessed_conf, integration
+            )
+            if not conf:
+                continue
+
             # Extract only the config for the template, ignore the rest.
             for p_type, p_config in config_per_platform(conf, platform.domain):
                 if p_type != DOMAIN:
                     continue
-                _LOGGER.error(
-                    ["_reload_platform", "want", "p_type", p_type, "p_config", p_config]
-                )
 
                 entities = await create_entities(hass, p_config)
 
+                _LOGGER.error(
+                    [
+                        "_reload_platform",
+                        "want",
+                        "p_type",
+                        p_type,
+                        "p_config",
+                        p_config,
+                        "entities",
+                        entities,
+                    ]
+                )
                 add_tasks.append(
                     hass.async_create_task(platform.async_add_entities(entities))
                 )
 
                 hass.data[ENTITIES_STORAGE_KEY][platform.domain].extend(entities)
 
-        await asyncio.gather(*remove_tasks)
         await asyncio.gather(*add_tasks)
 
         hass.bus.async_fire(EVENT_TEMPLATE_RELOADED, context=call.context)
