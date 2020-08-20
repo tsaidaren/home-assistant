@@ -1,6 +1,5 @@
 """The template component."""
 
-import asyncio
 import logging
 
 from homeassistant import config as conf_util
@@ -27,8 +26,6 @@ async def _async_setup_reload_service(hass):
             _LOGGER.error(err)
             return
 
-        add_tasks = []
-
         for platform in hass.data[PLATFORM_STORAGE_KEY]:
             await platform.async_reset()
 
@@ -40,18 +37,14 @@ async def _async_setup_reload_service(hass):
             if not conf:
                 continue
 
-            # Extract only the config for the template, ignore the rest.
+            # Extract only the config for template, ignore the rest.
             for p_type, p_config in config_per_platform(conf, platform.domain):
                 if p_type != DOMAIN:
                     continue
 
                 entities = await platform.platform.async_create_entities(hass, p_config)
 
-                add_tasks.append(
-                    hass.async_create_task(platform.async_add_entities(entities))
-                )
-
-        await asyncio.gather(*add_tasks)
+                await platform.async_add_entities(entities)
 
         hass.bus.async_fire(EVENT_TEMPLATE_RELOADED, context=call.context)
 
@@ -67,7 +60,7 @@ async def async_setup_platform_reloadable(hass, config, async_add_entities, plat
 
     hass.data.setdefault(PLATFORM_STORAGE_KEY, [])
     # This platform can be loaded multiple times. Only first time register the service.
-    if platform.domain not in hass.data[PLATFORM_STORAGE_KEY]:
+    if platform not in hass.data[PLATFORM_STORAGE_KEY]:
         hass.data[PLATFORM_STORAGE_KEY].append(platform)
 
     async_add_entities(await platform.platform.async_create_entities(hass, config))
