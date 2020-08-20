@@ -12,13 +12,9 @@ from homeassistant.helpers.dispatcher import (
 )
 from homeassistant.loader import async_get_integration
 
-DOMAIN = "template"
-DATA_TEMPLATE_PLATFORM = "{DOMAIN}.{platform}"
+from .const import DISPATCHER_RELOAD_TEMPLATE_PLATFORMS, DOMAIN, EVENT_TEMPLATE_RELOADED
 
 _LOGGER = logging.getLogger(__name__)
-
-EVENT_TEMPLATE_RELOADED = "event_template_reloaded"
-DISPATCHER_RELOAD_TEMPLATE_PLATFORMS = "reload_template_platforms"
 
 
 async def _async_setup_reload_service(hass):
@@ -56,25 +52,37 @@ async def _async_setup_for_reload(hass, async_add_entities, platform, process_co
 
     async def _reload_platform(*_):
         """Reload the template platform config."""
+        _LOGGER.error(["_reload_platform", platform_name])
+
         try:
             conf = await conf_util.async_hass_config_yaml(hass)
         except HomeAssistantError as err:
             _LOGGER.error(err)
             return
 
+        _LOGGER.error(["_reload_platform", platform_name, "conf", conf])
+
         integration = await async_get_integration(hass, DOMAIN)
 
         conf = await conf_util.async_process_component_config(hass, conf, integration)
+        _LOGGER.error(
+            ["_reload_platform", platform_name, "async_process_component_config", conf]
+        )
 
-        if not (conf and platform):
+        if not conf:
             return
 
         await platform.async_reset()
 
         # Extract only the config for the template, ignore the rest.
         for p_type, p_config in config_per_platform(conf, platform_name):
+            _LOGGER.error(["_reload_platform", "p_type", p_type, "p_config", p_config])
+
             if p_type != DOMAIN:
                 continue
+            _LOGGER.error(
+                ["_reload_platform", "want", "p_type", p_type, "p_config", p_config]
+            )
 
             await process_config(hass, p_config, async_add_entities)
 
