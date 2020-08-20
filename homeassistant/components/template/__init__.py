@@ -5,7 +5,7 @@ import logging
 from homeassistant import config as conf_util
 from homeassistant.const import SERVICE_RELOAD
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers import config_per_platform
+from homeassistant.helpers import config_per_platform, entity_platform
 from homeassistant.loader import async_get_integration
 
 from .const import DOMAIN, EVENT_TEMPLATE_RELOADED, PLATFORM_STORAGE_KEY
@@ -57,6 +57,14 @@ async def async_setup_platform_reloadable(hass, platform):
     """Template platform with reloadability."""
 
     await _async_setup_reload_service(hass)
+
+    platform2 = entity_platform.current_platform.get()
+    _LOGGER.error(
+        "async_setup_platform_reloadable: platform.domain=%s platform.platform=%s platform.platform_name=%s",
+        platform2.domain,
+        platform2.platform,
+        platform2.platform_name,
+    )
 
     if platform not in hass.data.setdefault(PLATFORM_STORAGE_KEY, []):
         hass.data[PLATFORM_STORAGE_KEY].append(platform)
