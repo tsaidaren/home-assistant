@@ -77,7 +77,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 )
 
 
-async def _async_setup_platform(hass, config):
+async def _async_create_entities(hass, config):
     alarm_control_panels = []
 
     for device, device_config in config[CONF_ALARM_CONTROL_PANELS].items():
@@ -116,7 +116,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         config,
         async_add_entities,
         entity_platform.current_platform.get(),
-        _async_setup_platform,
+        _async_create_entities,
     )
 
 
