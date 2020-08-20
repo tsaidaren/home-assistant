@@ -32,38 +32,12 @@ async def _async_setup_reload_service(hass):
             _LOGGER.error(err)
             return
 
-        remove_tasks = []
         add_tasks = []
 
         for platform_setup in hass.data[PLATFORM_STORAGE_KEY].values():
-            platform, _ = platform_setup
-
-            _LOGGER.error(
-                "_reload_config: platform.domain=%s platform.platform=%s platform.platform_name=%s platform.entities=%s",
-                platform.domain,
-                platform.platform,
-                platform.platform_name,
-                platform.entities,
-            )
-
-            old_entity_ids = [
-                entity.entity_id
-                for entity in hass.data[ENTITIES_STORAGE_KEY][platform.domain]
-            ]
-
-            hass.data[ENTITIES_STORAGE_KEY][platform.domain] = []
-
-            remove_tasks.extend(
-                [
-                    platform.async_remove_entity(entity_id)
-                    for entity_id in old_entity_ids
-                ]
-            )
-
-        await asyncio.gather(*remove_tasks)
-
-        for platform_setup in hass.data[PLATFORM_STORAGE_KEY].values():
             platform, create_entities = platform_setup
+
+            await platform.async_reset()
 
             integration = await async_get_integration(hass, platform.domain)
 
