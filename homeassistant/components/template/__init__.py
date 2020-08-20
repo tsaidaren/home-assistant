@@ -29,9 +29,7 @@ async def _async_setup_reload_service(hass):
 
         add_tasks = []
 
-        for platform_setup in hass.data[PLATFORM_STORAGE_KEY].values():
-            platform, create_entities = platform_setup
-
+        for platform in hass.data[PLATFORM_STORAGE_KEY]:
             await platform.async_reset()
 
             integration = await async_get_integration(hass, platform.domain)
@@ -47,7 +45,7 @@ async def _async_setup_reload_service(hass):
                 if p_type != DOMAIN:
                     continue
 
-                entities = await create_entities(hass, p_config)
+                entities = await platform.platform.async_create_entities(hass, p_config)
 
                 add_tasks.append(
                     hass.async_create_task(platform.async_add_entities(entities))
@@ -62,9 +60,7 @@ async def _async_setup_reload_service(hass):
     )
 
 
-async def async_setup_platform_reloadable(
-    hass, config, async_add_entities, platform, create_entities
-):
+async def async_setup_platform_reloadable(hass, config, async_add_entities, platform):
     """Template platform with reloadability."""
 
     _LOGGER.error(
@@ -74,15 +70,11 @@ async def async_setup_platform_reloadable(
         platform.platform_name,
     )
 
-    hass.data.setdefault(PLATFORM_STORAGE_KEY, {})
-
     await _async_setup_reload_service(hass)
 
+    hass.data.setdefault(PLATFORM_STORAGE_KEY, {})
     # This platform can be loaded multiple times. Only first time register the service.
     if platform.domain not in hass.data[PLATFORM_STORAGE_KEY]:
-        hass.data[PLATFORM_STORAGE_KEY][platform.domain] = (
-            platform,
-            create_entities,
-        )
+        hass.data[PLATFORM_STORAGE_KEY].append(platform)
 
-    async_add_entities(await create_entities(hass, config))
+    async_add_entities(await platform.platform.async_create_entities(hass, config))

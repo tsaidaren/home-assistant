@@ -77,7 +77,9 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 )
 
 
-async def _async_create_entities(hass, config):
+async def async_create_entities(hass, config):
+    """Create Template Alarm Control Panels."""
+
     alarm_control_panels = []
 
     for device, device_config in config[CONF_ALARM_CONTROL_PANELS].items():
@@ -112,11 +114,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     """Set up the Template Alarm Control Panels."""
 
     return await async_setup_platform_reloadable(
-        hass,
-        config,
-        async_add_entities,
-        entity_platform.current_platform.get(),
-        _async_create_entities,
+        hass, config, async_add_entities, entity_platform.current_platform.get()
     )
 
 

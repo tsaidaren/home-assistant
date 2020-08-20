@@ -94,8 +94,8 @@ PLATFORM_SCHEMA = cv.PLATFORM_SCHEMA.extend(
 )
 
 
-async def _async_create_entities(hass, config):
-    """Set up the Template Vacuums."""
+async def async_create_entities(hass, config):
+    """Create the Template Vacuums."""
     vacuums = []
 
     for device, device_config in config[CONF_VACUUMS].items():
@@ -144,14 +144,10 @@ async def _async_create_entities(hass, config):
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Set up the template sensors."""
+    """Set up the template vacuums."""
 
     return await async_setup_platform_reloadable(
-        hass,
-        config,
-        async_add_entities,
-        entity_platform.current_platform.get(),
-        _async_create_entities,
+        hass, config, async_add_entities, entity_platform.current_platform.get(),
     )
 
 
