@@ -39,6 +39,8 @@ async def async_setup_platform_reloadable(
     platform_name = platform.platform_name
 
     data_key = f"{DOMAIN}.{platform_name}"
+    _LOGGER.error(["async_setup_platform_reloadable", platform_name])
+
     if data_key not in hass.data:
         hass.data[data_key] = await _async_setup_for_reload(
             hass, async_add_entities, platform, process_config
