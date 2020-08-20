@@ -138,7 +138,7 @@ aioswitcher==1.2.0
 aiounifi==23
 
 # homeassistant.components.yandex_transport
-aioymaps==1.0.0
+aioymaps==1.1.0
 
 # homeassistant.components.airly
 airly==0.0.2
@@ -359,7 +359,7 @@ hdate==0.9.5
 herepy==2.0.0
 
 # homeassistant.components.hlk_sw16
-hlk-sw16==0.0.8
+hlk-sw16==0.0.9
 
 # homeassistant.components.pi_hole
 hole==0.5.1
@@ -569,7 +569,7 @@ pyHS100==0.3.5.1
 
 # homeassistant.components.met
 # homeassistant.components.norway_air
-pyMetno==0.7.0
+pyMetno==0.7.1
 
 # homeassistant.components.rfxtrx
 pyRFXtrx==0.25
@@ -888,7 +888,7 @@ samsungtvws[websocket]==1.4.0
 sense_energy==0.7.2
 
 # homeassistant.components.sentry
-sentry-sdk==0.13.5
+sentry-sdk==0.16.5
 
 # homeassistant.components.sighthound
 simplehound==0.3
