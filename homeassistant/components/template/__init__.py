@@ -6,13 +6,9 @@ from homeassistant import config as conf_util
 from homeassistant.const import SERVICE_RELOAD
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_per_platform
-from homeassistant.helpers.dispatcher import (
-    async_dispatcher_connect,
-    async_dispatcher_send,
-)
 from homeassistant.loader import async_get_integration
 
-from .const import DISPATCHER_RELOAD_TEMPLATE_PLATFORMS, DOMAIN, EVENT_TEMPLATE_RELOADED
+from .const import DOMAIN, EVENT_TEMPLATE_RELOADED, PLATFORM_STORAGE_KEY
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,7 +18,36 @@ async def _async_setup_reload_service(hass):
         return
 
     async def _reload_config(call):
-        async_dispatcher_send(hass, DISPATCHER_RELOAD_TEMPLATE_PLATFORMS)
+        """Reload the template platform config."""
+        try:
+            unprocessed_conf = await conf_util.async_hass_config_yaml(hass)
+        except HomeAssistantError as err:
+            _LOGGER.error(err)
+            return
+
+        for platform_setup in hass.data[PLATFORM_STORAGE_KEY].values():
+            async_add_entities, platform, process_config = platform_setup
+
+            integration = await async_get_integration(hass, platform.domain)
+
+            conf = await conf_util.async_process_component_config(
+                hass, unprocessed_conf, integration
+            )
+            if not conf:
+                continue
+
+            await platform.async_reset()
+
+            # Extract only the config for the template, ignore the rest.
+            for p_type, p_config in config_per_platform(conf, platform.domain):
+                if p_type != DOMAIN:
+                    continue
+                _LOGGER.error(
+                    ["_reload_platform", "want", "p_type", p_type, "p_config", p_config]
+                )
+
+                await process_config(hass, p_config, async_add_entities)
+
         hass.bus.async_fire(EVENT_TEMPLATE_RELOADED, context=call.context)
 
     hass.helpers.service.async_register_admin_service(
@@ -34,46 +59,16 @@ async def async_setup_platform_reloadable(
     hass, config, async_add_entities, platform, process_config
 ):
     """Template platform with reloadability."""
-    # This platform can be loaded multiple times. Only first time register the service.
+    hass.data.setdefault(PLATFORM_STORAGE_KEY, {})
+
     await _async_setup_reload_service(hass)
 
-    data_key = f"{DOMAIN}.{platform.domain}"
-
-    if data_key not in hass.data:
-        hass.data[data_key] = await _async_setup_for_reload(
-            hass, async_add_entities, platform, process_config
+    # This platform can be loaded multiple times. Only first time register the service.
+    if platform.domain not in hass.data[PLATFORM_STORAGE_KEY]:
+        hass.data[PLATFORM_STORAGE_KEY][platform.domain] = (
+            async_add_entities,
+            platform,
+            process_config,
         )
 
     return await process_config(hass, config, async_add_entities)
-
-
-async def _async_setup_for_reload(hass, async_add_entities, platform, process_config):
-    async def _reload_platform(*_):
-        """Reload the template platform config."""
-        try:
-            conf = await conf_util.async_hass_config_yaml(hass)
-        except HomeAssistantError as err:
-            _LOGGER.error(err)
-            return
-
-        integration = await async_get_integration(hass, platform.domain)
-
-        conf = await conf_util.async_process_component_config(hass, conf, integration)
-        if not conf:
-            return
-
-        await platform.async_reset()
-
-        # Extract only the config for the template, ignore the rest.
-        for p_type, p_config in config_per_platform(conf, platform.domain):
-            if p_type != DOMAIN:
-                continue
-            _LOGGER.error(
-                ["_reload_platform", "want", "p_type", p_type, "p_config", p_config]
-            )
-
-            await process_config(hass, p_config, async_add_entities)
-
-    return async_dispatcher_connect(
-        hass, DISPATCHER_RELOAD_TEMPLATE_PLATFORMS, _reload_platform
-    )
