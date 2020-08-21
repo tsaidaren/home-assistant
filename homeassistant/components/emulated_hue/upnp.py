@@ -98,6 +98,12 @@ class UPNPResponderProtocol:
         self._sock = ssdp_socket
         self.advertise_ip = advertise_ip
         self.advertise_port = advertise_port
+        self._upnp_root_response = self._prepare_response(
+            "upnp:rootdevice", f"uuid:{HUE_UUID}::upnp:rootdevice"
+        )
+        self._upnp_device_response = self._prepare_response(
+            "urn:schemas-upnp-org:device:basic:1", f"uuid:{HUE_UUID}"
+        )
 
     def connection_made(self, transport):
         """Set the transport."""
@@ -108,12 +114,14 @@ class UPNPResponderProtocol:
 
     def datagram_received(self, data, addr):
         """Respond to msearch packets."""
-        if "M-SEARCH" not in data.decode("utf-8", errors="ignore"):
+        decoded_data = data.decode("utf-8", errors="ignore")
+
+        if "M-SEARCH" not in decoded_data:
             return
 
         _LOGGER.debug("UPNP Responder M-SEARCH method received: %s", data)
         # SSDP M-SEARCH method received, respond to it with our info
-        response = self._handle_request(data)
+        response = self._handle_request(decoded_data)
         _LOGGER.debug("UPNP Responder responding with: %s", response)
         self.transport.sendto(response, addr)
 
@@ -130,15 +138,11 @@ class UPNPResponderProtocol:
         self._loop.remove_reader(self._sock.fileno())
         self._sock.close()
 
-    def _handle_request(self, data):
-        if "upnp:rootdevice" in data.decode("utf-8", errors="ignore"):
-            return self._prepare_response(
-                "upnp:rootdevice", f"uuid:{HUE_UUID}::upnp:rootdevice"
-            )
+    def _handle_request(self, decoded_data):
+        if "upnp:rootdevice" in decoded_data:
+            return self._upnp_root_response
 
-        return self._prepare_response(
-            "urn:schemas-upnp-org:device:basic:1", f"uuid:{HUE_UUID}"
-        )
+        return self._upnp_device_response
 
     def _prepare_response(self, search_target, unique_service_name):
         # Note that the double newline at the end of
