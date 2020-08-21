@@ -148,7 +148,7 @@ async def async_setup(hass, yaml_config):
         nonlocal site
         nonlocal runner
 
-        _, protocol = asyncio.get_event_loop().run_until_complete(listen)
+        _, protocol = asyncio.create_task(listen)
 
         runner = web.AppRunner(app)
         await runner.setup()
