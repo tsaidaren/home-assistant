@@ -121,6 +121,28 @@ USN: uuid:2f402f80-da50-11e1-9b23-001788255acc::upnp:rootdevice
 
         assert mock_transport.sends == [(expected_send, 1234)]
 
+    def test_upnp_no_response(self):
+        """Tests the UPnP does not response on an invalid request."""
+        upnp_responder_protocol = upnp.UPNPResponderProtocol(
+            None, None, "192.0.2.42", 8080
+        )
+        mock_transport = MockTransport()
+        upnp_responder_protocol.transport = mock_transport
+
+        """Original request emitted by the Hue Bridge v1 app."""
+        request = """INVALID * HTTP/1.1
+HOST:239.255.255.250:1900
+ST:ssdp:all
+Man:"ssdp:discover"
+MX:3
+
+"""
+        encoded_request = request.replace("\n", "\r\n").encode("utf-8")
+
+        upnp_responder_protocol.datagram_received(encoded_request, 1234)
+
+        assert mock_transport.sends == []
+
     def test_description_xml(self):
         """Test the description."""
         result = requests.get(BRIDGE_URL_BASE.format("/description.xml"), timeout=5)
