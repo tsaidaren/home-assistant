@@ -20,7 +20,7 @@ SQLITE3_POSTFIXES = ["", "-wal", "-shm"]
 
 # This is the maximum time after the recorder ends the session
 # before we no longer consider startup to be a "restart" and we
-# should conisder doing a check on the database.
+# should do a check on the sqlite3 database.
 MAX_RESTART_TIME = timedelta(minutes=6)
 
 
@@ -133,12 +133,11 @@ def last_run_was_recently_clean(cursor):
         return False
 
     last_run_end_time = process_timestamp(dt_util.parse_datetime(end_time[0]))
+    now = dt_util.utcnow()
 
-    _LOGGER.debug(
-        "The last run ended at: %s (now: %s)", last_run_end_time, dt_util.utcnow()
-    )
+    _LOGGER.debug("The last run ended at: %s (now: %s)", last_run_end_time, now)
 
-    if last_run_end_time + MAX_RESTART_TIME < dt_util.utcnow():
+    if last_run_end_time + MAX_RESTART_TIME < now:
         return False
 
     return True
@@ -159,22 +158,27 @@ def validate_sqlite_database(dbpath: str) -> bool:
 
     try:
         conn = sqlite3.connect(dbpath)
-        cursor = conn.cursor()
-        if last_run_was_recently_clean(cursor) and basic_sanity_check(cursor):
-            _LOGGER.debug(
-                "The quick_check will be skipped as the system was restarted cleanly and passed the basic sanity check"
-            )
-        else:
-            _LOGGER.debug(
-                "A quick_check is being performed on the sqlite3 database at %s", dbpath
-            )
-            cursor.execute("PRAGMA QUICK_CHECK")
+        run_checks_on_open_db(dbpath, conn.cursor())
         conn.close()
     except sqlite3.DatabaseError:
         _LOGGER.exception("The database at %s is corrupt or malformed.", dbpath)
         return False
 
     return True
+
+
+def run_checks_on_open_db(dbpath, cursor):
+    """Run checks that will generate a sqlite3 exception if there is corruption."""
+    if basic_sanity_check(cursor) and last_run_was_recently_clean(cursor):
+        _LOGGER.debug(
+            "The quick_check will be skipped as the system was restarted cleanly and passed the basic sanity check"
+        )
+        return
+
+    _LOGGER.debug(
+        "A quick_check is being performed on the sqlite3 database at %s", dbpath
+    )
+    cursor.execute("PRAGMA QUICK_CHECK")
 
 
 def _move_away_broken_database(dbfile: str) -> None:

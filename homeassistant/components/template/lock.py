@@ -19,7 +19,7 @@ from homeassistant.helpers.script import Script
 
 from . import async_setup_platform_reloadable
 from .const import CONF_AVAILABILITY_TEMPLATE
-from .template_entity import TemplateEntityWithAvailability
+from .template_entity import TemplateEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -69,7 +69,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     async_add_entities(await async_create_entities(hass, config))
 
 
-class TemplateLock(TemplateEntityWithAvailability, LockEntity):
+class TemplateLock(TemplateEntity, LockEntity):
     """Representation of a template lock."""
 
     def __init__(
@@ -84,7 +84,7 @@ class TemplateLock(TemplateEntityWithAvailability, LockEntity):
         unique_id,
     ):
         """Initialize the lock."""
-        super().__init__(availability_template)
+        super().__init__(availability_template=availability_template)
         self._state = None
         self._name = name
         self._state_template = value_template

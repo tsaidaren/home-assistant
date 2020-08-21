@@ -463,6 +463,29 @@ async def test_render_template_manual_entity_ids_no_longer_needed(
     assert event == {"result": "State is: off"}
 
 
+async def test_render_template_with_error(
+    hass, websocket_client, hass_admin_user, caplog
+):
+    """Test a template with an error."""
+    await websocket_client.send_json(
+        {"id": 5, "type": "render_template", "template": "{{ my_unknown_var() + 1 }}"}
+    )
+
+    msg = await websocket_client.receive_json()
+    assert msg["id"] == 5
+    assert msg["type"] == const.TYPE_RESULT
+    assert msg["success"]
+
+    msg = await websocket_client.receive_json()
+    assert msg["id"] == 5
+    assert msg["type"] == "event"
+    event = msg["event"]
+    assert event == {"result": None}
+
+    assert "my_unknown_var" in caplog.text
+    assert "TemplateError" in caplog.text
+
+
 async def test_render_template_returns_with_match_all(
     hass, websocket_client, hass_admin_user
 ):

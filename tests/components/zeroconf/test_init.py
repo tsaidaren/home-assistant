@@ -13,7 +13,7 @@ from homeassistant.const import EVENT_HOMEASSISTANT_STARTED, EVENT_HOMEASSISTANT
 from homeassistant.generated import zeroconf as zc_gen
 from homeassistant.setup import async_setup_component
 
-from tests.async_mock import Mock, patch
+from tests.async_mock import patch
 
 NON_UTF8_VALUE = b"ABCDEF\x8a"
 NON_ASCII_KEY = b"non-ascii-key\x8a"
@@ -100,6 +100,28 @@ async def test_setup(hass, mock_zeroconf):
     # Test instance is set.
     assert "zeroconf" in hass.data
     assert await hass.components.zeroconf.async_get_instance() is mock_zeroconf
+
+
+async def test_setup_with_overly_long_url_and_name(hass, mock_zeroconf, caplog):
+    """Test we still setup with long urls and names."""
+    with patch.object(hass.config_entries.flow, "async_init"), patch.object(
+        zeroconf, "HaServiceBrowser", side_effect=service_update_mock
+    ) as mock_service_browser, patch(
+        "homeassistant.components.zeroconf.get_url",
+        return_value="https://this.url.is.way.too.long/very/deep/path/that/will/make/us/go/over/the/maximum/string/length/and/would/cause/zeroconf/to/fail/to/startup/because/the/key/and/value/can/only/be/255/bytes/and/this/string/is/a/bit/longer/than/the/maximum/length/that/we/allow/for/a/value",
+    ), patch.object(
+        hass.config,
+        "location_name",
+        "\u00dcBER \u00dcber German Umlaut long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string long string",
+    ):
+        mock_zeroconf.get_service_info.side_effect = get_service_info_mock
+        assert await async_setup_component(hass, zeroconf.DOMAIN, {zeroconf.DOMAIN: {}})
+        hass.bus.async_fire(EVENT_HOMEASSISTANT_STARTED)
+        await hass.async_block_till_done()
+
+    assert len(mock_service_browser.mock_calls) == 1
+    assert "https://this.url.is.way.too.long" in caplog.text
+    assert "German Umlaut" in caplog.text
 
 
 async def test_setup_with_default_interface(hass, mock_zeroconf):
