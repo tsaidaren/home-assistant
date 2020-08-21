@@ -1,5 +1,4 @@
 """Support for local control of entities by emulating a Philips Hue bridge."""
-import asyncio
 import logging
 
 from aiohttp import web
@@ -148,7 +147,7 @@ async def async_setup(hass, yaml_config):
         nonlocal site
         nonlocal runner
 
-        _, protocol = asyncio.create_task(listen)
+        _, protocol = await listen()
 
         runner = web.AppRunner(app)
         await runner.setup()
