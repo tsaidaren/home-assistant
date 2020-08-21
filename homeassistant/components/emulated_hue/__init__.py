@@ -147,7 +147,7 @@ async def async_setup(hass, yaml_config):
         nonlocal site
         nonlocal runner
 
-        _, protocol = await listen()
+        _, protocol = await listen
 
         runner = web.AppRunner(app)
         await runner.setup()
