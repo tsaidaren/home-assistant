@@ -107,7 +107,11 @@ class UPNPResponderThread(threading.Thread):
                 return
 
             try:
-                read, _, _ = select.select([ssdp_socket], [], [ssdp_socket], 2)
+                read, _, xcept = select.select([ssdp_socket], [], [ssdp_socket], 2)
+
+                _LOGGER.error("UPNP READ: %s", read)
+
+                _LOGGER.error("UPNP ERROR: %s", xcept)
 
                 if ssdp_socket in read:
                     data, addr = ssdp_socket.recvfrom(1024)
