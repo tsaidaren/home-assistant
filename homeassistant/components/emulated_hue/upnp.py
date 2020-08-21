@@ -78,10 +78,7 @@ def create_upnp_datagram_endpoint(
         socket.inet_aton(BROADCAST_ADDR) + socket.inet_aton(host_ip_addr),
     )
 
-    if upnp_bind_multicast:
-        ssdp_socket.bind(("", BROADCAST_PORT))
-    else:
-        ssdp_socket.bind((host_ip_addr, BROADCAST_PORT))
+    ssdp_socket.bind(("" if upnp_bind_multicast else host_ip_addr, BROADCAST_PORT))
 
     loop = asyncio.get_event_loop()
 
@@ -124,8 +121,10 @@ class UPNPResponderProtocol:
     def close(self):
         """Stop the server."""
         _LOGGER.info("UPNP responder shutting down")
-        self._loop.remove_reader(self._sock.fileno())
+        if self.transport:
+            self.transport.close()
         self._loop.remove_writer(self._sock.fileno())
+        self._loop.remove_reader(self._sock.fileno())
         self._sock.close()
 
     def _handle_request(self, data):
