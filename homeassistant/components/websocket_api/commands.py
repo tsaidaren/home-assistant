@@ -75,7 +75,7 @@ def handle_subscribe_events(hass, connection, msg):
             ):
                 return
 
-            connection.send_message(messages.event_message(msg["id"], event.as_dict()))
+            connection.send_message(messages.event_message(msg["id"], event))
 
     else:
 
