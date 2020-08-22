@@ -111,6 +111,7 @@ class UPNPResponderProtocol:
 
     def connection_lost(self, exc):
         """Handle connection lost."""
+        _LOGGER.debug("UPNP Responder connection lost: %s", exc)
 
     def datagram_received(self, data, addr):
         """Respond to msearch packets."""
