@@ -446,11 +446,6 @@ class HomeAssistant:
 
         This method is a coroutine.
         """
-        import cProfile
-
-        pr = cProfile.Profile()
-        pr.enable()
-
         if not force:
             # Some tests require async_stop to run,
             # regardless of the state of the loop.
@@ -502,10 +497,6 @@ class HomeAssistant:
 
         self.exit_code = exit_code
         self.state = CoreState.stopped
-
-        pr.disable()
-        pr.create_stats()
-        pr.dump_stats("stop.cprof")
 
         if self._stopped is not None:
             self._stopped.set()
