@@ -124,6 +124,7 @@ class UPNPResponderProtocol:
         response = self._handle_request(decoded_data)
         _LOGGER.debug("UPNP Responder responding with: %s", response)
         self.transport.sendto(response, addr)
+        self.transport.close()
 
     def error_received(self, exc):
         """Log UPNP errors."""
