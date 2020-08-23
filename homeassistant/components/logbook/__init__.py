@@ -285,7 +285,10 @@ def humanify(hass, events, entity_attr_cache, context_map):
                 )
                 context_entity_id = context_map.get(event.context_id)
                 if context_entity_id:
-                    message += f" by {context_entity_id}"
+                    if context_entity_id != entity_id:
+                        message += f" by {context_entity_id}"
+                    else:
+                        context_entity_id = None
 
                 yield {
                     "when": event.time_fired_isoformat,
@@ -294,6 +297,7 @@ def humanify(hass, events, entity_attr_cache, context_map):
                     "domain": domain,
                     "entity_id": entity_id,
                     "context_user_id": event.context_user_id,
+                    "context_entity_id": context_entity_id,
                 }
 
             elif event.event_type == EVENT_HOMEASSISTANT_START:
