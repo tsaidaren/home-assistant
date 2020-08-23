@@ -278,25 +278,24 @@ def humanify(hass, events, entity_attr_cache, context_map):
                     # Skip all but the last sensor state
                     continue
 
-                name = entity_attr_cache.get(
-                    entity_id, ATTR_FRIENDLY_NAME, event
-                ) or split_entity_id(entity_id)[1].replace("_", " ")
-
-                context_entity_id = context_map.get(event.context_id)
-
                 data = {
                     "when": event.time_fired_isoformat,
-                    "name": name,
+                    "name": entity_attr_cache.get(entity_id, ATTR_FRIENDLY_NAME, event)
+                    or split_entity_id(entity_id)[1].replace("_", " "),
                     "message": _entry_message_from_event(
                         hass, entity_id, domain, event, entity_attr_cache
                     ),
                     "domain": domain,
                     "entity_id": entity_id,
                 }
+
                 if event.context_user_id:
                     data["context_user_id"] = event.context_user_id
+
+                context_entity_id = context_map.get(event.context_id)
                 if context_entity_id and context_entity_id != entity_id:
                     data["context_entity_id"] = context_entity_id
+
                 yield data
 
             elif event.event_type == EVENT_HOMEASSISTANT_START:
