@@ -111,7 +111,6 @@ class UPNPResponderProtocol:
 
     def connection_lost(self, exc):
         """Handle connection lost."""
-        _LOGGER.debug("UPNP Responder connection lost: %s", exc)
 
     def datagram_received(self, data, addr):
         """Respond to msearch packets."""
@@ -126,7 +125,7 @@ class UPNPResponderProtocol:
         _LOGGER.debug("UPNP Responder responding with: %s", response)
         self.transport.sendto(response, addr)
 
-    def error_received(self, exc):
+    def error_received(self, exc):  # pylint: disable=no-self-use
         """Log UPNP errors."""
         _LOGGER.error("UPNP Error received: %s", exc)
 
