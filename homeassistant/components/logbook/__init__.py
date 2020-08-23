@@ -440,6 +440,8 @@ def _get_events(
 def _keep_event(hass, event, entities_filter, context_entity_id_map):
     if event.event_type == EVENT_STATE_CHANGED:
         entity_id = event.entity_id
+        if event.context_id and event.context_id not in context_entity_id_map:
+            context_entity_id_map[event.context_id] = entity_id
     elif event.event_type in HOMEASSISTANT_EVENTS:
         entity_id = f"{HA_DOMAIN}."
     elif event.event_type in hass.data[DOMAIN] and ATTR_ENTITY_ID not in event.data:
@@ -452,14 +454,14 @@ def _keep_event(hass, event, entities_filter, context_entity_id_map):
     else:
         event_data = event.data
         entity_id = event_data.get(ATTR_ENTITY_ID)
-        if entity_id is None:
+        if entity_id:
+            if event.context_id and event.context_id not in context_entity_id_map:
+                context_entity_id_map[event.context_id] = entity_id
+        else:
             domain = event_data.get(ATTR_DOMAIN)
             if domain is None:
                 return False
             entity_id = f"{domain}."
-
-    if event.context_id and event.context_id not in context_entity_id_map:
-        context_entity_id_map[event.context_id] = entity_id
 
     return entities_filter is None or entities_filter(entity_id)
 
