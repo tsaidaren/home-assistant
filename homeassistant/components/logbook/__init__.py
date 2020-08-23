@@ -283,7 +283,7 @@ def humanify(hass, events, entity_attr_cache, context_map):
                 message = _entry_message_from_event(
                     hass, entity_id, domain, event, entity_attr_cache
                 )
-                context_entity_id = context_map.get(event.context)
+                context_entity_id = context_map.get(event.context_id)
                 if context_entity_id:
                     message += " by {context_entity_id}"
 
@@ -371,7 +371,7 @@ def _get_events(
                 Events.event_type,
                 Events.event_data,
                 Events.time_fired,
-                Events.context,
+                Events.context_id,
                 Events.context_user_id,
                 States.state,
                 States.entity_id,
@@ -455,8 +455,8 @@ def _keep_event(hass, event, entities_filter, context_map):
                 return False
             entity_id = f"{domain}."
 
-    if event.context and event.context not in context_map:
-        context_map[event.context] = entity_id
+    if event.context_id and event.context_id not in context_map:
+        context_map[event.context_id] = entity_id
 
     return entities_filter is None or entities_filter(entity_id)
 
@@ -562,7 +562,7 @@ class LazyEventPartialState:
         "entity_id",
         "state",
         "domain",
-        "context",
+        "context_id",
         "context_user_id",
     ]
 
@@ -577,7 +577,7 @@ class LazyEventPartialState:
         self.entity_id = self._row.entity_id
         self.state = self._row.state
         self.domain = self._row.domain
-        self.context = self._row.context
+        self.context_id = self._row.context_id
         self.context_user_id = self._row.context_user_id
 
     @property
