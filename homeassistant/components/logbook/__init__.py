@@ -263,7 +263,8 @@ def humanify(hass, events, entity_attr_cache, context_map):
                 data = describe_event(event)
                 data["when"] = event.time_fired_isoformat
                 data["domain"] = domain
-                data["context_user_id"] = event.context_user_id
+                if event.context_user_id:
+                    data["context_user_id"] = event.context_user_id
                 yield data
 
             if event.event_type == EVENT_STATE_CHANGED:
@@ -285,7 +286,7 @@ def humanify(hass, events, entity_attr_cache, context_map):
                 if context_entity_id and context_entity_id == entity_id:
                     context_entity_id = None
 
-                yield {
+                data = {
                     "when": event.time_fired_isoformat,
                     "name": name,
                     "message": _entry_message_from_event(
@@ -296,6 +297,11 @@ def humanify(hass, events, entity_attr_cache, context_map):
                     "context_user_id": event.context_user_id,
                     "context_entity_id": context_entity_id,
                 }
+                if event.context_user_id:
+                    data["context_user_id"] = event.context_user_id
+                if context_entity_id:
+                    data["context_entity_id"] = context_entity_id
+                yield data
 
             elif event.event_type == EVENT_HOMEASSISTANT_START:
                 if start_stop_events.get(event.time_fired_minute) == 2:
@@ -306,7 +312,6 @@ def humanify(hass, events, entity_attr_cache, context_map):
                     "name": "Home Assistant",
                     "message": "started",
                     "domain": HA_DOMAIN,
-                    "context_user_id": event.context_user_id,
                 }
 
             elif event.event_type == EVENT_HOMEASSISTANT_STOP:
@@ -320,7 +325,6 @@ def humanify(hass, events, entity_attr_cache, context_map):
                     "name": "Home Assistant",
                     "message": action,
                     "domain": HA_DOMAIN,
-                    "context_user_id": event.context_user_id,
                 }
 
             elif event.event_type == EVENT_LOGBOOK_ENTRY:
