@@ -215,7 +215,7 @@ class LogbookView(HomeAssistantView):
         return await hass.async_add_executor_job(json_events)
 
 
-def humanify(hass, events, entity_attr_cache):
+def humanify(hass, events, entity_attr_cache, context_map):
     """Generate a converted list of events into Entry objects.
 
     Will try to group events if possible:
@@ -263,7 +263,6 @@ def humanify(hass, events, entity_attr_cache):
                 data = describe_event(event)
                 data["when"] = event.time_fired_isoformat
                 data["domain"] = domain
-                data["context_user_id"] = event.context_user_id
                 yield data
 
             if event.event_type == EVENT_STATE_CHANGED:
@@ -281,12 +280,17 @@ def humanify(hass, events, entity_attr_cache):
                     entity_id, ATTR_FRIENDLY_NAME, event
                 ) or split_entity_id(entity_id)[1].replace("_", " ")
 
+                message = _entry_message_from_event(
+                    hass, entity_id, domain, event, entity_attr_cache
+                )
+                context_entity_id = context_map.get(event.context)
+                if context_entity_id:
+                    message += " by {context_entity_id}"
+
                 yield {
                     "when": event.time_fired_isoformat,
                     "name": name,
-                    "message": _entry_message_from_event(
-                        hass, entity_id, domain, event, entity_attr_cache
-                    ),
+                    "message": message,
                     "domain": domain,
                     "entity_id": entity_id,
                     "context_user_id": event.context_user_id,
@@ -342,12 +346,13 @@ def _get_events(
 ):
     """Get events for a period of time."""
     entity_attr_cache = EntityAttributeCache(hass)
+    context_map = {}
 
     def yield_events(query):
         """Yield Events that are not filtered away."""
         for row in query.yield_per(1000):
             event = LazyEventPartialState(row)
-            if _keep_event(hass, event, entities_filter):
+            if _keep_event(hass, event, entities_filter, context_map):
                 yield event
 
     with session_scope(hass=hass) as session:
@@ -366,6 +371,7 @@ def _get_events(
                 Events.event_type,
                 Events.event_data,
                 Events.time_fired,
+                Events.context,
                 Events.context_user_id,
                 States.state,
                 States.entity_id,
@@ -424,10 +430,11 @@ def _get_events(
                     entity_filter | (Events.event_type != EVENT_STATE_CHANGED)
                 )
 
-        return list(humanify(hass, yield_events(query), entity_attr_cache))
+        context_map = {}
+        return list(humanify(hass, yield_events(query), entity_attr_cache, context_map))
 
 
-def _keep_event(hass, event, entities_filter):
+def _keep_event(hass, event, entities_filter, context_map):
     if event.event_type == EVENT_STATE_CHANGED:
         entity_id = event.entity_id
     elif event.event_type in HOMEASSISTANT_EVENTS:
@@ -447,6 +454,9 @@ def _keep_event(hass, event, entities_filter):
             if domain is None:
                 return False
             entity_id = f"{domain}."
+
+    if event.context and event.context not in context_map:
+        context_map[event.context] = entity_id
 
     return entities_filter is None or entities_filter(entity_id)
 
@@ -552,6 +562,8 @@ class LazyEventPartialState:
         "entity_id",
         "state",
         "domain",
+        "context",
+        "context_user_id",
     ]
 
     def __init__(self, row):
@@ -565,11 +577,8 @@ class LazyEventPartialState:
         self.entity_id = self._row.entity_id
         self.state = self._row.state
         self.domain = self._row.domain
-
-    @property
-    def context_user_id(self):
-        """Context user id of event."""
-        return self._row.context_user_id
+        self.context = self._row.context
+        self.context_user_id = self._row.context_user_id
 
     @property
     def attributes(self):
