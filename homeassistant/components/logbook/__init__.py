@@ -83,13 +83,13 @@ LOG_MESSAGE_SCHEMA = vol.Schema(
 
 
 @bind_hass
-def log_entry(hass, name, message, domain=None, entity_id=None):
+def log_entry(hass, name, message, domain=None, entity_id=None, context=None):
     """Add an entry to the logbook."""
-    hass.add_job(async_log_entry, hass, name, message, domain, entity_id)
+    hass.add_job(async_log_entry, hass, name, message, domain, entity_id, context)
 
 
 @bind_hass
-def async_log_entry(hass, name, message, domain=None, entity_id=None):
+def async_log_entry(hass, name, message, domain=None, entity_id=None, context=None):
     """Add an entry to the logbook."""
     data = {ATTR_NAME: name, ATTR_MESSAGE: message}
 
@@ -97,7 +97,7 @@ def async_log_entry(hass, name, message, domain=None, entity_id=None):
         data[ATTR_DOMAIN] = domain
     if entity_id is not None:
         data[ATTR_ENTITY_ID] = entity_id
-    hass.bus.async_fire(EVENT_LOGBOOK_ENTRY, data)
+    hass.bus.async_fire(EVENT_LOGBOOK_ENTRY, data, context=context)
 
 
 async def async_setup(hass, config):
@@ -265,6 +265,10 @@ def humanify(hass, events, entity_attr_cache, context_entity_id_map):
                 data["domain"] = domain
                 if event.context_user_id:
                     data["context_user_id"] = event.context_user_id
+                if "entity_id" in data:
+                    context_entity_id = context_entity_id_map.get(event.context_id)
+                    if context_entity_id and context_entity_id != data["entity_id"]:
+                        data["context_entity_id"] = context_entity_id
                 yield data
 
             if event.event_type == EVENT_STATE_CHANGED:
@@ -332,13 +336,20 @@ def humanify(hass, events, entity_attr_cache, context_entity_id_map):
                     except IndexError:
                         pass
 
-                yield {
+                data = {
                     "when": event.time_fired_isoformat,
                     "name": event_data.get(ATTR_NAME),
                     "message": event_data.get(ATTR_MESSAGE),
                     "domain": domain,
                     "entity_id": entity_id,
                 }
+                if event.context_user_id:
+                    data["context_user_id"] = event.context_user_id
+                if entity_id:
+                    context_entity_id = context_entity_id_map.get(event.context_id)
+                    if context_entity_id and context_entity_id != entity_id:
+                        data["context_entity_id"] = context_entity_id
+                yield data
 
 
 def _get_events(
