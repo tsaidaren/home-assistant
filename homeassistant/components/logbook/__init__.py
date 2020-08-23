@@ -263,6 +263,7 @@ def humanify(hass, events, entity_attr_cache, context_map):
                 data = describe_event(event)
                 data["when"] = event.time_fired_isoformat
                 data["domain"] = domain
+                data["context_user_id"] = event.context_user_id
                 yield data
 
             if event.event_type == EVENT_STATE_CHANGED:
@@ -280,23 +281,16 @@ def humanify(hass, events, entity_attr_cache, context_map):
                     entity_id, ATTR_FRIENDLY_NAME, event
                 ) or split_entity_id(entity_id)[1].replace("_", " ")
 
-                message = _entry_message_from_event(
-                    hass, entity_id, domain, event, entity_attr_cache
-                )
                 context_entity_id = context_map.get(event.context_id)
-                if context_entity_id:
-                    if context_entity_id != entity_id:
-                        state = hass.states.get(context_entity_id)
-                        message += " by " + (
-                            state and state.attributes.get(ATTR_FRIENDLY_NAME)
-                        ) or split_entity_id(context_entity_id)[1].replace("_", " ")
-                    else:
-                        context_entity_id = None
+                if context_entity_id and context_entity_id == entity_id:
+                    context_entity_id = None
 
                 yield {
                     "when": event.time_fired_isoformat,
                     "name": name,
-                    "message": message,
+                    "message": _entry_message_from_event(
+                        hass, entity_id, domain, event, entity_attr_cache
+                    ),
                     "domain": domain,
                     "entity_id": entity_id,
                     "context_user_id": event.context_user_id,
@@ -571,6 +565,7 @@ class LazyEventPartialState:
         "domain",
         "context_id",
         "context_user_id",
+        "time_fired_minute",
     ]
 
     def __init__(self, row):
@@ -586,6 +581,7 @@ class LazyEventPartialState:
         self.domain = self._row.domain
         self.context_id = self._row.context_id
         self.context_user_id = self._row.context_user_id
+        self.time_fired_minute = self._row.time_fired.minute
 
     @property
     def attributes(self):
@@ -609,11 +605,6 @@ class LazyEventPartialState:
             else:
                 self._event_data = json.loads(self._row.event_data)
         return self._event_data
-
-    @property
-    def time_fired_minute(self):
-        """Minute the event was fired not converted."""
-        return self._row.time_fired.minute
 
     @property
     def time_fired(self):
