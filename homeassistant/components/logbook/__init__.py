@@ -283,8 +283,6 @@ def humanify(hass, events, entity_attr_cache, context_map):
                 ) or split_entity_id(entity_id)[1].replace("_", " ")
 
                 context_entity_id = context_map.get(event.context_id)
-                if context_entity_id and context_entity_id == entity_id:
-                    context_entity_id = None
 
                 data = {
                     "when": event.time_fired_isoformat,
@@ -294,12 +292,10 @@ def humanify(hass, events, entity_attr_cache, context_map):
                     ),
                     "domain": domain,
                     "entity_id": entity_id,
-                    "context_user_id": event.context_user_id,
-                    "context_entity_id": context_entity_id,
                 }
                 if event.context_user_id:
                     data["context_user_id"] = event.context_user_id
-                if context_entity_id:
+                if context_entity_id and context_entity_id != entity_id:
                     data["context_entity_id"] = context_entity_id
                 yield data
 
