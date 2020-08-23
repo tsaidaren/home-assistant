@@ -286,7 +286,9 @@ def humanify(hass, events, entity_attr_cache, context_map):
                 context_entity_id = context_map.get(event.context_id)
                 if context_entity_id:
                     if context_entity_id != entity_id:
-                        message += f" by {context_entity_id}"
+                        message += " by " + entity_attr_cache.get(
+                            entity_id, ATTR_FRIENDLY_NAME, event
+                        ) or split_entity_id(entity_id)[1].replace("_", " ")
                     else:
                         context_entity_id = None
 
