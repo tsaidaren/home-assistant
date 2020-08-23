@@ -285,7 +285,7 @@ def humanify(hass, events, entity_attr_cache, context_map):
                 )
                 context_entity_id = context_map.get(event.context_id)
                 if context_entity_id:
-                    message += " by {context_entity_id}"
+                    message += f" by {context_entity_id}"
 
                 yield {
                     "when": event.time_fired_isoformat,
