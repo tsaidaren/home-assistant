@@ -664,7 +664,7 @@ def _augment_data_with_context(
     if event_type in external_events:
         domain, describe_event = external_events[event_type]
         data["context_domain"] = domain
-        name = describe_event(event).get(ATTR_NAME)
+        name = describe_event(context_event).get(ATTR_NAME)
         if name:
             data["context_name"] = name
 
