@@ -42,6 +42,8 @@ from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 from homeassistant.util import color as color_util
 
+from . import GroupEntity
+
 # mypy: allow-incomplete-defs, allow-untyped-calls, allow-untyped-defs
 # mypy: no-check-untyped-defs
 
@@ -76,11 +78,12 @@ async def async_setup_platform(
     )
 
 
-class LightGroup(light.LightEntity):
+class LightGroup(GroupEntity, light.LightEntity):
     """Representation of a light group."""
 
     def __init__(self, name: str, entity_ids: List[str]) -> None:
         """Initialize a light group."""
+        super().__init__()
         self._name = name
         self._entity_ids = entity_ids
         self._is_on = False

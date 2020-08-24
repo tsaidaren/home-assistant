@@ -43,6 +43,8 @@ from homeassistant.core import State, callback
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.event import async_track_state_change_event
 
+from . import GroupEntity
+
 # mypy: allow-incomplete-defs, allow-untyped-calls, allow-untyped-defs
 # mypy: no-check-untyped-defs
 
@@ -68,11 +70,12 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     async_add_entities([CoverGroup(config[CONF_NAME], config[CONF_ENTITIES])])
 
 
-class CoverGroup(CoverEntity):
+class CoverGroup(GroupEntity, CoverEntity):
     """Representation of a CoverGroup."""
 
     def __init__(self, name, entities):
         """Initialize a CoverGroup entity."""
+        super().__init__()
         self._name = name
         self._is_closed = False
         self._is_closing = False
@@ -165,11 +168,6 @@ class CoverGroup(CoverEntity):
     def assumed_state(self):
         """Enable buttons even if at end position."""
         return self._assumed_state
-
-    @property
-    def should_poll(self):
-        """Disable polling for cover group."""
-        return False
 
     @property
     def supported_features(self):
