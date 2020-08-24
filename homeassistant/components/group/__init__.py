@@ -356,24 +356,26 @@ class GroupEntity(Entity):
         return False
 
     @callback
-    def async_schedule_update_ha_state(self, force_refresh: bool = False) -> None:
+    def async_schedule_or_defer_update_ha_state(
+        self, force_refresh: bool = False
+    ) -> None:
         """Only update once at start."""
         if not self.hass:
             return
 
         if self.hass.state == CoreState.running:
-            super().async_schedule_update_ha_state(force_refresh)
+            self.async_schedule_update_ha_state(force_refresh)
             return
 
         @callback
         def _update_at_start(_):
-            super().async_schedule_update_ha_state(force_refresh)
+            self.async_schedule_update_ha_state(True)
 
         if not self._update_at_start:
             self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, _update_at_start)
 
 
-class Group(GroupEntity, Entity):
+class Group(Entity):
     """Track a group of entity ids."""
 
     def __init__(
@@ -470,6 +472,11 @@ class Group(GroupEntity, Entity):
         await component.async_add_entities([group], True)
 
         return group
+
+    @property
+    def should_poll(self):
+        """No need to poll because groups will update themselves."""
+        return False
 
     @property
     def name(self):
