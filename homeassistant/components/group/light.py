@@ -100,8 +100,9 @@ class LightGroup(light.LightEntity):
         """Register callbacks."""
 
         @callback
-        def async_state_changed_listener(*_):
+        def async_state_changed_listener(event):
             """Handle child updates."""
+            self.async_set_context(event)
             self.async_schedule_update_ha_state(True)
 
         assert self.hass is not None
