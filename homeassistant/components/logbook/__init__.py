@@ -279,7 +279,11 @@ def humanify(hass, events, entity_attr_cache, context_lookup):
                 context_event = context_lookup.get(event.context_id)
                 if context_event:
                     _augment_data_with_context(
-                        data, data.get(ATTR_ENTITY_ID), context_event, entity_attr_cache
+                        data,
+                        data.get(ATTR_ENTITY_ID),
+                        event,
+                        context_event,
+                        entity_attr_cache,
                     )
                 yield data
 
@@ -310,9 +314,9 @@ def humanify(hass, events, entity_attr_cache, context_lookup):
                     data["context_user_id"] = event.context_user_id
 
                 context_event = context_lookup.get(event.context_id)
-                if context_event:
+                if context_event and context_event != event:
                     _augment_data_with_context(
-                        data, entity_id, context_event, entity_attr_cache
+                        data, entity_id, event, context_event, entity_attr_cache
                     )
 
                 yield data
@@ -362,9 +366,9 @@ def humanify(hass, events, entity_attr_cache, context_lookup):
                     data["context_user_id"] = event.context_user_id
 
                 context_event = context_lookup.get(event.context_id)
-                if context_event:
+                if context_event and context_event != event:
                     _augment_data_with_context(
-                        data, entity_id, context_event, entity_attr_cache
+                        data, entity_id, event, context_event, entity_attr_cache
                     )
 
                 yield data
@@ -579,7 +583,9 @@ def _entry_message_from_event(entity_id, domain, event, entity_attr_cache):
     return f"changed to {state_state}"
 
 
-def _augment_data_with_context(data, entity_id, context_event, entity_attr_cache):
+def _augment_data_with_context(
+    data, entity_id, event, context_event, entity_attr_cache
+):
     event_type = context_event.event_type
 
     # State change
@@ -612,6 +618,9 @@ def _augment_data_with_context(data, entity_id, context_event, entity_attr_cache
     if not attr_entity_id or (
         event_type in SCRIPT_AUTOMATION_EVENTS and attr_entity_id == entity_id
     ):
+        return
+
+    if context_event == event:
         return
 
     data["context_entity_id"] = attr_entity_id
