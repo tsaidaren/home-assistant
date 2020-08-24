@@ -284,6 +284,7 @@ def humanify(hass, events, entity_attr_cache, context_lookup):
                         event,
                         context_event,
                         entity_attr_cache,
+                        external_events,
                     )
                 yield data
 
@@ -316,7 +317,12 @@ def humanify(hass, events, entity_attr_cache, context_lookup):
                 context_event = context_lookup.get(event.context_id)
                 if context_event and context_event != event:
                     _augment_data_with_context(
-                        data, entity_id, event, context_event, entity_attr_cache
+                        data,
+                        entity_id,
+                        event,
+                        context_event,
+                        entity_attr_cache,
+                        external_events,
                     )
 
                 yield data
@@ -368,7 +374,12 @@ def humanify(hass, events, entity_attr_cache, context_lookup):
                 context_event = context_lookup.get(event.context_id)
                 if context_event and context_event != event:
                     _augment_data_with_context(
-                        data, entity_id, event, context_event, entity_attr_cache
+                        data,
+                        entity_id,
+                        event,
+                        context_event,
+                        entity_attr_cache,
+                        external_events,
                     )
 
                 yield data
@@ -592,7 +603,7 @@ def _entry_message_from_event(entity_id, domain, event, entity_attr_cache):
 
 
 def _augment_data_with_context(
-    data, entity_id, event, context_event, entity_attr_cache
+    data, entity_id, event, context_event, entity_attr_cache, external_events
 ):
     event_type = context_event.event_type
 
@@ -650,10 +661,12 @@ def _augment_data_with_context(
     )
     data["context_event_type"] = event_type
 
-    # Described Events (HomeKit)
-    name = context_event.data.get(ATTR_NAME)
-    if name:
-        data["context_name"] = name
+    if event_type in external_events:
+        domain, describe_event = external_events[event_type]
+        data["context_domain"] = domain
+        name = describe_event(event).get(ATTR_NAME)
+        if name:
+            data["context_name"] = name
 
 
 def _entity_name_from_event(entity_id, event, entity_attr_cache):
