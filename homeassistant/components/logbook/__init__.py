@@ -598,6 +598,13 @@ def _augment_data_with_context(
 
     # State change
     context_entity_id = context_event.entity_id
+
+    _LOGGER.error(
+        "_augment_data_with_context: event_type=%s context_entity_id=%s",
+        event_type,
+        context_entity_id,
+    )
+
     if entity_id and context_entity_id == entity_id:
         return
 
@@ -630,6 +637,12 @@ def _augment_data_with_context(
 
     if context_event == event:
         return
+
+    _LOGGER.error(
+        "_augment_data_with_context 2: event_type=%s event_data=%s",
+        event_type,
+        context_event.data,
+    )
 
     data["context_entity_id"] = attr_entity_id
     data["context_entity_id_name"] = _entity_name_from_event(
