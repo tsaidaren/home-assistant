@@ -637,6 +637,11 @@ def _augment_data_with_context(
     )
     data["context_event_type"] = event_type
 
+    # Described Events (HomeKit)
+    name = context_event.data.get(ATTR_NAME)
+    if name:
+        data["context_name"] = name
+
 
 def _entity_name_from_event(entity_id, event, entity_attr_cache):
     """Extract the entity name from the event using the cache if possible."""
