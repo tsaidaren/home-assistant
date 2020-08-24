@@ -103,7 +103,7 @@ class LightGroup(GroupEntity, light.LightEntity):
         @callback
         def async_state_changed_listener(event):
             """Handle child updates."""
-            self.async_set_context(event)
+            self.async_set_context(event.context)
             self.async_schedule_or_defer_update_ha_state(True)
 
         assert self.hass
