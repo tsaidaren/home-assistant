@@ -345,15 +345,19 @@ async def _async_process_config(hass, config, component):
 class GroupEntity(Entity):
     """Representation of a Group of entities."""
 
-    def __init__(self) -> None:
-        """Initialize a GroupEntity entity."""
-        super().__init__()
-        self._update_at_start = False
-
     @property
     def should_poll(self) -> bool:
         """Disable polling for cover group."""
         return False
+
+    async def async_added_to_hass(self):
+        """Register listeners."""
+
+        @callback
+        def _update_at_start(_):
+            self.async_schedule_update_ha_state(True)
+
+        self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, _update_at_start)
 
     @callback
     def async_schedule_or_defer_update_ha_state(
@@ -363,16 +367,10 @@ class GroupEntity(Entity):
         if not self.hass:
             return
 
-        if self.hass.state == CoreState.running:
-            self.async_schedule_update_ha_state(force_refresh)
+        if self.hass.state != CoreState.running:
             return
 
-        @callback
-        def _update_at_start(_):
-            self.async_schedule_update_ha_state(True)
-
-        if not self._update_at_start:
-            self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, _update_at_start)
+        self.async_schedule_update_ha_state(force_refresh)
 
 
 class Group(Entity):

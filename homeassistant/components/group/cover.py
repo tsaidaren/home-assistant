@@ -75,7 +75,6 @@ class CoverGroup(GroupEntity, CoverEntity):
 
     def __init__(self, name, entities):
         """Initialize a CoverGroup entity."""
-        super().__init__()
         self._name = name
         self._is_closed = False
         self._is_closing = False
@@ -115,7 +114,7 @@ class CoverGroup(GroupEntity, CoverEntity):
             for values in self._tilts.values():
                 values.discard(entity_id)
             if update_state:
-                self.async_schedule_update_ha_state(True)
+                self.async_schedule_or_defer_update_ha_state(True)
             return
 
         features = new_state.attributes.get(ATTR_SUPPORTED_FEATURES, 0)
@@ -147,17 +146,20 @@ class CoverGroup(GroupEntity, CoverEntity):
             self._tilts[KEY_POSITION].discard(entity_id)
 
         if update_state:
-            self.async_schedule_update_ha_state(True)
+            self.async_schedule_or_defer_update_ha_state(True)
 
     async def async_added_to_hass(self):
         """Register listeners."""
         for entity_id in self._entities:
             new_state = self.hass.states.get(entity_id)
             self.update_supported_features(entity_id, new_state, update_state=False)
-        async_track_state_change_event(
-            self.hass, self._entities, self._update_supported_features_event
+        assert self.hass is not None
+        self.async_on_remove(
+            async_track_state_change_event(
+                self.hass, self._entities, self._update_supported_features_event
+            )
         )
-        await self.async_update()
+        super().async_added_to_hass()
 
     @property
     def name(self):
