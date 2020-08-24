@@ -103,6 +103,9 @@ class LightGroup(light.LightEntity):
         def async_state_changed_listener(event):
             """Handle child updates."""
             self.async_set_context(event)
+            _LOGGER.error(
+                "async_state_changed_listener for %s event: %s", self.entity_id, event
+            )
             self.async_schedule_update_ha_state(True)
 
         assert self.hass is not None
