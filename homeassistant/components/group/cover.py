@@ -98,7 +98,7 @@ class CoverGroup(GroupEntity, CoverEntity):
 
     @callback
     def _update_supported_features_event(self, event):
-        self.async_set_context(event)
+        self.async_set_context(event.context)
         self.update_supported_features(
             event.data.get("entity_id"), event.data.get("new_state")
         )

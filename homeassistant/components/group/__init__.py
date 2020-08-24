@@ -577,7 +577,7 @@ class Group(Entity):
         if self._async_unsub_state_changed is None:
             return
 
-        self.async_set_context(event)
+        self.async_set_context(event.context)
         self._async_update_group_state(event.data.get("new_state"))
         self.async_write_ha_state()
 
