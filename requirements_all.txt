@@ -221,6 +221,9 @@ aiopvpc==2.0.2
 # homeassistant.components.webostv
 aiopylgtv==0.3.3
 
+# homeassistant.components.shelly
+aioshelly==0.1.2
+
 # homeassistant.components.switcher_kis
 aioswitcher==1.2.0
 
@@ -458,7 +461,7 @@ datadog==0.15.0
 datapoint==0.9.5
 
 # homeassistant.components.debugpy
-debugpy==1.0.0b12
+debugpy==1.0.0rc2
 
 # homeassistant.components.decora
 # decora==0.6
@@ -1848,6 +1851,9 @@ pywebpush==1.9.2
 
 # homeassistant.components.wemo
 pywemo==0.4.46
+
+# homeassistant.components.wilight
+pywilight==0.0.65
 
 # homeassistant.components.xeoma
 pyxeoma==1.4.1
