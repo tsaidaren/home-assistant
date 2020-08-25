@@ -29,6 +29,8 @@ from homeassistant.const import (
 )
 import homeassistant.helpers.config_validation as cv
 
+from . import setup_reload_service
+
 CONF_DATA = "data"
 CONF_DATA_TEMPLATE = "data_template"
 CONF_MESSAGE_PARAMETER_NAME = "message_param_name"
@@ -67,6 +69,8 @@ _LOGGER = logging.getLogger(__name__)
 
 def get_service(hass, config, discovery_info=None):
     """Get the RESTful notification service."""
+    setup_reload_service(hass)
+
     resource = config.get(CONF_RESOURCE)
     method = config.get(CONF_METHOD)
     headers = config.get(CONF_HEADERS)
