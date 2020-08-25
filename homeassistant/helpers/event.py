@@ -570,6 +570,12 @@ class _TrackTemplateResultInfo:
     def _setup_domains_listener(self) -> None:
         assert self._info
 
+        _LOGGER.warning(
+            "The template: %s listens for domains: %s",
+            self._template.template,
+            self._info.domains,
+        )
+
         self._domains_listener = async_track_state_added_domain(
             self.hass, self._info.domains, self._refresh
         )
