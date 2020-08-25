@@ -569,6 +569,7 @@ class _TrackTemplateResultInfo:
     @callback
     def _setup_domains_listener(self) -> None:
         assert self._info
+        assert self._info.domains
 
         _LOGGER.warning(
             "The template: %s listens for domains: %s",
