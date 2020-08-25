@@ -104,7 +104,7 @@ aioguardian==1.0.1
 aioharmony==0.2.6
 
 # homeassistant.components.homekit_controller
-aiohomekit[IP]==0.2.47
+aiohomekit[IP]==0.2.49
 
 # homeassistant.components.emulated_hue
 # homeassistant.components.http
@@ -959,6 +959,9 @@ stringcase==1.2.0
 
 # homeassistant.components.solarlog
 sunwatcher==0.2.1
+
+# homeassistant.components.surepetcare
+surepy==0.2.5
 
 # homeassistant.components.tellduslive
 tellduslive==0.10.11
