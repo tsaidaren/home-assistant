@@ -34,6 +34,8 @@ from homeassistant.exceptions import PlatformNotReady
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import Entity
 
+from . import setup_reload_service
+
 _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_METHOD = "GET"
@@ -78,6 +80,8 @@ PLATFORM_SCHEMA = vol.All(
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the RESTful sensor."""
+    setup_reload_service(hass)
+
     name = config.get(CONF_NAME)
     resource = config.get(CONF_RESOURCE)
     resource_template = config.get(CONF_RESOURCE_TEMPLATE)
