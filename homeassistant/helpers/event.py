@@ -562,6 +562,9 @@ class _TrackTemplateResultInfo:
         entities = set(self._info.entities)
         for entity_id in self.hass.states.async_entity_ids(self._info.domains):
             entities.add(entity_id)
+
+        assert entities
+
         self._entities_listener = async_track_state_change_event(
             self.hass, entities, self._refresh
         )
