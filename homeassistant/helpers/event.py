@@ -231,7 +231,7 @@ def _async_remove_indexed_listeners(
         if len(callbacks[storage_key]) == 0:
             del callbacks[storage_key]
 
-    if not callbacks:
+    if not callbacks and listener_key in hass.data:
         hass.data[listener_key]()
         del hass.data[listener_key]
 
