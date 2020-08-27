@@ -375,15 +375,15 @@ def _async_register_events_and_services(hass: HomeAssistant):
         current_entries = hass.config_entries.async_entries(DOMAIN)
         entries_by_name = {entry.data[CONF_NAME]: entry for entry in current_entries}
 
-        _LOGGER.error("config: %s", config[DOMAIN])
-
         for conf in config[DOMAIN]:
             _async_update_config_entry_if_from_yaml(hass, entries_by_name, conf)
 
-        for entry in current_entries:
-            _LOGGER.error("reload entry: %s", entry)
-
+        reload_tasks = [
             hass.config_entries.async_reload(entry.entry_id)
+            for entry in current_entries
+        ]
+
+        await asyncio.gather(*reload_tasks)
 
     hass.helpers.service.async_register_admin_service(
         DOMAIN,
