@@ -365,9 +365,9 @@ def _async_register_events_and_services(hass: HomeAssistant):
         DOMAIN, SERVICE_HOMEKIT_START, async_handle_homekit_service_start
     )
 
-    def _handle_homekit_reload(service):
+    async def _handle_homekit_reload(service):
         """Handle start HomeKit service call."""
-        config = async_integration_yaml_config(hass, DOMAIN)
+        config = await async_integration_yaml_config(hass, DOMAIN)
         if not config:
             return
         current_entries = hass.config_entries.async_entries(DOMAIN)
