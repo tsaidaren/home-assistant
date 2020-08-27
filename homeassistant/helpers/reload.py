@@ -63,16 +63,10 @@ async def async_integration_yaml_config(
     hass: HomeAssistantType, integration_name: str
 ) -> Optional[Dict[Any, Any]]:
     """Fetch the latest yaml configuration for an integration."""
-    try:
-        unprocessed_conf = await conf_util.async_hass_config_yaml(hass)
-    except HomeAssistantError as err:
-        _LOGGER.error(err)
-        return None
-
     integration = await async_get_integration(hass, integration_name)
 
     return await conf_util.async_process_component_config(
-        hass, unprocessed_conf, integration
+        hass, await conf_util.async_hass_config_yaml(hass), integration
     )
 
 
