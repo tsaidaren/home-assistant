@@ -34,7 +34,7 @@ from homeassistant.loader import bind_hass
 from homeassistant.util import dt as dt_util
 from homeassistant.util.async_ import run_callback_threadsafe
 
-MAX_SECONDS_LOST_FETCHING_LOOP_TIME = 0.025
+MAX_SECONDS_LOST_FETCHING_LOOP_TIME = 0.0001
 
 TRACK_STATE_CHANGE_CALLBACKS = "track_state_change_callbacks"
 TRACK_STATE_CHANGE_LISTENER = "track_state_change_listener"
