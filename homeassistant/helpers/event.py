@@ -3,7 +3,6 @@ import asyncio
 from datetime import datetime, timedelta
 import functools as ft
 import logging
-from math import floor
 import time
 from typing import Any, Awaitable, Callable, Iterable, Optional, Union
 
@@ -35,7 +34,7 @@ from homeassistant.loader import bind_hass
 from homeassistant.util import dt as dt_util
 from homeassistant.util.async_ import run_callback_threadsafe
 
-MAX_TIME_TRACKING_ERROR = 0.1
+MAX_TIME_TRACKING_ERROR = 0.001
 
 TRACK_STATE_CHANGE_CALLBACKS = "track_state_change_callbacks"
 TRACK_STATE_CHANGE_LISTENER = "track_state_change_listener"
@@ -1000,12 +999,10 @@ def async_track_utc_time_change(
         calculate_next(now + timedelta(seconds=1))
 
         cancel_callback = hass.loop.call_at(
-            floor(
-                -time.time()
-                + hass.loop.time()
-                + next_time.timestamp()
-                + MAX_TIME_TRACKING_ERROR
-            ),
+            -time.time()
+            + hass.loop.time()
+            + next_time.timestamp()
+            + MAX_TIME_TRACKING_ERROR,
             pattern_time_change_listener,
         )
 
@@ -1031,12 +1028,10 @@ def async_track_utc_time_change(
     # potentially fire early.
     #
     cancel_callback = hass.loop.call_at(
-        floor(
-            -time.time()
-            + hass.loop.time()
-            + next_time.timestamp()
-            + MAX_TIME_TRACKING_ERROR
-        ),
+        -time.time()
+        + hass.loop.time()
+        + next_time.timestamp()
+        + MAX_TIME_TRACKING_ERROR,
         pattern_time_change_listener,
     )
 
