@@ -34,7 +34,7 @@ from homeassistant.loader import bind_hass
 from homeassistant.util import dt as dt_util
 from homeassistant.util.async_ import run_callback_threadsafe
 
-MAX_MICROSECONDS_LOST_FETCHING_LOOP_TIME = 50000
+MAX_SECONDS_LOST_FETCHING_LOOP_TIME = 0.025
 
 TRACK_STATE_CHANGE_CALLBACKS = "track_state_change_callbacks"
 TRACK_STATE_CHANGE_LISTENER = "track_state_change_listener"
@@ -233,7 +233,7 @@ def _async_remove_indexed_listeners(
         if len(callbacks[storage_key]) == 0:
             del callbacks[storage_key]
 
-    if not callbacks and listener_key in hass.data:
+    if not callbacks:
         hass.data[listener_key]()
         del hass.data[listener_key]
 
@@ -996,37 +996,42 @@ def async_track_utc_time_change(
         now = pattern_utc_now()
         hass.async_run_job(action, dt_util.as_local(now) if local else now)
 
-        # calculate_next calls find_next_time_expression_time
-        # which will drop the microseconds by replacing them
-        # to 0.
-        #
-        # Since fetching `hass.loop.time` takes at least more
-        # than 1 microsecond, we add 1 second and
-        # MAX_MICROSECONDS_LOST_FETCHING_LOOP_TIME microseconds
-        # to the next time calculation to ensure that
-        # when find_next_time_expression_time drops the microseconds
-        # the timedelta we add below is actually at least
-        # one full second later then when we just fired.
-        calculate_next(
-            now
-            + timedelta(
-                seconds=1, microseconds=MAX_MICROSECONDS_LOST_FETCHING_LOOP_TIME
-            )
-        )
+        calculate_next(now + timedelta(seconds=1))
 
-        # We always get time.time() first to avoid time.time()
-        # ticking forward after fetching hass.loop.time()
-        # and callback being scheduled a few microseconds early
         cancel_callback = hass.loop.call_at(
-            -time.time() + hass.loop.time() + next_time.timestamp(),
+            -time.time()
+            + hass.loop.time()
+            + next_time.timestamp()
+            + MAX_SECONDS_LOST_FETCHING_LOOP_TIME,
             pattern_time_change_listener,
         )
 
     # We always get time.time() first to avoid time.time()
     # ticking forward after fetching hass.loop.time()
-    # and callback being scheduled a few microseconds early
+    # and callback being scheduled a few microseconds early.
+    #
+    # Since we loose additional time calling `hass.loop.time()`
+    # we add MAX_MICROSECONDS_LOST_FETCHING_LOOP_TIME to ensure
+    # we always schedule the call within the time window between
+    # second and the next second.
+    #
+    # For example:
+    # If the clock ticks forward 30 microseconds when fectching
+    # `hass.loop.time()` and we want the event to fire at exactly
+    # 03:00:00.000000, the event would actually fire around
+    # 02:59:59.999970. To ensure we always fire sometime between
+    # 03:00:00.000000 and 03:00:00.999999 we add
+    # MAX_SECONDS_LOST_FETCHING_LOOP_TIME to make up for the time
+    # lost fetching the time. This ensures we do not fire the
+    # event before the next time pattern match which would result
+    # in the event being fired again since we would otherwise
+    # potentially fire early.
+    #
     cancel_callback = hass.loop.call_at(
-        -time.time() + hass.loop.time() + next_time.timestamp(),
+        -time.time()
+        + hass.loop.time()
+        + next_time.timestamp()
+        + MAX_SECONDS_LOST_FETCHING_LOOP_TIME,
         pattern_time_change_listener,
     )
 
