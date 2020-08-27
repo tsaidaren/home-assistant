@@ -34,7 +34,7 @@ from homeassistant.loader import bind_hass
 from homeassistant.util import dt as dt_util
 from homeassistant.util.async_ import run_callback_threadsafe
 
-MAX_SECONDS_LOST_FETCHING_LOOP_TIME = 0.0001
+MAX_TIME_TRACKING_ERROR = 0.001
 
 TRACK_STATE_CHANGE_CALLBACKS = "track_state_change_callbacks"
 TRACK_STATE_CHANGE_LISTENER = "track_state_change_listener"
@@ -1002,7 +1002,7 @@ def async_track_utc_time_change(
             -time.time()
             + hass.loop.time()
             + next_time.timestamp()
-            + MAX_SECONDS_LOST_FETCHING_LOOP_TIME,
+            + MAX_TIME_TRACKING_ERROR,
             pattern_time_change_listener,
         )
 
@@ -1011,7 +1011,7 @@ def async_track_utc_time_change(
     # and callback being scheduled a few microseconds early.
     #
     # Since we loose additional time calling `hass.loop.time()`
-    # we add MAX_MICROSECONDS_LOST_FETCHING_LOOP_TIME to ensure
+    # we add MAX_TIME_TRACKING_ERROR to ensure
     # we always schedule the call within the time window between
     # second and the next second.
     #
@@ -1021,7 +1021,7 @@ def async_track_utc_time_change(
     # 03:00:00.000000, the event would actually fire around
     # 02:59:59.999970. To ensure we always fire sometime between
     # 03:00:00.000000 and 03:00:00.999999 we add
-    # MAX_SECONDS_LOST_FETCHING_LOOP_TIME to make up for the time
+    # MAX_TIME_TRACKING_ERROR to make up for the time
     # lost fetching the time. This ensures we do not fire the
     # event before the next time pattern match which would result
     # in the event being fired again since we would otherwise
@@ -1031,7 +1031,7 @@ def async_track_utc_time_change(
         -time.time()
         + hass.loop.time()
         + next_time.timestamp()
-        + MAX_SECONDS_LOST_FETCHING_LOOP_TIME,
+        + MAX_TIME_TRACKING_ERROR,
         pattern_time_change_listener,
     )
 
