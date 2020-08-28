@@ -10,7 +10,7 @@ from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.event import (
     async_track_point_in_time,
-    async_track_state_change,
+    async_track_state_change_event,
     async_track_time_change,
 )
 import homeassistant.util.dt as dt_util
@@ -47,7 +47,13 @@ async def async_attach_trigger(hass, config, action, automation_info):
         )
 
     @callback
-    def update_entity_trigger(entity_id, old_state=None, new_state=None):
+    def update_entity_trigger_event(event):
+        """update_entity_trigger from the event."""
+        return update_entity_trigger(event.data["entity_id"], event.data["new_state"])
+
+    @callback
+    def update_entity_trigger(entity_id, new_state=None):
+        """Update the entity trigger for the entity_id."""
         # If a listener was already set up for entity, remove it.
         remove = entities.get(entity_id)
         if remove:
@@ -117,7 +123,9 @@ async def async_attach_trigger(hass, config, action, automation_info):
 
     # Track state changes of any entities.
     removes.append(
-        async_track_state_change(hass, list(entities), update_entity_trigger)
+        async_track_state_change_event(
+            hass, list(entities), update_entity_trigger_event
+        )
     )
 
     @callback
