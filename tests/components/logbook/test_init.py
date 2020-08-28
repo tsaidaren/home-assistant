@@ -2090,6 +2090,11 @@ class MockLazyEventPartialState(ha.Event):
         return self.data.get(ATTR_ENTITY_ID)
 
     @property
+    def data_domain(self):
+        """Lookup domain."""
+        return self.data.get(ATTR_DOMAIN)
+
+    @property
     def time_fired_minute(self):
         """Minute the event was fired."""
         return self.time_fired.minute

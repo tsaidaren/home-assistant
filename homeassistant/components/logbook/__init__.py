@@ -52,6 +52,7 @@ from homeassistant.loader import bind_hass
 import homeassistant.util.dt as dt_util
 
 ENTITY_ID_JSON_EXTRACT = re.compile('"entity_id": "([^"]+)"')
+DOMAIN_JSON_EXTRACT = re.compile('"domain": "([^"]+)"')
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -497,14 +498,11 @@ def _keep_event(hass, event, entities_filter):
                 # If the entity_id isn't described, use the domain that describes
                 # the event for filtering.
                 domain = hass.data[DOMAIN][event.event_type][0]
-                if domain is None:
-                    return False
-                entity_id = f"{domain}."
             else:
-                domain = event.data.get(ATTR_DOMAIN)
-                if domain is None:
-                    return False
-                entity_id = f"{domain}."
+                domain = event.data_domain
+            if domain is None:
+                return False
+            entity_id = f"{domain}."
 
     return entities_filter is None or entities_filter(entity_id)
 
@@ -699,6 +697,15 @@ class LazyEventPartialState:
             return self._event_data.get(ATTR_ENTITY_ID)
 
         result = ENTITY_ID_JSON_EXTRACT.search(self._row.event_data)
+        return result and result.group(1)
+
+    @property
+    def data_domain(self):
+        """Extract the domain from the decoded data or json."""
+        if self._event_data:
+            return self._event_data.get(ATTR_DOMAIN)
+
+        result = DOMAIN_JSON_EXTRACT.search(self._row.event_data)
         return result and result.group(1)
 
     @property
