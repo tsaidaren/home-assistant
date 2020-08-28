@@ -60,6 +60,9 @@ NOTIFY_SERVICE_SCHEMA = vol.Schema(
 @bind_hass
 async def async_reload(hass, integration_name):
     """Register notify services for an integration."""
+    if NOTIFY_SERVICES not in hass.data:
+        return
+
     data = hass.data[NOTIFY_SERVICES][integration_name]
     notify_service = data[SERVICE]
     friendly_name = data[FRIENDLY_NAME]
