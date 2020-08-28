@@ -60,15 +60,6 @@ NOTIFY_SERVICE_SCHEMA = vol.Schema(
 @bind_hass
 async def async_reload(hass, integration_name):
     """Register notify services for an integration."""
-
-    _LOGGER.debug(
-        "reload: %s -- notify_services=%s", integration_name, hass.data[NOTIFY_SERVICES]
-    )
-    _LOGGER.debug(
-        "reload: %s -- notify_services[integration_name]=%s",
-        integration_name,
-        hass.data[NOTIFY_SERVICES][integration_name],
-    )
     if (
         NOTIFY_SERVICES not in hass.data
         or integration_name not in hass.data[NOTIFY_SERVICES]
@@ -108,6 +99,7 @@ async def _async_setup_notify_services(hass, data):
             )
 
         for stale_target_name in stale_targets:
+            del targets[stale_target_name]
             hass.services.async_remove(
                 DOMAIN,
                 stale_target_name,
