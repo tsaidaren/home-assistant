@@ -389,6 +389,10 @@ def _get_events(
     hass, start_day, end_day, entity_id=None, filters=None, entities_filter=None
 ):
     """Get events for a period of time."""
+    import cProfile
+
+    pr = cProfile.Profile()
+    pr.enable()
     entity_attr_cache = EntityAttributeCache(hass)
     context_lookup = {None: None}
 
@@ -475,9 +479,13 @@ def _get_events(
                     entity_filter | (Events.event_type != EVENT_STATE_CHANGED)
                 )
 
-        return list(
+        result = list(
             humanify(hass, yield_events(query), entity_attr_cache, context_lookup)
         )
+        pr.disable()
+        pr.create_stats()
+        pr.dump_stats("logbook.cprof")
+        return result
 
 
 def _keep_event(hass, event, entities_filter):
