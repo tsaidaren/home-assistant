@@ -2085,6 +2085,11 @@ class MockLazyEventPartialState(ha.Event):
     """Minimal mock of a Lazy event."""
 
     @property
+    def data_entity_id(self):
+        """Lookup entity id."""
+        return self.data.get(ATTR_ENTITY_ID)
+
+    @property
     def time_fired_minute(self):
         """Minute the event was fired."""
         return self.time_fired.minute
