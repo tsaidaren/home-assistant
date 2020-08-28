@@ -503,6 +503,7 @@ def _keep_event(hass, event, entities_filter):
     elif event.event_type == EVENT_CALL_SERVICE:
         return False
     else:
+        _LOGGER.debug("event_type: %s data: %s", event.event_type, event.data)
         event_data = event.data
         entity_id = event_data.get(ATTR_ENTITY_ID)
         if not entity_id:
