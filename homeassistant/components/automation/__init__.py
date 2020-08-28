@@ -81,6 +81,7 @@ EVENT_AUTOMATION_RELOADED = "automation_reloaded"
 EVENT_AUTOMATION_TRIGGERED = "automation_triggered"
 
 ATTR_LAST_TRIGGERED = "last_triggered"
+ATTR_SOURCE = "source"
 ATTR_VARIABLES = "variables"
 SERVICE_TRIGGER = "trigger"
 
