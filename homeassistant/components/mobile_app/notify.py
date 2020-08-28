@@ -39,8 +39,7 @@ _LOGGER = logging.getLogger(__name__)
 def push_registrations(hass):
     """Return a dictionary of push enabled registrations."""
     targets = {}
-    # Reverse the list to get newer first
-    for webhook_id, entry in hass.data[DOMAIN][DATA_CONFIG_ENTRIES].reverse().items():
+    for webhook_id, entry in hass.data[DOMAIN][DATA_CONFIG_ENTRIES].items():
         data = entry.data
         app_data = data[ATTR_APP_DATA]
         if ATTR_PUSH_TOKEN in app_data and ATTR_PUSH_URL in app_data:
