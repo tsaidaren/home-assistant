@@ -632,8 +632,8 @@ class _TrackTemplateResultInfo:
 
         for template, variables in self._templates:
             if (
-                len(self._last_info) > 1
-                and entity_id
+                entity_id
+                and len(self._last_info) > 1
                 and not self._last_info[template].filter_lifecycle(entity_id)
             ):
                 continue
