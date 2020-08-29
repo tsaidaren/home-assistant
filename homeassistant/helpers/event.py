@@ -464,9 +464,6 @@ class _TrackTemplateResultInfo:
         """Handle removal / refresh of tracker init."""
         self.hass = hass
         self._action = action
-
-        assert not isinstance(templates, Template)
-
         self._templates = templates
 
         for template, _ in self._templates:
@@ -528,8 +525,9 @@ class _TrackTemplateResultInfo:
             self._setup_all_listener()
             return
 
-        self._last_domains = _domains_from_info(self._info.values())
-        self._last_entities = _entities_from_info(self._info.values())
+        self._last_entities, self._last_domains = _entities_domains_from_info(
+            self._info.values()
+        )
         self._setup_domains_listener(self._last_domains)
         self._setup_entities_listener(self._last_domains, self._last_entities)
 
@@ -570,9 +568,7 @@ class _TrackTemplateResultInfo:
         if had_all_listener:
             self._cancel_all_listener()
 
-        domains = _domains_from_info(self._info.values())
-        entities = _entities_from_info(self._info.values())
-
+        entities, domains = _entities_domains_from_info(self._info.values())
         domains_changed = domains != self._last_domains
 
         if had_all_listener or domains_changed:
@@ -591,8 +587,7 @@ class _TrackTemplateResultInfo:
     def _setup_entities_listener(self, domains: Set, entities: Set) -> None:
         if domains:
             entities = entities.copy()
-            for entity_id in self.hass.states.async_entity_ids(domains):
-                entities.add(entity_id)
+            entities.update(self.hass.states.async_entity_ids(domains))
 
         # Entities has changed to none
         if not entities:
@@ -636,7 +631,11 @@ class _TrackTemplateResultInfo:
         info_changed = False
 
         for template, variables in self._templates:
-            if entity_id and not self._last_info[template].filter_lifecycle(entity_id):
+            if (
+                len(self._last_info) > 1
+                and entity_id
+                and not self._last_info[template].filter_lifecycle(entity_id)
+            ):
                 continue
 
             self._info[template] = template.async_render_to_info(variables)
@@ -835,9 +834,14 @@ def async_track_point_in_utc_time(
     hass: HomeAssistant, action: Callable[..., Any], point_in_time: datetime
 ) -> CALLBACK_TYPE:
     """Add a listener that fires once after a specific point in UTC time."""
+    # Ensure point_in_time is UTC
+    utc_point_in_time = dt_util.as_utc(point_in_time)
+
     cancel_callback = hass.loop.call_at(
         hass.loop.time() + point_in_time.timestamp() - time.time(),
-        callback(lambda: hass.async_run_job(action, dt_util.utcnow())),
+        hass.async_run_job,
+        action,
+        utc_point_in_time,
     )
 
     @callback
@@ -1121,23 +1125,14 @@ def process_state_match(
     return lambda state: state in parameter_set
 
 
-def _entities_from_info(render_infos: Iterable[RenderInfo]) -> Set:
-    """Combine the entities from multiple RenderInfo."""
+def _entities_domains_from_info(render_infos: Iterable[RenderInfo]) -> Tuple[Set, Set]:
+    """Combine from multiple RenderInfo."""
     entities = set()
-    for render_info in render_infos:
-        if not render_info.entities:
-            continue
-        for entity in render_info.entities:
-            entities.add(entity)
-    return entities
-
-
-def _domains_from_info(render_infos: Iterable[RenderInfo]) -> Set:
-    """Combine the domains from multiple RenderInfo."""
     domains = set()
+
     for render_info in render_infos:
-        if not render_info.domains:
-            continue
-        for domain in render_info.domains:
-            domains.add(domain)
-    return domains
+        if render_info.entities:
+            entities.update(render_info.entities)
+        if render_info.domains:
+            domains.update(render_info.domains)
+    return entities, domains
