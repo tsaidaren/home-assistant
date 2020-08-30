@@ -79,16 +79,6 @@ class SchluterThermostat(CoordinatorEntity, ClimateEntity):
         self._support_flags = SUPPORT_TARGET_TEMPERATURE
 
     @property
-    def available(self):
-        """Return if thermostat is available."""
-        return self.coordinator.last_update_success
-
-    @property
-    def should_poll(self):
-        """Return if platform should poll."""
-        return False
-
-    @property
     def supported_features(self):
         """Return the list of supported features."""
         return self._support_flags
@@ -162,11 +152,3 @@ class SchluterThermostat(CoordinatorEntity, ClimateEntity):
                 self._api.set_temperature(self._session_id, serial_number, target_temp)
         except RequestException as ex:
             _LOGGER.error("An error occurred while setting temperature: %s", ex)
-
-    async def async_added_to_hass(self):
-        """When entity is added to hass."""
-        self.coordinator.async_add_listener(self.async_write_ha_state)
-
-    async def async_will_remove_from_hass(self):
-        """When entity will be removed from hass."""
-        self.coordinator.async_remove_listener(self.async_write_ha_state)

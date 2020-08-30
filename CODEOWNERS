@@ -325,6 +325,7 @@ homeassistant/components/plum_lightpad/* @ColinHarrington @prystupa
 homeassistant/components/point/* @fredrike
 homeassistant/components/poolsense/* @haemishkyd
 homeassistant/components/powerwall/* @bdraco @jrester
+homeassistant/components/progettihwsw/* @ardaseremet
 homeassistant/components/prometheus/* @knyar
 homeassistant/components/proxmoxve/* @k4ds3 @jhollowe
 homeassistant/components/ps4/* @ktnrg45
@@ -368,7 +369,7 @@ homeassistant/components/seven_segments/* @fabaff
 homeassistant/components/seventeentrack/* @bachya
 homeassistant/components/sharkiq/* @ajmarks
 homeassistant/components/shell_command/* @home-assistant/core
-homeassistant/components/shelly/* @balloob
+homeassistant/components/shelly/* @balloob @bieniu
 homeassistant/components/shiftr/* @fabaff
 homeassistant/components/shodan/* @fabaff
 homeassistant/components/sighthound/* @robmarkcole
