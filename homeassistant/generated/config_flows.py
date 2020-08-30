@@ -153,6 +153,7 @@ FLOWS = [
     "samsungtv",
     "sense",
     "sentry",
+    "sharkiq",
     "shelly",
     "shopping_list",
     "simplisafe",
