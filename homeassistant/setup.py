@@ -92,16 +92,19 @@ async def _async_process_dependencies(
     if not dependencies_tasks and not after_dependencies_tasks:
         return True
 
-    _LOGGER.debug(
-        "Dependency %s will wait for dependencies %s",
-        integration.domain,
-        list(dependencies_tasks),
-    )
-    _LOGGER.debug(
-        "Dependency %s will wait for after dependencies %s",
-        integration.domain,
-        list(after_dependencies_tasks),
-    )
+    if dependencies_tasks:
+        _LOGGER.debug(
+            "Dependency %s will wait for dependencies %s",
+            integration.domain,
+            list(dependencies_tasks),
+        )
+    if after_dependencies_tasks:
+        _LOGGER.debug(
+            "Dependency %s will wait for after dependencies %s",
+            integration.domain,
+            list(after_dependencies_tasks),
+        )
+
     async with hass.timeout.async_freeze(integration.domain):
         results = await asyncio.gather(
             *dependencies_tasks.values(), *after_dependencies_tasks.values()
