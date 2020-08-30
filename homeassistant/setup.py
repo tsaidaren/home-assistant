@@ -74,6 +74,7 @@ async def _async_process_dependencies(
     tasks = {
         dep: hass.loop.create_task(async_setup_component(hass, dep, config))
         for dep in integration.dependencies
+        if dep not in hass.config.components
     }
 
     to_be_loaded = hass.data.get(DATA_SETUP_DONE, {})
