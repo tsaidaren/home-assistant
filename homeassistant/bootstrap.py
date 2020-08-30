@@ -239,6 +239,10 @@ async def async_from_config_dict(
         )
         return None
 
+    pr.disable()
+    pr.create_stats()
+    pr.dump_stats("bootstrap_core.cprof")
+
     await _async_set_up_integrations(hass, config)
 
     stop = monotonic()
@@ -257,10 +261,6 @@ async def async_from_config_dict(
         hass.components.persistent_notification.async_create(
             msg, "Python version", "python_version"
         )
-
-    pr.disable()
-    pr.create_stats()
-    pr.dump_stats("bootstrap.cprof")
 
     return hass
 
