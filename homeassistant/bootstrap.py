@@ -199,10 +199,6 @@ async def async_from_config_dict(
     Dynamically loads required components and its dependencies.
     This method is a coroutine.
     """
-    import cProfile
-
-    pr = cProfile.Profile()
-    pr.enable()
 
     start = monotonic()
 
@@ -238,10 +234,6 @@ async def async_from_config_dict(
             "Further initialization aborted"
         )
         return None
-
-    pr.disable()
-    pr.create_stats()
-    pr.dump_stats("bootstrap_core.cprof")
 
     await _async_set_up_integrations(hass, config)
 
@@ -483,10 +475,20 @@ async def _async_set_up_integrations(
 
     logging_domains = domains_to_setup & LOGGING_INTEGRATIONS
 
+    import cProfile
+
+    pr = cProfile.Profile()
+    pr.enable()
+
     # Load logging as soon as possible
     if logging_domains:
         _LOGGER.info("Setting up logging: %s", logging_domains)
         await async_setup_multi_components(hass, logging_domains, config, setup_started)
+
+    pr.disable()
+    pr.create_stats()
+    pr.dump_stats("bootstrap_logging.cprof")
+    pr.enable()
 
     # Start up debuggers. Start these first in case they want to wait.
     debuggers = domains_to_setup & DEBUGGER_INTEGRATIONS
@@ -494,6 +496,11 @@ async def _async_set_up_integrations(
     if debuggers:
         _LOGGER.debug("Setting up debuggers: %s", debuggers)
         await async_setup_multi_components(hass, debuggers, config, setup_started)
+
+    pr.disable()
+    pr.create_stats()
+    pr.dump_stats("bootstrap_debuggers.cprof")
+    pr.enable()
 
     # calculate what components to setup in what stage
     stage_1_domains = set()
@@ -538,6 +545,11 @@ async def _async_set_up_integrations(
         except asyncio.TimeoutError:
             _LOGGER.warning("Setup timed out for stage 1 - moving forward")
 
+    pr.disable()
+    pr.create_stats()
+    pr.dump_stats("bootstrap_stage1.cprof")
+    pr.enable()
+
     # Enables after dependencies
     async_set_domains_to_be_loaded(hass, stage_1_domains | stage_2_domains)
 
@@ -553,6 +565,11 @@ async def _async_set_up_integrations(
         except asyncio.TimeoutError:
             _LOGGER.warning("Setup timed out for stage 2 - moving forward")
 
+    pr.disable()
+    pr.create_stats()
+    pr.dump_stats("bootstrap_stage2.cprof")
+    pr.enable()
+
     # Wrap up startup
     _LOGGER.debug("Waiting for startup to wrap up")
     try:
@@ -560,3 +577,7 @@ async def _async_set_up_integrations(
             await hass.async_block_till_done()
     except asyncio.TimeoutError:
         _LOGGER.warning("Setup timed out for bootstrap - moving forward")
+
+    pr.disable()
+    pr.create_stats()
+    pr.dump_stats("bootstrap_wrapup.cprof")
