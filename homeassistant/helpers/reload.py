@@ -77,15 +77,17 @@ async def _resetup_platform(
         # If the integration has its own way to reset
         # use this method.
         await component.async_reset_platform(hass, integration_name)  # type: ignore
-    else:
-        # If its an entity platform, we use the entity_platform
-        # async_reset method
-        platform = async_get_platform(hass, integration_name, integration_platform)
-        if not platform:
-            return
-        await platform.async_reset()
+        await component.async_setup(hass, root_config)  # type: ignore
+        return
 
-    assert await component.async_setup(hass, root_config)  # type: ignore
+    # If its an entity platform, we use the entity_platform
+    # async_reset method
+    platform = async_get_platform(hass, integration_name, integration_platform)
+    if not platform:
+        return
+
+    await platform.async_reset()
+    await platform.async_setup(p_config)  # type: ignore
 
 
 async def async_integration_yaml_config(
