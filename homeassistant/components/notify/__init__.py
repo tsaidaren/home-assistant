@@ -66,9 +66,10 @@ async def async_reload(hass, integration_name):
 @bind_hass
 async def async_reset_platform(hass, integration_name):
     """Unregister notify services for an integration."""
-    await _do_with_notify_services(
+    if not await _do_with_notify_services(
         hass, integration_name, _async_unregister_notify_services
-    )
+    ):
+        return
     del hass.data[NOTIFY_SERVICES][integration_name]
 
 
@@ -78,10 +79,11 @@ async def _do_with_notify_services(hass, integration_name, call):
         NOTIFY_SERVICES not in hass.data
         or integration_name not in hass.data[NOTIFY_SERVICES]
     ):
-        return
+        return False
 
     tasks = [call(hass, data) for data in hass.data[NOTIFY_SERVICES][integration_name]]
     await asyncio.gather(*tasks)
+    return True
 
 
 async def _async_unregister_notify_services(hass, data):

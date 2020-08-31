@@ -15,8 +15,6 @@ from homeassistant.loader import async_get_integration
 
 _LOGGER = logging.getLogger(__name__)
 
-RESETTABLE_PLATFORMS = {"notify"}
-
 
 async def async_reload_integration_platforms(
     hass: HomeAssistantType, integration_name: str, integration_platforms: Iterable
@@ -36,53 +34,14 @@ async def async_reload_integration_platforms(
         _LOGGER.error(err)
         return
 
-    tasks = []
-    for integration_platform in integration_platforms:
-        if integration_platform in RESETTABLE_PLATFORMS:
-            tasks.append(
-                _resetup_platform(
-                    hass, integration_name, integration_platform, unprocessed_conf
-                )
-            )
-        else:
-            tasks.append(
-                _resetup_entity_platform(
-                    hass, integration_name, integration_platform, unprocessed_conf
-                )
-            )
+    tasks = [
+        _resetup_platform(
+            hass, integration_name, integration_platform, unprocessed_conf
+        )
+        for integration_platform in integration_platforms
+    ]
 
     await asyncio.gather(*tasks)
-
-
-async def _resetup_entity_platform(
-    hass: HomeAssistantType,
-    integration_name: str,
-    integration_platform: str,
-    unprocessed_conf: Dict,
-):
-    """Resetup an entity platform."""
-    platform = async_get_platform(hass, integration_name, integration_platform)
-
-    if not platform:
-        return
-
-    integration = await async_get_integration(hass, integration_platform)
-
-    conf = await conf_util.async_process_component_config(
-        hass, unprocessed_conf, integration
-    )
-
-    if not conf:
-        return
-
-    await platform.async_reset()
-
-    # Extract only the config for template, ignore the rest.
-    for p_type, p_config in config_per_platform(conf, integration_platform):
-        if p_type != integration_name:
-            continue
-
-        await platform.async_setup(p_config)  # type: ignore
 
 
 async def _resetup_platform(
@@ -90,7 +49,7 @@ async def _resetup_platform(
     integration_name: str,
     integration_platform: str,
     unprocessed_conf: Dict,
-):
+) -> None:
     """Resetup a non-entity platform."""
     integration = await async_get_integration(hass, integration_platform)
 
@@ -103,9 +62,15 @@ async def _resetup_platform(
 
     component = integration.get_component()
 
-    await component.async_reset_platform(hass, integration_name)
+    if hasattr(component, "async_reset_platform"):
+        await component.async_reset_platform(hass, integration_name)  # type: ignore
+    else:
+        platform = async_get_platform(hass, integration_name, integration_platform)
+        if not platform:
+            return
+        await platform.async_reset()
 
-    root_config = {integration_platform: []}
+    root_config: Dict = {integration_platform: []}
     # Extract only the config for template, ignore the rest.
     for p_type, p_config in config_per_platform(conf, integration_platform):
         if p_type != integration_name:
@@ -113,7 +78,7 @@ async def _resetup_platform(
 
         root_config[integration_platform].append(p_config)
 
-    assert await component.async_setup(hass, root_config)
+    assert await component.async_setup(hass, root_config)  # type: ignore
 
 
 async def async_integration_yaml_config(

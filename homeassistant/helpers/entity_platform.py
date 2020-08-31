@@ -489,24 +489,10 @@ class EntityPlatform:
             self._async_cancel_retry_setup()
             self._async_cancel_retry_setup = None
 
-        tasks = []
-
-        if self.entities:
-            tasks = [self.async_remove_entity(entity_id) for entity_id in self.entities]
-
-        platform = self.platform
-
-        if platform and hasattr(platform, "async_reset_platform"):
-            #
-            # Some platforms need to unregister services
-            # or perform other operations in order to reset
-            #
-            tasks.append(
-                platform.async_reset_platform(self.platform_name)  # type: ignore
-            )
-
-        if not tasks:
+        if not self.entities:
             return
+
+        tasks = [self.async_remove_entity(entity_id) for entity_id in self.entities]
 
         await asyncio.gather(*tasks)
 
