@@ -2,17 +2,14 @@
 import asyncio
 from datetime import datetime, timedelta
 import json
-from os import path
 import ssl
 
 import pytest
 import voluptuous as vol
 
-from homeassistant import config as hass_config
 from homeassistant.components import mqtt, websocket_api
-from homeassistant.components.mqtt import SERVICE_RELOAD, debug_info
+from homeassistant.components.mqtt import debug_info
 from homeassistant.components.mqtt.discovery import async_start
-from homeassistant.config_entries import ENTRY_STATE_LOADED, ENTRY_STATE_NOT_LOADED
 from homeassistant.const import (
     ATTR_DOMAIN,
     ATTR_SERVICE,
@@ -1511,80 +1508,3 @@ async def test_debug_info_qos_retain(hass, mqtt_mock):
         "time": start_dt,
         "topic": "sensor/abc",
     } in debug_info_data["entities"][0]["subscriptions"][0]["messages"]
-
-
-async def test_reload_config_entry(hass, caplog):
-    """Test for setup failure if connection to broker is missing."""
-    entry = MockConfigEntry(domain=mqtt.DOMAIN, data={mqtt.CONF_BROKER: "test-broker"})
-    entry.add_to_hass(hass)
-
-    yaml_path = path.join(
-        _get_fixtures_base_path(),
-        "fixtures",
-        "mqtt/configuration.yaml",
-    )
-
-    with patch("paho.mqtt.client.Client") as mock_client:
-        mock_client().connect = MagicMock()
-        assert await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
-
-        entries = hass.config_entries.async_entries(mqtt.DOMAIN)
-        assert len(entries) == 1
-        assert entries[0].state == ENTRY_STATE_LOADED
-
-        with patch.object(hass_config, "YAML_CONFIG_FILE", yaml_path):
-            await hass.services.async_call(
-                "mqtt",
-                SERVICE_RELOAD,
-                {},
-                blocking=True,
-            )
-            await hass.async_block_till_done()
-
-    entries = hass.config_entries.async_entries(mqtt.DOMAIN)
-    assert len(entries) == 1
-
-
-async def test_reload_config_entry_fails_if_not_loaded(hass, caplog):
-    """Test for setup failure if connection to broker is missing."""
-    entry = MockConfigEntry(domain=mqtt.DOMAIN, data={mqtt.CONF_BROKER: "test-broker"})
-    entry.add_to_hass(hass)
-
-    yaml_path = path.join(
-        _get_fixtures_base_path(),
-        "fixtures",
-        "mqtt/configuration.yaml",
-    )
-
-    with patch("paho.mqtt.client.Client") as mock_client:
-        mock_client().connect = MagicMock()
-        assert await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
-
-        entries = hass.config_entries.async_entries(mqtt.DOMAIN)
-        assert len(entries) == 1
-        assert entries[0].state == ENTRY_STATE_LOADED
-
-        assert await hass.config_entries.async_unload(entry.entry_id)
-        await hass.async_block_till_done()
-
-        entries = hass.config_entries.async_entries(mqtt.DOMAIN)
-        assert entries[0].state == ENTRY_STATE_NOT_LOADED
-
-        with patch.object(hass_config, "YAML_CONFIG_FILE", yaml_path):
-            await hass.services.async_call(
-                "mqtt",
-                SERVICE_RELOAD,
-                {},
-                blocking=True,
-            )
-            await hass.async_block_till_done()
-
-    entries = hass.config_entries.async_entries(mqtt.DOMAIN)
-    assert len(entries) == 1
-    assert entries[0].state == ENTRY_STATE_NOT_LOADED
-
-
-def _get_fixtures_base_path():
-    return path.dirname(path.dirname(path.dirname(__file__)))
