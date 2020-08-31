@@ -17,6 +17,7 @@ import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.components import websocket_api
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_CLIENT_ID,
     CONF_DEVICE,
@@ -526,6 +527,7 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType) -> bool:
     """Start the MQTT protocol service."""
     conf: Optional[ConfigType] = config.get(DOMAIN)
 
+    async_create_reload_service(hass)
     websocket_api.async_register_command(hass, websocket_subscribe)
     websocket_api.async_register_command(hass, websocket_remove_device)
     websocket_api.async_register_command(hass, websocket_mqtt_info)
@@ -546,8 +548,6 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType) -> bool:
                 DOMAIN, context={"source": config_entries.SOURCE_IMPORT}, data={}
             )
         )
-
-    async_create_reload_service(hass)
 
     return True
 
@@ -593,6 +593,8 @@ async def async_setup_entry(hass, entry):
 
     async def async_stop_mqtt(_event: Event):
         """Stop MQTT component."""
+        if DATA_MQTT not in hass.data:
+            return
         await hass.data[DATA_MQTT].async_disconnect()
 
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, async_stop_mqtt)
@@ -661,6 +663,27 @@ async def async_setup_entry(hass, entry):
         await _async_setup_discovery(hass, conf, entry)
 
     return True
+
+
+async def async_unload_entry(hass: HomeAssistantType, entry: ConfigEntry):
+    """Unload a config entry."""
+
+    await hass.data[DATA_MQTT].async_disconnect()
+    await discovery.async_stop(hass)
+
+    unload_ok = all(
+        await asyncio.gather(
+            *[
+                hass.config_entries.async_forward_entry_unload(entry, component)
+                for component in PLATFORMS
+            ]
+        )
+    )
+
+    if unload_ok:
+        hass.data.pop(DATA_MQTT)
+
+    return unload_ok
 
 
 @attr.s(slots=True, frozen=True)
