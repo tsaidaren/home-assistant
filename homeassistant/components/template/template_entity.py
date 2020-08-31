@@ -236,12 +236,12 @@ class TemplateEntity(Entity):
 
     async def _async_template_startup(self, *_) -> None:
         # _handle_results will not write state until "_async_update" is set
-        template_var_tups = [
+        track_templates = [
             TrackTemplate(template, None) for template in self._template_attrs
         ]
 
         result_info = async_track_template_result(
-            self.hass, template_var_tups, self._handle_results
+            self.hass, track_templates, self._handle_results
         )
         self.async_on_remove(result_info.async_remove)
         result_info.async_refresh()
