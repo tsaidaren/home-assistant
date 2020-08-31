@@ -77,8 +77,11 @@ from .const import (
 )
 from .debug_info import log_messages
 from .discovery import (
+    ALREADY_DISCOVERED,
+    CONFIG_ENTRY_IS_SETUP,
     LAST_DISCOVERY,
     MQTT_DISCOVERY_UPDATED,
+    SUPPORTED_COMPONENTS,
     clear_discovery_hash,
     set_discovery_hash,
 )
@@ -138,20 +141,6 @@ CONNECTION_FAILED_RECOVERABLE = "connection_failed_recoverable"
 
 DISCOVERY_COOLDOWN = 2
 TIMEOUT_ACK = 1
-
-PLATFORMS = [
-    "alarm_control_panel",
-    "binary_sensor",
-    "camera",
-    "climate",
-    "cover",
-    "fan",
-    "light",
-    "lock",
-    "sensor",
-    "switch",
-    "vacuum",
-]
 
 
 def validate_device_has_at_least_one_identifier(value: ConfigType) -> ConfigType:
@@ -506,7 +495,7 @@ def async_create_reload_service(hass: HomeAssistantType):
             ]
             unload_result = await asyncio.gather(*unload_tasks)
 
-        tasks = [async_reload_integration_platforms(hass, DOMAIN, PLATFORMS)]
+        tasks = [async_reload_integration_platforms(hass, DOMAIN, SUPPORTED_COMPONENTS)]
 
         if entries:
             for idx, entry in enumerate(entries):
@@ -671,19 +660,23 @@ async def async_unload_entry(hass: HomeAssistantType, entry: ConfigEntry):
     await hass.data[DATA_MQTT].async_disconnect()
     await discovery.async_stop(hass)
 
-    unload_ok = all(
-        await asyncio.gather(
-            *[
-                hass.config_entries.async_forward_entry_unload(entry, component)
-                for component in PLATFORMS
-            ]
-        )
-    )
+    unload_tasks = [
+        hass.config_entries.async_forward_entry_unload(entry, component)
+        for component in SUPPORTED_COMPONENTS
+        if CONFIG_ENTRY_IS_SETUP in hass.data
+        and f"{component}.mqtt" in hass.data[CONFIG_ENTRY_IS_SETUP]
+    ]
 
-    if unload_ok:
-        hass.data.pop(DATA_MQTT)
+    if unload_tasks:
+        if not all(await asyncio.gather(*unload_tasks)):
+            return False
+        hass.data.pop(CONFIG_ENTRY_IS_SETUP)
 
-    return unload_ok
+    if ALREADY_DISCOVERED in hass.data:
+        hass.data.pop(ALREADY_DISCOVERED)
+
+    hass.data.pop(DATA_MQTT)
+    return True
 
 
 @attr.s(slots=True, frozen=True)
