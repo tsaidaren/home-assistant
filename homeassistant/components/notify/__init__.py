@@ -69,6 +69,7 @@ async def async_reset_platform(hass, integration_name):
     await _do_with_notify_services(
         hass, integration_name, _async_unregister_notify_services
     )
+    del hass.data[NOTIFY_SERVICES][integration_name]
 
 
 async def _do_with_notify_services(hass, integration_name, call):
