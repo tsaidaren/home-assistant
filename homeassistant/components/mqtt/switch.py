@@ -32,6 +32,7 @@ from . import (
     MqttAvailability,
     MqttDiscoveryUpdate,
     MqttEntityDeviceInfo,
+    async_create_reload_service,
     subscription,
 )
 from .debug_info import log_messages
@@ -69,6 +70,7 @@ async def async_setup_platform(
     hass: HomeAssistantType, config: ConfigType, async_add_entities, discovery_info=None
 ):
     """Set up MQTT switch through configuration.yaml."""
+    async_create_reload_service(hass)
     await _async_setup_entity(config, async_add_entities, discovery_info)
 
 
