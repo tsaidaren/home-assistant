@@ -143,7 +143,7 @@ async def test_reload_notify(hass):
     assert hass.services.has_service(notify.DOMAIN, "demo1")
     assert hass.services.has_service(notify.DOMAIN, "demo2")
     assert not hass.services.has_service(notify.DOMAIN, "group_notify")
-    assert hass.services.has_service(notify.DOMAIN, "group_notify_new")
+    assert hass.services.has_service(notify.DOMAIN, "new_group_notify")
 
 
 def _get_fixtures_base_path():

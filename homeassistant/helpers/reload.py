@@ -60,6 +60,17 @@ async def _resetup_platform(
     if not conf:
         return
 
+    root_config: Dict = {integration_platform: []}
+    # Extract only the config for template, ignore the rest.
+    for p_type, p_config in config_per_platform(conf, integration_platform):
+        if p_type != integration_name:
+            continue
+
+        root_config[integration_platform].append(p_config)
+
+    if not root_config[integration_platform]:
+        return
+
     component = integration.get_component()
 
     if hasattr(component, "async_reset_platform"):
@@ -73,14 +84,6 @@ async def _resetup_platform(
         if not platform:
             return
         await platform.async_reset()
-
-    root_config: Dict = {integration_platform: []}
-    # Extract only the config for template, ignore the rest.
-    for p_type, p_config in config_per_platform(conf, integration_platform):
-        if p_type != integration_name:
-            continue
-
-        root_config[integration_platform].append(p_config)
 
     assert await component.async_setup(hass, root_config)  # type: ignore
 
