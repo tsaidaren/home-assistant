@@ -76,7 +76,6 @@ from .debug_info import log_messages
 from .discovery import (
     LAST_DISCOVERY,
     MQTT_DISCOVERY_UPDATED,
-    SUPPORTED_COMPONENTS,
     clear_discovery_hash,
     set_discovery_hash,
 )
@@ -137,7 +136,19 @@ CONNECTION_FAILED_RECOVERABLE = "connection_failed_recoverable"
 DISCOVERY_COOLDOWN = 2
 TIMEOUT_ACK = 1
 
-PLATFORMS = SUPPORTED_COMPONENTS - "device_automation"
+PLATFORMS = [
+    "alarm_control_panel",
+    "binary_sensor",
+    "camera",
+    "climate",
+    "cover",
+    "fan",
+    "light",
+    "lock",
+    "sensor",
+    "switch",
+    "vacuum",
+]
 
 
 def validate_device_has_at_least_one_identifier(value: ConfigType) -> ConfigType:
