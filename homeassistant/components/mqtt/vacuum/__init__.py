@@ -12,7 +12,7 @@ from homeassistant.components.vacuum import DOMAIN
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.reload import async_setup_reload_service
 
-from .. import MQTT_DOMAIN, PLATFORMS
+from .. import DOMAIN as MQTT_DOMAIN, PLATFORMS
 from .schema import CONF_SCHEMA, LEGACY, MQTT_VACUUM_SCHEMA, STATE
 from .schema_legacy import PLATFORM_SCHEMA_LEGACY, async_setup_entity_legacy
 from .schema_state import PLATFORM_SCHEMA_STATE, async_setup_entity_state
