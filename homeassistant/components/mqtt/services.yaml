@@ -37,4 +37,4 @@ dump:
       default: 5
 
 reload:
-  description: Reload all mqtt entities.
+  description: Reload all mqtt entities from yaml.

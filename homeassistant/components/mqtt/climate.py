@@ -48,18 +48,20 @@ from homeassistant.const import (
 from homeassistant.core import callback
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.reload import async_setup_reload_service
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 
 from . import (
     ATTR_DISCOVERY_HASH,
     CONF_QOS,
     CONF_RETAIN,
+    DOMAIN,
     MQTT_BASE_PLATFORM_SCHEMA,
+    PLATFORMS,
     MqttAttributes,
     MqttAvailability,
     MqttDiscoveryUpdate,
     MqttEntityDeviceInfo,
-    async_create_reload_service,
     subscription,
 )
 from .debug_info import log_messages
@@ -240,7 +242,7 @@ async def async_setup_platform(
     hass: HomeAssistantType, config: ConfigType, async_add_entities, discovery_info=None
 ):
     """Set up MQTT climate device through configuration.yaml."""
-    async_create_reload_service(hass)
+    await async_setup_reload_service(hass, DOMAIN, PLATFORMS)
     await _async_setup_entity(hass, config, async_add_entities)
 
 
