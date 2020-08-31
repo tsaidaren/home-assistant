@@ -11,8 +11,8 @@ light:
       - light.outside_patio_lights_2
 
 notify:
-   - platform: group
-     name: new_group_notify
-     services:
-       - service: demo1 
-       - service: demo2 
+  - platform: group
+    name: new_group_notify
+    services:
+      - service: demo1
+      - service: demo2
