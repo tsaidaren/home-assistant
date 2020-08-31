@@ -50,7 +50,7 @@ async def _resetup_platform(
     integration_platform: str,
     unprocessed_conf: Dict,
 ) -> None:
-    """Resetup a non-entity platform."""
+    """Resetup a platform."""
     integration = await async_get_integration(hass, integration_platform)
 
     conf = await conf_util.async_process_component_config(
@@ -63,8 +63,12 @@ async def _resetup_platform(
     component = integration.get_component()
 
     if hasattr(component, "async_reset_platform"):
+        # If the integration has its own way to reset
+        # use this method.
         await component.async_reset_platform(hass, integration_name)  # type: ignore
     else:
+        # If its an entity platform, we use the entity_platform
+        # async_reset method
         platform = async_get_platform(hass, integration_name, integration_platform)
         if not platform:
             return
