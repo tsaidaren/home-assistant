@@ -17,7 +17,6 @@ import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.components import websocket_api
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_CLIENT_ID,
     CONF_DEVICE,
@@ -30,7 +29,6 @@ from homeassistant.const import (
     CONF_VALUE_TEMPLATE,
     EVENT_HOMEASSISTANT_STARTED,
     EVENT_HOMEASSISTANT_STOP,
-    SERVICE_RELOAD,
 )
 from homeassistant.const import CONF_UNIQUE_ID  # noqa: F401
 from homeassistant.core import CoreState, Event, ServiceCall, callback
@@ -38,7 +36,6 @@ from homeassistant.exceptions import HomeAssistantError, Unauthorized
 from homeassistant.helpers import config_validation as cv, event, template
 from homeassistant.helpers.dispatcher import async_dispatcher_connect, dispatcher_send
 from homeassistant.helpers.entity import Entity
-from homeassistant.helpers.reload import async_reload_integration_platforms
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType, ServiceDataType
 from homeassistant.loader import bind_hass
 from homeassistant.util import dt as dt_util
@@ -77,8 +74,6 @@ from .const import (
 )
 from .debug_info import log_messages
 from .discovery import (
-    ALREADY_DISCOVERED,
-    CONFIG_ENTRY_IS_SETUP,
     LAST_DISCOVERY,
     MQTT_DISCOVERY_UPDATED,
     SUPPORTED_COMPONENTS,
@@ -141,6 +136,8 @@ CONNECTION_FAILED_RECOVERABLE = "connection_failed_recoverable"
 
 DISCOVERY_COOLDOWN = 2
 TIMEOUT_ACK = 1
+
+PLATFORMS = SUPPORTED_COMPONENTS - "device_automation"
 
 
 def validate_device_has_at_least_one_identifier(value: ConfigType) -> ConfigType:
@@ -478,45 +475,10 @@ async def _async_setup_discovery(
     return success
 
 
-@callback
-def async_create_reload_service(hass: HomeAssistantType):
-    """Create a service to reload mqtt config entries and platforms."""
-
-    if hass.services.has_service(DOMAIN, SERVICE_RELOAD):
-        return
-
-    async def _reload_service_handler(service: ServiceCall):
-        """Remove all user-defined groups and load new ones from config."""
-        entries = hass.config_entries.async_entries(DOMAIN)
-
-        if entries:
-            unload_tasks = [
-                hass.config_entries.async_unload(entry.entry_id) for entry in entries
-            ]
-            unload_result = await asyncio.gather(*unload_tasks)
-
-        tasks = [async_reload_integration_platforms(hass, DOMAIN, SUPPORTED_COMPONENTS)]
-
-        if entries:
-            for idx, entry in enumerate(entries):
-                if not unload_result[idx]:
-                    _LOGGER.error(
-                        "Unable to reload the config entry %s", entry.entry_id
-                    )
-                    continue
-
-                tasks.append(hass.config_entries.async_unload(entry.entry_id))
-
-        await asyncio.gather(*tasks)
-
-    hass.services.async_register(DOMAIN, SERVICE_RELOAD, _reload_service_handler)
-
-
 async def async_setup(hass: HomeAssistantType, config: ConfigType) -> bool:
     """Start the MQTT protocol service."""
     conf: Optional[ConfigType] = config.get(DOMAIN)
 
-    async_create_reload_service(hass)
     websocket_api.async_register_command(hass, websocket_subscribe)
     websocket_api.async_register_command(hass, websocket_remove_device)
     websocket_api.async_register_command(hass, websocket_mqtt_info)
@@ -582,8 +544,6 @@ async def async_setup_entry(hass, entry):
 
     async def async_stop_mqtt(_event: Event):
         """Stop MQTT component."""
-        if DATA_MQTT not in hass.data:
-            return
         await hass.data[DATA_MQTT].async_disconnect()
 
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, async_stop_mqtt)
@@ -651,31 +611,6 @@ async def async_setup_entry(hass, entry):
     if conf.get(CONF_DISCOVERY):
         await _async_setup_discovery(hass, conf, entry)
 
-    return True
-
-
-async def async_unload_entry(hass: HomeAssistantType, entry: ConfigEntry):
-    """Unload a config entry."""
-
-    await hass.data[DATA_MQTT].async_disconnect()
-    await discovery.async_stop(hass)
-
-    unload_tasks = [
-        hass.config_entries.async_forward_entry_unload(entry, component)
-        for component in SUPPORTED_COMPONENTS
-        if CONFIG_ENTRY_IS_SETUP in hass.data
-        and f"{component}.mqtt" in hass.data[CONFIG_ENTRY_IS_SETUP]
-    ]
-
-    if unload_tasks:
-        if not all(await asyncio.gather(*unload_tasks)):
-            return False
-        hass.data.pop(CONFIG_ENTRY_IS_SETUP)
-
-    if ALREADY_DISCOVERED in hass.data:
-        hass.data.pop(ALREADY_DISCOVERED)
-
-    hass.data.pop(DATA_MQTT)
     return True
 
 
