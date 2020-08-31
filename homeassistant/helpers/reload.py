@@ -87,7 +87,9 @@ async def _resetup_platform(
         return
 
     await platform.async_reset()
-    await platform.async_setup(p_config)  # type: ignore
+
+    tasks = [platform.async_setup(p_config) for p_config in root_config[integration_platform]]  # type: ignore
+    await asyncio.gather(*tasks)
 
 
 async def async_integration_yaml_config(
