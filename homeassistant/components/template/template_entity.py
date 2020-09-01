@@ -253,7 +253,7 @@ class TemplateEntity(Entity):
 
             @callback
             def _update_templates(event):
-                result_info.async_refresh(filtered=False)
+                result_info.async_refresh(event=event, filtered=False)
 
             self.async_on_remove(
                 async_track_state_change_event(

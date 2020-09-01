@@ -657,15 +657,20 @@ class _TrackTemplateResultInfo:
         self._cancel_entities_listener()
 
     @callback
-    def async_refresh(self, filtered: bool = True) -> None:
+    def async_refresh(
+        self, event: Optional[Event] = None, filtered: bool = True
+    ) -> None:
         """Force recalculate the template."""
-        self._refresh(None, filtered=filtered)
+        self._refresh(event, filtered=filtered)
 
     @callback
     def _refresh(self, event: Optional[Event], filtered: bool = True) -> None:
         entity_id = event and event.data.get(ATTR_ENTITY_ID)
         updates = []
         info_changed = False
+
+        _LOGGER.error("Seen events: %s", self._seen_events)
+
         if event:
             if event in self._seen_events:
                 return

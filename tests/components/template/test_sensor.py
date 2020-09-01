@@ -792,3 +792,22 @@ async def test_entity_ids_tracked(hass):
     hass.states.async_set("binary_sensor.xtime", "off")
     await hass.async_block_till_done()
     assert hass.states.get("sensor.now").state != original_state
+    new_state = hass.states.get("sensor.now").state
+
+    hass.states.async_set("binary_sensor.xtime", "off")
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.now").state == new_state
+
+    hass.states.async_set("binary_sensor.xtime", "on")
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.now").state != new_state
+    third_state = hass.states.get("sensor.now").state
+
+    hass.states.async_set("binary_sensor.xtime", "off")
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.now").state != third_state
+    forth_state = hass.states.get("sensor.now").state
+
+    hass.states.async_set("binary_sensor.xtime", "on")
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.now").state != forth_state
