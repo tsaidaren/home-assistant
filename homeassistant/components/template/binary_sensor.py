@@ -78,6 +78,7 @@ async def _async_create_entities(hass, config):
         delay_on = device_config.get(CONF_DELAY_ON)
         delay_off = device_config.get(CONF_DELAY_OFF)
         unique_id = device_config.get(CONF_UNIQUE_ID)
+        entity_ids = device_config.get(ATTR_ENTITY_ID)
 
         sensors.append(
             BinarySensorTemplate(
@@ -93,6 +94,7 @@ async def _async_create_entities(hass, config):
                 delay_off,
                 attribute_templates,
                 unique_id,
+                entity_ids,
             )
         )
 
@@ -123,6 +125,7 @@ class BinarySensorTemplate(TemplateEntity, BinarySensorEntity):
         delay_off,
         attribute_templates,
         unique_id,
+        entity_ids,
     ):
         """Initialize the Template binary sensor."""
         super().__init__(
@@ -130,6 +133,7 @@ class BinarySensorTemplate(TemplateEntity, BinarySensorEntity):
             availability_template=availability_template,
             icon_template=icon_template,
             entity_picture_template=entity_picture_template,
+            entity_ids=entity_ids,
         )
         self.entity_id = async_generate_entity_id(ENTITY_ID_FORMAT, device, hass=hass)
         self._name = friendly_name
