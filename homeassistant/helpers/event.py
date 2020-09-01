@@ -499,6 +499,7 @@ class _TrackTemplateResultInfo:
             track_template_.template.hass = hass
         self._track_templates = track_templates
 
+        self._interval_listener: Optional[Callable] = None
         self._all_listener: Optional[Callable] = None
         self._domains_listener: Optional[Callable] = None
         self._entities_listener: Optional[Callable] = None
@@ -508,6 +509,7 @@ class _TrackTemplateResultInfo:
         self._info: Dict[Template, RenderInfo] = {}
         self._last_domains: Set = set()
         self._last_entities: Set = set()
+        self._last_time_interval_s: Optional[int] = None
 
     def async_setup(self) -> None:
         """Activation of template tracking."""
@@ -551,6 +553,20 @@ class _TrackTemplateResultInfo:
 
         return True
 
+    @property
+    def _all_templates_smallest_time_interval(self) -> Optional[int]:
+        time_interval_s: Optional[int] = None
+        for track_template_ in self._track_templates:
+            template_time_interval_s = self._info[
+                track_template_.template
+            ].time_interval_s
+            if not time_interval_s or (
+                template_time_interval_s and template_time_interval_s < time_interval_s
+            ):
+                time_interval_s = template_time_interval_s
+
+        return time_interval_s
+
     @callback
     def _create_listeners(self) -> None:
         if self._all_templates_are_static:
@@ -563,8 +579,19 @@ class _TrackTemplateResultInfo:
         self._last_entities, self._last_domains = _entities_domains_from_info(
             self._info.values()
         )
+        self._last_time_interval_s = self._all_templates_smallest_time_interval
+
         self._setup_domains_listener(self._last_domains)
         self._setup_entities_listener(self._last_domains, self._last_entities)
+        if self._last_time_interval_s:
+            self._setup_interval_listener(self._last_time_interval_s)
+
+    @callback
+    def _cancel_interval_listener(self) -> None:
+        if self._interval_listener is None:
+            return
+        self._interval_listener()
+        self._interval_listener = None
 
     @callback
     def _cancel_domains_listener(self) -> None:
@@ -589,6 +616,14 @@ class _TrackTemplateResultInfo:
 
     @callback
     def _update_listeners(self) -> None:
+        time_interval_s = self._all_templates_smallest_time_interval
+
+        if time_interval_s != self._last_time_interval_s:
+            self._cancel_interval_listener()
+            if time_interval_s:
+                self._setup_interval_listener(time_interval_s)
+            self._last_time_interval_s = time_interval_s
+
         if self._needs_all_listener:
             if self._all_listener:
                 return
@@ -617,6 +652,12 @@ class _TrackTemplateResultInfo:
 
         self._last_domains = domains
         self._last_entities = entities
+
+    @callback
+    def _setup_interval_listener(self, time_interval_s: int) -> None:
+        self._interval_listener = async_track_time_interval(
+            self.hass, self._refresh_from_time, timedelta(seconds=time_interval_s)
+        )
 
     @callback
     def _setup_entities_listener(self, domains: Set, entities: Set) -> None:
@@ -651,12 +692,17 @@ class _TrackTemplateResultInfo:
     def async_remove(self) -> None:
         """Cancel the listener."""
         self._cancel_all_listener()
+        self._cancel_interval_listener()
         self._cancel_domains_listener()
         self._cancel_entities_listener()
 
     @callback
     def async_refresh(self) -> None:
         """Force recalculate the template."""
+        self._refresh(None)
+
+    @callback
+    def _refresh_from_time(self, now: datetime) -> None:
         self._refresh(None)
 
     @callback

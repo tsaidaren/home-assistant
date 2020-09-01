@@ -17,6 +17,7 @@ from jinja2 import contextfilter, contextfunction
 from jinja2.sandbox import ImmutableSandboxedEnvironment
 from jinja2.utils import Namespace  # type: ignore
 import voluptuous as vol
+from voluptuous.error import Error as VoluptuousError
 
 from homeassistant.const import (
     ATTR_ENTITY_ID,
@@ -57,6 +58,8 @@ _RE_JINJA_DELIMITERS = re.compile(r"\{%|\{\{|\{#")
 _RESERVED_NAMES = {"contextfunction", "evalcontextfunction", "environmentfunction"}
 
 _GROUP_DOMAIN_PREFIX = "group."
+
+_DEFAULT_TIME_INTERVAL = 60
 
 
 @bind_hass
@@ -162,6 +165,7 @@ class RenderInfo:
         self.is_static = False
         self.exception = None
         self.all_states = False
+        self.time_interval_s = None
         self.domains = set()
         self.entities = set()
 
@@ -379,6 +383,59 @@ class Template:
     def __repr__(self) -> str:
         """Representation of Template."""
         return 'Template("' + self.template + '")'
+
+
+class TimeCollector:
+    """Class to expose now attribute."""
+
+    def __init__(self, hass):
+        """Initialize all now."""
+        self._hass = hass
+
+    def _collect_now(self, interval_s: int) -> None:
+        render_info = self._hass.data.get(_RENDER_INFO)
+        if not render_info:
+            return
+        if not render_info.time_interval_s or render_info.time_interval_s > interval_s:
+            render_info.time_interval_s = interval_s
+
+    def __call__(self, *args, **kwargs):
+        """Return the time."""
+        if args:
+            try:
+                cv.positive_int(args[0])
+            except VoluptuousError as ex:
+                raise TemplateError(ex) from VoluptuousError
+            self._collect_now(args[0])
+        else:
+            self._collect_now(_DEFAULT_TIME_INTERVAL)
+        return self._timefunc()
+
+
+class NowTimeCollector(TimeCollector):
+    """Class to collect now."""
+
+    def __init__(self, hass):
+        """Initialize now."""
+        self._hass = hass
+        self._timefunc = dt_util.now
+
+    def __repr__(self) -> str:
+        """Representation of now."""
+        return "<now>"
+
+
+class UTCNowTimeCollector(TimeCollector):
+    """Class to collect utcnow."""
+
+    def __init__(self, hass):
+        """Initialize utcnow."""
+        self._hass = hass
+        self._timefunc = dt_util.utcnow
+
+    def __repr__(self) -> str:
+        """Representation of utcnow."""
+        return "<utcnow>"
 
 
 class AllStates:
@@ -1084,8 +1141,8 @@ class TemplateEnvironment(ImmutableSandboxedEnvironment):
         self.globals["atan"] = arc_tangent
         self.globals["atan2"] = arc_tangent2
         self.globals["float"] = forgiving_float
-        self.globals["now"] = dt_util.now
-        self.globals["utcnow"] = dt_util.utcnow
+        self.globals["now"] = NowTimeCollector(hass)
+        self.globals["utcnow"] = UTCNowTimeCollector(hass)
         self.globals["as_timestamp"] = forgiving_as_timestamp
         self.globals["relative_time"] = relative_time
         self.globals["strptime"] = strptime

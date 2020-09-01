@@ -2288,3 +2288,67 @@ def test_is_template_string():
     assert template.is_template_string("{# a comment #} Hey") is True
     assert template.is_template_string("1") is False
     assert template.is_template_string("Some Text") is False
+
+
+def test_async_render_to_info_with_now(hass):
+    """Test async_render_to_info function by domain."""
+
+    info = render_to_info(hass, "123")
+    assert info.time_interval_s is None
+
+    info = render_to_info(
+        hass,
+        """
+{% if utcnow() == 1 %}
+  1
+{% elif now() == 1 %}
+  2
+{% else %}
+  3
+{% endif %}
+""",
+    )
+    assert info.time_interval_s == 60
+
+    info = render_to_info(
+        hass,
+        """
+{% if utcnow(1) == 1 %}
+  1
+{% elif now() == 1 %}
+  2
+{% else %}
+  3
+{% endif %}
+""",
+    )
+    assert info.time_interval_s == 1
+
+    info = render_to_info(
+        hass,
+        """
+{% if utcnow(5) == 1 %}
+  1
+{% elif now(10) == 1 %}
+  2
+{% else %}
+  3
+{% endif %}
+""",
+    )
+    assert info.time_interval_s == 5
+
+    info = render_to_info(
+        hass,
+        """
+{% if utcnow('dog') == 1 %}
+  1
+{% elif now(10) == 1 %}
+  2
+{% else %}
+  3
+{% endif %}
+""",
+    )
+    assert info.time_interval_s is None
+    assert info.exception
