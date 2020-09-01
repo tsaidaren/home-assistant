@@ -758,3 +758,109 @@ async def test_sun_renders_once_per_sensor(hass):
         "{{ state_attr('sun.sun', 'elevation') }}",
         "{{ state_attr('sun.sun', 'next_rising') }}",
     }
+
+
+async def test_entity_ids_tracked(hass):
+    """Test entity_ids changed without the entity in the template changing."""
+
+    hass.states.async_set("binary_sensor.xtime", "on")
+    await async_setup_component(
+        hass,
+        "sensor",
+        {
+            "sensor": {
+                "platform": "template",
+                "sensors": {
+                    "now": {
+                        "entity_id": "binary_sensor.xtime",
+                        "value_template": "{{ now() }}",
+                    },
+                },
+            }
+        },
+    )
+
+    await hass.async_block_till_done()
+    await hass.async_start()
+    await hass.async_block_till_done()
+
+    assert len(hass.states.async_all()) == 2
+
+    assert hass.states.get("sensor.now")
+
+    original_state = hass.states.get("sensor.now").state
+    hass.states.async_set("binary_sensor.xtime", "off")
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.now").state != original_state
+    new_state = hass.states.get("sensor.now").state
+
+    hass.states.async_set("binary_sensor.xtime", "off")
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.now").state == new_state
+
+    hass.states.async_set("binary_sensor.xtime", "on")
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.now").state != new_state
+    third_state = hass.states.get("sensor.now").state
+
+    hass.states.async_set("binary_sensor.xtime", "off")
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.now").state != third_state
+    forth_state = hass.states.get("sensor.now").state
+
+    hass.states.async_set("binary_sensor.xtime", "on")
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.now").state != forth_state
+
+
+async def test_entity_ids_and_template_has_the_same_tracked(hass):
+    """Test entity_ids changed without the entity in the template changing."""
+
+    hass.states.async_set("binary_sensor.xtime", "on")
+    await async_setup_component(
+        hass,
+        "sensor",
+        {
+            "sensor": {
+                "platform": "template",
+                "sensors": {
+                    "now": {
+                        "entity_id": "binary_sensor.xtime",
+                        "value_template": "{{ states.binary_sensor.xtime.state and now() }}",
+                    },
+                },
+            }
+        },
+    )
+
+    await hass.async_block_till_done()
+    await hass.async_start()
+    await hass.async_block_till_done()
+
+    assert len(hass.states.async_all()) == 2
+
+    assert hass.states.get("sensor.now")
+
+    original_state = hass.states.get("sensor.now").state
+    hass.states.async_set("binary_sensor.xtime", "off")
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.now").state != original_state
+    new_state = hass.states.get("sensor.now").state
+
+    hass.states.async_set("binary_sensor.xtime", "off")
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.now").state == new_state
+
+    hass.states.async_set("binary_sensor.xtime", "on")
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.now").state != new_state
+    third_state = hass.states.get("sensor.now").state
+
+    hass.states.async_set("binary_sensor.xtime", "off")
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.now").state != third_state
+    forth_state = hass.states.get("sensor.now").state
+
+    hass.states.async_set("binary_sensor.xtime", "on")
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.now").state != forth_state
