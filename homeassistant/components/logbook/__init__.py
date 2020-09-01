@@ -51,6 +51,7 @@ from homeassistant.helpers.integration_platform import (
 from homeassistant.loader import bind_hass
 import homeassistant.util.dt as dt_util
 
+ENTITY_ID_JSON_TEMPLATE = '"entity_id": "{}"'
 ENTITY_ID_JSON_EXTRACT = re.compile('"entity_id": "([^"]+)"')
 DOMAIN_JSON_EXTRACT = re.compile('"domain": "([^"]+)"')
 
@@ -86,7 +87,6 @@ ALL_EVENT_TYPES = [
 ]
 
 SCRIPT_AUTOMATION_EVENTS = [EVENT_AUTOMATION_TRIGGERED, EVENT_SCRIPT_STARTED]
-
 
 LOG_MESSAGE_SCHEMA = vol.Schema(
     {
@@ -458,7 +458,21 @@ def _get_events(
             .filter((Events.time_fired > start_day) & (Events.time_fired < end_day))
         )
 
-        if entity_ids:
+        if entity_ids and len(entity_ids) == 1:
+            # Will not link contexts
+            entity_id = entity_ids[0]
+            entity_id_json = ENTITY_ID_JSON_TEMPLATE.format(entity_id)
+            query = query.filter(
+                (
+                    (States.last_updated == States.last_changed)
+                    & States.entity_id.in_(entity_ids)
+                )
+                | (
+                    States.state_id.is_(None)
+                    & Events.event_data.contains(entity_id_json)
+                )
+            )
+        elif entity_ids:
             query = query.filter(
                 (
                     (States.last_updated == States.last_changed)
@@ -478,6 +492,9 @@ def _get_events(
                 query = query.filter(
                     entity_filter | (Events.event_type != EVENT_STATE_CHANGED)
                 )
+
+        xstr = str(query.statement.compile(compile_kwargs={"literal_binds": True}))
+        _LOGGER.warning("Logbook SQL Query: %s", xstr)
 
         return list(
             humanify(hass, yield_events(query), entity_attr_cache, context_lookup)
