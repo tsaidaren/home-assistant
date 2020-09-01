@@ -17,6 +17,7 @@ from homeassistant.const import (
     CONF_ENTITY_PICTURE_TEMPLATE,
     CONF_FRIENDLY_NAME_TEMPLATE,
     CONF_ICON_TEMPLATE,
+    CONF_SCAN_INTERVAL,
     CONF_SENSORS,
     CONF_UNIQUE_ID,
     CONF_VALUE_TEMPLATE,
@@ -51,6 +52,7 @@ SENSOR_SCHEMA = vol.All(
             vol.Optional(CONF_DEVICE_CLASS): DEVICE_CLASSES_SCHEMA,
             vol.Optional(ATTR_ENTITY_ID): cv.entity_ids,
             vol.Optional(CONF_UNIQUE_ID): cv.string,
+            vol.Optional(CONF_SCAN_INTERVAL): cv.time_period,
         }
     ),
 )
@@ -76,6 +78,7 @@ async def _async_create_entities(hass, config):
         device_class = device_config.get(CONF_DEVICE_CLASS)
         attribute_templates = device_config[CONF_ATTRIBUTE_TEMPLATES]
         unique_id = device_config.get(CONF_UNIQUE_ID)
+        scan_interval = device_config.get(CONF_SCAN_INTERVAL)
 
         sensors.append(
             SensorTemplate(
@@ -91,6 +94,7 @@ async def _async_create_entities(hass, config):
                 device_class,
                 attribute_templates,
                 unique_id,
+                scan_interval,
             )
         )
 
@@ -121,6 +125,7 @@ class SensorTemplate(TemplateEntity, Entity):
         device_class,
         attribute_templates,
         unique_id,
+        scan_interval,
     ):
         """Initialize the sensor."""
         super().__init__(
@@ -128,6 +133,7 @@ class SensorTemplate(TemplateEntity, Entity):
             availability_template=availability_template,
             icon_template=icon_template,
             entity_picture_template=entity_picture_template,
+            scan_interval=scan_interval,
         )
         self.entity_id = async_generate_entity_id(
             ENTITY_ID_FORMAT, device_id, hass=hass

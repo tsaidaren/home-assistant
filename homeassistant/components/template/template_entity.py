@@ -14,6 +14,7 @@ from homeassistant.helpers.event import (
     TrackTemplate,
     TrackTemplateResult,
     async_track_template_result,
+    async_track_time_interval,
 )
 from homeassistant.helpers.template import Template, result_as_boolean
 
@@ -117,6 +118,7 @@ class TemplateEntity(Entity):
         icon_template=None,
         entity_picture_template=None,
         attribute_templates=None,
+        scan_interval=None,
     ):
         """Template Entity."""
         self._template_attrs = {}
@@ -129,6 +131,7 @@ class TemplateEntity(Entity):
         self._entity_picture_template = entity_picture_template
         self._icon = None
         self._entity_picture = None
+        self._scan_interval = scan_interval
 
     @property
     def should_poll(self):
@@ -247,6 +250,18 @@ class TemplateEntity(Entity):
         result_info.async_refresh()
         self.async_write_ha_state()
         self._async_update = result_info.async_refresh
+        if not self._scan_interval:
+            return
+
+        @callback
+        def _async_refresh_template(event):
+            result_info.async_refresh()
+
+        self.async_on_remove(
+            async_track_time_interval(
+                self.hass, _async_refresh_template, self._scan_interval
+            )
+        )
 
     async def async_added_to_hass(self) -> None:
         """Run when entity about to be added to hass."""

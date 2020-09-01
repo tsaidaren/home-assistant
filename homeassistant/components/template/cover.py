@@ -26,6 +26,7 @@ from homeassistant.const import (
     CONF_FRIENDLY_NAME,
     CONF_ICON_TEMPLATE,
     CONF_OPTIMISTIC,
+    CONF_SCAN_INTERVAL,
     CONF_UNIQUE_ID,
     CONF_VALUE_TEMPLATE,
     STATE_CLOSED,
@@ -91,6 +92,7 @@ COVER_SCHEMA = vol.All(
             vol.Optional(CONF_FRIENDLY_NAME): cv.string,
             vol.Optional(CONF_ENTITY_ID): cv.entity_ids,
             vol.Optional(CONF_UNIQUE_ID): cv.string,
+            vol.Optional(CONF_SCAN_INTERVAL): cv.time_period,
         }
     ),
     cv.has_at_least_one_key(OPEN_ACTION, POSITION_ACTION),
@@ -123,6 +125,7 @@ async def _async_create_entities(hass, config):
         optimistic = device_config.get(CONF_OPTIMISTIC)
         tilt_optimistic = device_config.get(CONF_TILT_OPTIMISTIC)
         unique_id = device_config.get(CONF_UNIQUE_ID)
+        scan_interval = device_config.get(CONF_SCAN_INTERVAL)
 
         covers.append(
             CoverTemplate(
@@ -144,6 +147,7 @@ async def _async_create_entities(hass, config):
                 optimistic,
                 tilt_optimistic,
                 unique_id,
+                scan_interval,
             )
         )
 
@@ -180,9 +184,11 @@ class CoverTemplate(TemplateEntity, CoverEntity):
         optimistic,
         tilt_optimistic,
         unique_id,
+        scan_interval,
     ):
         """Initialize the Template cover."""
         super().__init__(
+            scan_interval=scan_interval,
             availability_template=availability_template,
             icon_template=icon_template,
             entity_picture_template=entity_picture_template,

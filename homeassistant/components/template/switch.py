@@ -13,6 +13,7 @@ from homeassistant.const import (
     ATTR_FRIENDLY_NAME,
     CONF_ENTITY_PICTURE_TEMPLATE,
     CONF_ICON_TEMPLATE,
+    CONF_SCAN_INTERVAL,
     CONF_SWITCHES,
     CONF_UNIQUE_ID,
     CONF_VALUE_TEMPLATE,
@@ -49,6 +50,7 @@ SWITCH_SCHEMA = vol.All(
             vol.Optional(ATTR_FRIENDLY_NAME): cv.string,
             vol.Optional(ATTR_ENTITY_ID): cv.entity_ids,
             vol.Optional(CONF_UNIQUE_ID): cv.string,
+            vol.Optional(CONF_SCAN_INTERVAL): cv.time_period,
         }
     ),
 )
@@ -71,6 +73,7 @@ async def _async_create_entities(hass, config):
         on_action = device_config[ON_ACTION]
         off_action = device_config[OFF_ACTION]
         unique_id = device_config.get(CONF_UNIQUE_ID)
+        scan_interval = device_config.get(CONF_SCAN_INTERVAL)
 
         switches.append(
             SwitchTemplate(
@@ -84,6 +87,7 @@ async def _async_create_entities(hass, config):
                 on_action,
                 off_action,
                 unique_id,
+                scan_interval,
             )
         )
 
@@ -112,12 +116,14 @@ class SwitchTemplate(TemplateEntity, SwitchEntity, RestoreEntity):
         on_action,
         off_action,
         unique_id,
+        scan_interval,
     ):
         """Initialize the Template switch."""
         super().__init__(
             availability_template=availability_template,
             icon_template=icon_template,
             entity_picture_template=entity_picture_template,
+            scan_interval=scan_interval,
         )
         self.entity_id = async_generate_entity_id(
             ENTITY_ID_FORMAT, device_id, hass=hass

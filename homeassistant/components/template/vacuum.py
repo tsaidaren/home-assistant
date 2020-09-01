@@ -33,6 +33,7 @@ from homeassistant.components.vacuum import (
 from homeassistant.const import (
     CONF_ENTITY_ID,
     CONF_FRIENDLY_NAME,
+    CONF_SCAN_INTERVAL,
     CONF_UNIQUE_ID,
     CONF_VALUE_TEMPLATE,
     STATE_UNKNOWN,
@@ -87,6 +88,7 @@ VACUUM_SCHEMA = vol.All(
             vol.Optional(CONF_FAN_SPEED_LIST, default=[]): cv.ensure_list,
             vol.Optional(CONF_ENTITY_ID): cv.entity_ids,
             vol.Optional(CONF_UNIQUE_ID): cv.string,
+            vol.Optional(CONF_SCAN_INTERVAL): cv.time_period,
         }
     ),
 )
@@ -119,6 +121,7 @@ async def _async_create_entities(hass, config):
 
         fan_speed_list = device_config[CONF_FAN_SPEED_LIST]
         unique_id = device_config.get(CONF_UNIQUE_ID)
+        scan_interval = device_config.get(CONF_SCAN_INTERVAL)
 
         vacuums.append(
             TemplateVacuum(
@@ -139,6 +142,7 @@ async def _async_create_entities(hass, config):
                 fan_speed_list,
                 attribute_templates,
                 unique_id,
+                scan_interval,
             )
         )
 
@@ -174,11 +178,13 @@ class TemplateVacuum(TemplateEntity, StateVacuumEntity):
         fan_speed_list,
         attribute_templates,
         unique_id,
+        scan_interval,
     ):
         """Initialize the vacuum."""
         super().__init__(
             attribute_templates=attribute_templates,
             availability_template=availability_template,
+            scan_interval=scan_interval,
         )
         self.entity_id = async_generate_entity_id(
             ENTITY_ID_FORMAT, device_id, hass=hass

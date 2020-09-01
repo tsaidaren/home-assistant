@@ -15,6 +15,7 @@ from homeassistant.const import (
     CONF_DEVICE_CLASS,
     CONF_ENTITY_PICTURE_TEMPLATE,
     CONF_ICON_TEMPLATE,
+    CONF_SCAN_INTERVAL,
     CONF_SENSORS,
     CONF_UNIQUE_ID,
     CONF_VALUE_TEMPLATE,
@@ -53,6 +54,7 @@ SENSOR_SCHEMA = vol.All(
             vol.Optional(CONF_DELAY_ON): cv.positive_time_period,
             vol.Optional(CONF_DELAY_OFF): cv.positive_time_period,
             vol.Optional(CONF_UNIQUE_ID): cv.string,
+            vol.Optional(CONF_SCAN_INTERVAL): cv.time_period,
         }
     ),
 )
@@ -78,6 +80,7 @@ async def _async_create_entities(hass, config):
         delay_on = device_config.get(CONF_DELAY_ON)
         delay_off = device_config.get(CONF_DELAY_OFF)
         unique_id = device_config.get(CONF_UNIQUE_ID)
+        scan_interval = device_config.get(CONF_SCAN_INTERVAL)
 
         sensors.append(
             BinarySensorTemplate(
@@ -93,6 +96,7 @@ async def _async_create_entities(hass, config):
                 delay_off,
                 attribute_templates,
                 unique_id,
+                scan_interval,
             )
         )
 
@@ -123,6 +127,7 @@ class BinarySensorTemplate(TemplateEntity, BinarySensorEntity):
         delay_off,
         attribute_templates,
         unique_id,
+        scan_interval,
     ):
         """Initialize the Template binary sensor."""
         super().__init__(
@@ -130,6 +135,7 @@ class BinarySensorTemplate(TemplateEntity, BinarySensorEntity):
             availability_template=availability_template,
             icon_template=icon_template,
             entity_picture_template=entity_picture_template,
+            scan_interval=scan_interval,
         )
         self.entity_id = async_generate_entity_id(ENTITY_ID_FORMAT, device, hass=hass)
         self._name = friendly_name

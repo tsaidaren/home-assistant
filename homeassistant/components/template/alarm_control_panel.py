@@ -17,6 +17,7 @@ from homeassistant.components.alarm_control_panel.const import (
 from homeassistant.const import (
     ATTR_CODE,
     CONF_NAME,
+    CONF_SCAN_INTERVAL,
     CONF_UNIQUE_ID,
     CONF_VALUE_TEMPLATE,
     STATE_ALARM_ARMED_AWAY,
@@ -65,6 +66,7 @@ ALARM_CONTROL_PANEL_SCHEMA = vol.Schema(
         vol.Optional(CONF_CODE_ARM_REQUIRED, default=True): cv.boolean,
         vol.Optional(CONF_NAME): cv.string,
         vol.Optional(CONF_UNIQUE_ID): cv.string,
+        vol.Optional(CONF_SCAN_INTERVAL): cv.time_period,
     }
 )
 
@@ -91,6 +93,7 @@ async def _async_create_entities(hass, config):
         arm_night_action = device_config.get(CONF_ARM_NIGHT_ACTION)
         code_arm_required = device_config[CONF_CODE_ARM_REQUIRED]
         unique_id = device_config.get(CONF_UNIQUE_ID)
+        scan_interval = device_config.get(CONF_SCAN_INTERVAL)
 
         alarm_control_panels.append(
             AlarmControlPanelTemplate(
@@ -104,6 +107,7 @@ async def _async_create_entities(hass, config):
                 arm_night_action,
                 code_arm_required,
                 unique_id,
+                scan_interval,
             )
         )
 
@@ -132,9 +136,10 @@ class AlarmControlPanelTemplate(TemplateEntity, AlarmControlPanelEntity):
         arm_night_action,
         code_arm_required,
         unique_id,
+        scan_interval,
     ):
         """Initialize the panel."""
-        super().__init__()
+        super().__init__(scan_interval=scan_interval)
         self.entity_id = async_generate_entity_id(
             ENTITY_ID_FORMAT, device_id, hass=hass
         )

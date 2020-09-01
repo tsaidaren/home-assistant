@@ -21,6 +21,7 @@ from homeassistant.components.fan import (
 from homeassistant.const import (
     CONF_ENTITY_ID,
     CONF_FRIENDLY_NAME,
+    CONF_SCAN_INTERVAL,
     CONF_UNIQUE_ID,
     CONF_VALUE_TEMPLATE,
     STATE_OFF,
@@ -75,6 +76,7 @@ FAN_SCHEMA = vol.All(
             ): cv.ensure_list,
             vol.Optional(CONF_ENTITY_ID): cv.entity_ids,
             vol.Optional(CONF_UNIQUE_ID): cv.string,
+            vol.Optional(CONF_SCAN_INTERVAL): cv.time_period,
         }
     ),
 )
@@ -105,6 +107,7 @@ async def _async_create_entities(hass, config):
 
         speed_list = device_config[CONF_SPEED_LIST]
         unique_id = device_config.get(CONF_UNIQUE_ID)
+        scan_interval = device_config.get(CONF_SCAN_INTERVAL)
 
         fans.append(
             TemplateFan(
@@ -123,6 +126,7 @@ async def _async_create_entities(hass, config):
                 set_direction_action,
                 speed_list,
                 unique_id,
+                scan_interval,
             )
         )
 
@@ -156,9 +160,12 @@ class TemplateFan(TemplateEntity, FanEntity):
         set_direction_action,
         speed_list,
         unique_id,
+        scan_interval,
     ):
         """Initialize the fan."""
-        super().__init__(availability_template=availability_template)
+        super().__init__(
+            availability_template=availability_template, scan_interval=scan_interval
+        )
         self.hass = hass
         self.entity_id = async_generate_entity_id(
             ENTITY_ID_FORMAT, device_id, hass=hass

@@ -21,6 +21,7 @@ from homeassistant.const import (
     CONF_FRIENDLY_NAME,
     CONF_ICON_TEMPLATE,
     CONF_LIGHTS,
+    CONF_SCAN_INTERVAL,
     CONF_UNIQUE_ID,
     CONF_VALUE_TEMPLATE,
     STATE_OFF,
@@ -72,6 +73,7 @@ LIGHT_SCHEMA = vol.All(
             vol.Optional(CONF_WHITE_VALUE_TEMPLATE): cv.template,
             vol.Optional(CONF_WHITE_VALUE_ACTION): cv.SCRIPT_SCHEMA,
             vol.Optional(CONF_UNIQUE_ID): cv.string,
+            vol.Optional(CONF_SCAN_INTERVAL): cv.time_period,
         }
     ),
 )
@@ -109,6 +111,8 @@ async def _async_create_entities(hass, config):
         white_value_action = device_config.get(CONF_WHITE_VALUE_ACTION)
         white_value_template = device_config.get(CONF_WHITE_VALUE_TEMPLATE)
 
+        scan_interval = device_config.get(CONF_SCAN_INTERVAL)
+
         lights.append(
             LightTemplate(
                 hass,
@@ -129,6 +133,7 @@ async def _async_create_entities(hass, config):
                 white_value_action,
                 white_value_template,
                 unique_id,
+                scan_interval,
             )
         )
 
@@ -165,12 +170,14 @@ class LightTemplate(TemplateEntity, LightEntity):
         white_value_action,
         white_value_template,
         unique_id,
+        scan_interval,
     ):
         """Initialize the light."""
         super().__init__(
             availability_template=availability_template,
             icon_template=icon_template,
             entity_picture_template=entity_picture_template,
+            scan_interval=scan_interval,
         )
         self.entity_id = async_generate_entity_id(
             ENTITY_ID_FORMAT, device_id, hass=hass

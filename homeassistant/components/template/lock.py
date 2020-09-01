@@ -7,6 +7,7 @@ from homeassistant.components.lock import PLATFORM_SCHEMA, LockEntity
 from homeassistant.const import (
     CONF_NAME,
     CONF_OPTIMISTIC,
+    CONF_SCAN_INTERVAL,
     CONF_UNIQUE_ID,
     CONF_VALUE_TEMPLATE,
     STATE_LOCKED,
@@ -38,6 +39,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_AVAILABILITY_TEMPLATE): cv.template,
         vol.Optional(CONF_OPTIMISTIC, default=DEFAULT_OPTIMISTIC): cv.boolean,
         vol.Optional(CONF_UNIQUE_ID): cv.string,
+        vol.Optional(CONF_SCAN_INTERVAL): cv.time_period,
     }
 )
 
@@ -58,6 +60,7 @@ async def _async_create_entities(hass, config):
             config.get(CONF_UNLOCK),
             config.get(CONF_OPTIMISTIC),
             config.get(CONF_UNIQUE_ID),
+            config.get(CONF_SCAN_INTERVAL),
         )
     ]
 
@@ -82,9 +85,12 @@ class TemplateLock(TemplateEntity, LockEntity):
         command_unlock,
         optimistic,
         unique_id,
+        scan_interval,
     ):
         """Initialize the lock."""
-        super().__init__(availability_template=availability_template)
+        super().__init__(
+            availability_template=availability_template, scan_interval=scan_interval
+        )
         self._state = None
         self._name = name
         self._state_template = value_template

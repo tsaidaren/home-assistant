@@ -1,5 +1,6 @@
 """The test for the Template sensor platform."""
 from asyncio import Event
+from datetime import timedelta
 from unittest.mock import patch
 
 from homeassistant.bootstrap import async_from_config_dict
@@ -15,7 +16,11 @@ from homeassistant.helpers.template import Template
 from homeassistant.setup import ATTR_COMPONENT, async_setup_component, setup_component
 import homeassistant.util.dt as dt_util
 
-from tests.common import assert_setup_component, get_test_home_assistant
+from tests.common import (
+    assert_setup_component,
+    async_fire_time_changed,
+    get_test_home_assistant,
+)
 
 
 class TestTemplateSensor:
@@ -758,3 +763,61 @@ async def test_sun_renders_once_per_sensor(hass):
         "{{ state_attr('sun.sun', 'elevation') }}",
         "{{ state_attr('sun.sun', 'next_rising') }}",
     }
+
+
+async def test_scan_interval(hass):
+    """Test scan_interval to force template refresh."""
+
+    await async_setup_component(
+        hass,
+        "sensor",
+        {
+            "sensor": {
+                "platform": "template",
+                "sensors": {
+                    "now": {
+                        "value_template": "{{ now() }}",
+                        "scan_interval": 30,
+                    },
+                },
+            }
+        },
+    )
+
+    await hass.async_block_till_done()
+    await hass.async_start()
+    await hass.async_block_till_done()
+
+    assert len(hass.states.async_all()) == 1
+
+    assert hass.states.get("sensor.now")
+
+    first_state = hass.states.get("sensor.now").state
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=30))
+    await hass.async_block_till_done()
+
+    second_state = hass.states.get("sensor.now").state
+    assert first_state != second_state
+
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=60))
+    await hass.async_block_till_done()
+
+    third_state = hass.states.get("sensor.now").state
+    assert second_state != third_state
+
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=90))
+    await hass.async_block_till_done()
+
+    forth_state = hass.states.get("sensor.now").state
+    assert third_state != forth_state
+
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=120))
+    await hass.async_block_till_done()
+
+    fifth_state = hass.states.get("sensor.now").state
+    assert forth_state != fifth_state
+
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=1))
+    await hass.async_block_till_done()
+
+    assert hass.states.get("sensor.now").state == fifth_state
