@@ -495,6 +495,9 @@ def _get_events(
                     entity_filter | (Events.event_type != EVENT_STATE_CHANGED)
                 )
 
+        xstr = str(query.statement.compile(compile_kwargs={"literal_binds": True}))
+        _LOGGER.warning("Logbook SQL Query: %s", xstr)
+
         return list(
             humanify(hass, yield_events(query), entity_attr_cache, context_lookup)
         )
