@@ -58,7 +58,6 @@ class TimeDateSensor(Entity):
         self.type = option_type
         self._state = None
         self._datetime = None
-        self.hass = hass
         self.unsub = None
 
         self._update_internal_state(dt_util.utcnow())
@@ -144,6 +143,7 @@ class TimeDateSensor(Entity):
 
         self._datetime = time_date
 
+    @property
     def state_attributes(self):
         """Attributes for easy use in templates."""
         return {ATTR_DATETIME: self._datetime}
