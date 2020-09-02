@@ -5,6 +5,7 @@ import voluptuous as vol
 
 from homeassistant.components.sensor import DEVICE_CLASS_TIMESTAMP, PLATFORM_SCHEMA
 from homeassistant.const import CONF_SENSORS
+from homeassistant.core import callback
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.event import async_track_time_change
@@ -82,14 +83,14 @@ class TimeIntervalSensor(Entity):
     @property
     def state(self):
         """Return the state of the sensor."""
-        return dt_util.now()
+        return dt_util.utcnow()
 
     async def async_added_to_hass(self) -> None:
         """Set up next update."""
         self.async_on_remove(
             async_track_time_change(
                 self.hass,
-                self.async_write_ha_state,
+                callback(lambda now: self.async_write_ha_state()),
                 hour=self._hours,
                 minute=self._minutes,
                 second=self._seconds,
