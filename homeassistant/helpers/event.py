@@ -17,7 +17,6 @@ from typing import (
     Tuple,
     Union,
 )
-import weakref
 
 import attr
 
@@ -509,7 +508,6 @@ class _TrackTemplateResultInfo:
         self._info: Dict[Template, RenderInfo] = {}
         self._last_domains: Set = set()
         self._last_entities: Set = set()
-        self._seen_events: weakref.WeakSet = weakref.WeakSet([])
 
     def async_setup(self) -> None:
         """Activation of template tracking."""
@@ -657,29 +655,20 @@ class _TrackTemplateResultInfo:
         self._cancel_entities_listener()
 
     @callback
-    def async_refresh(
-        self, event: Optional[Event] = None, filtered: bool = True
-    ) -> None:
+    def async_refresh(self) -> None:
         """Force recalculate the template."""
-        self._refresh(event, filtered=filtered)
+        self._refresh(None)
 
     @callback
-    def _refresh(self, event: Optional[Event], filtered: bool = True) -> None:
+    def _refresh(self, event: Optional[Event]) -> None:
         entity_id = event and event.data.get(ATTR_ENTITY_ID)
         updates = []
         info_changed = False
 
-        if event:
-            if event in self._seen_events:
-                # Skip duplicate events
-                return
-            self._seen_events.add(event)
-
         for track_template_ in self._track_templates:
             template = track_template_.template
             if (
-                filtered
-                and entity_id
+                entity_id
                 and len(self._last_info) > 1
                 and not self._last_info[template].filter_lifecycle(entity_id)
             ):

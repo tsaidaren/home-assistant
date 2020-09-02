@@ -119,7 +119,6 @@ async def _async_create_entities(hass, config):
 
         fan_speed_list = device_config[CONF_FAN_SPEED_LIST]
         unique_id = device_config.get(CONF_UNIQUE_ID)
-        entity_ids = device_config.get(CONF_ENTITY_ID)
 
         vacuums.append(
             TemplateVacuum(
@@ -140,7 +139,6 @@ async def _async_create_entities(hass, config):
                 fan_speed_list,
                 attribute_templates,
                 unique_id,
-                entity_ids,
             )
         )
 
@@ -176,13 +174,11 @@ class TemplateVacuum(TemplateEntity, StateVacuumEntity):
         fan_speed_list,
         attribute_templates,
         unique_id,
-        entity_ids,
     ):
         """Initialize the vacuum."""
         super().__init__(
             attribute_templates=attribute_templates,
             availability_template=availability_template,
-            entity_ids=entity_ids,
         )
         self.entity_id = async_generate_entity_id(
             ENTITY_ID_FORMAT, device_id, hass=hass

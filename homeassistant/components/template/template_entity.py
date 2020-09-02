@@ -13,7 +13,6 @@ from homeassistant.helpers.event import (
     Event,
     TrackTemplate,
     TrackTemplateResult,
-    async_track_state_change_event,
     async_track_template_result,
 )
 from homeassistant.helpers.template import Template, result_as_boolean
@@ -118,7 +117,6 @@ class TemplateEntity(Entity):
         icon_template=None,
         entity_picture_template=None,
         attribute_templates=None,
-        entity_ids=None,
     ):
         """Template Entity."""
         self._template_attrs = {}
@@ -131,7 +129,6 @@ class TemplateEntity(Entity):
         self._entity_picture_template = entity_picture_template
         self._icon = None
         self._entity_picture = None
-        self._entity_ids = entity_ids
 
     @property
     def should_poll(self):
@@ -248,19 +245,6 @@ class TemplateEntity(Entity):
         )
         self.async_on_remove(result_info.async_remove)
         result_info.async_refresh()
-
-        if self._entity_ids:
-
-            @callback
-            def _update_templates(event):
-                result_info.async_refresh(event=event, filtered=False)
-
-            self.async_on_remove(
-                async_track_state_change_event(
-                    self.hass, self._entity_ids, _update_templates
-                )
-            )
-
         self.async_write_ha_state()
         self._async_update = result_info.async_refresh
 

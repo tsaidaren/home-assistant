@@ -76,7 +76,6 @@ async def _async_create_entities(hass, config):
         device_class = device_config.get(CONF_DEVICE_CLASS)
         attribute_templates = device_config[CONF_ATTRIBUTE_TEMPLATES]
         unique_id = device_config.get(CONF_UNIQUE_ID)
-        entity_ids = device_config.get(ATTR_ENTITY_ID)
 
         sensors.append(
             SensorTemplate(
@@ -92,7 +91,6 @@ async def _async_create_entities(hass, config):
                 device_class,
                 attribute_templates,
                 unique_id,
-                entity_ids,
             )
         )
 
@@ -123,7 +121,6 @@ class SensorTemplate(TemplateEntity, Entity):
         device_class,
         attribute_templates,
         unique_id,
-        entity_ids,
     ):
         """Initialize the sensor."""
         super().__init__(
@@ -131,7 +128,6 @@ class SensorTemplate(TemplateEntity, Entity):
             availability_template=availability_template,
             icon_template=icon_template,
             entity_picture_template=entity_picture_template,
-            entity_ids=entity_ids,
         )
         self.entity_id = async_generate_entity_id(
             ENTITY_ID_FORMAT, device_id, hass=hass

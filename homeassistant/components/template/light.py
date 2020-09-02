@@ -109,8 +109,6 @@ async def _async_create_entities(hass, config):
         white_value_action = device_config.get(CONF_WHITE_VALUE_ACTION)
         white_value_template = device_config.get(CONF_WHITE_VALUE_TEMPLATE)
 
-        entity_ids = device_config.get(CONF_ENTITY_ID)
-
         lights.append(
             LightTemplate(
                 hass,
@@ -131,7 +129,6 @@ async def _async_create_entities(hass, config):
                 white_value_action,
                 white_value_template,
                 unique_id,
-                entity_ids,
             )
         )
 
@@ -168,14 +165,12 @@ class LightTemplate(TemplateEntity, LightEntity):
         white_value_action,
         white_value_template,
         unique_id,
-        entity_ids,
     ):
         """Initialize the light."""
         super().__init__(
             availability_template=availability_template,
             icon_template=icon_template,
             entity_picture_template=entity_picture_template,
-            entity_ids=entity_ids,
         )
         self.entity_id = async_generate_entity_id(
             ENTITY_ID_FORMAT, device_id, hass=hass

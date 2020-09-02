@@ -105,7 +105,6 @@ async def _async_create_entities(hass, config):
 
         speed_list = device_config[CONF_SPEED_LIST]
         unique_id = device_config.get(CONF_UNIQUE_ID)
-        entity_ids = device_config.get(CONF_ENTITY_ID)
 
         fans.append(
             TemplateFan(
@@ -124,7 +123,6 @@ async def _async_create_entities(hass, config):
                 set_direction_action,
                 speed_list,
                 unique_id,
-                entity_ids,
             )
         )
 
@@ -158,12 +156,9 @@ class TemplateFan(TemplateEntity, FanEntity):
         set_direction_action,
         speed_list,
         unique_id,
-        entity_ids,
     ):
         """Initialize the fan."""
-        super().__init__(
-            availability_template=availability_template, entity_ids=entity_ids
-        )
+        super().__init__(availability_template=availability_template)
         self.hass = hass
         self.entity_id = async_generate_entity_id(
             ENTITY_ID_FORMAT, device_id, hass=hass

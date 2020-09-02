@@ -123,7 +123,6 @@ async def _async_create_entities(hass, config):
         optimistic = device_config.get(CONF_OPTIMISTIC)
         tilt_optimistic = device_config.get(CONF_TILT_OPTIMISTIC)
         unique_id = device_config.get(CONF_UNIQUE_ID)
-        entity_ids = device_config.get(CONF_ENTITY_ID)
 
         covers.append(
             CoverTemplate(
@@ -145,7 +144,6 @@ async def _async_create_entities(hass, config):
                 optimistic,
                 tilt_optimistic,
                 unique_id,
-                entity_ids,
             )
         )
 
@@ -182,14 +180,12 @@ class CoverTemplate(TemplateEntity, CoverEntity):
         optimistic,
         tilt_optimistic,
         unique_id,
-        entity_ids,
     ):
         """Initialize the Template cover."""
         super().__init__(
             availability_template=availability_template,
             icon_template=icon_template,
             entity_picture_template=entity_picture_template,
-            entity_ids=entity_ids,
         )
         self.entity_id = async_generate_entity_id(
             ENTITY_ID_FORMAT, device_id, hass=hass
