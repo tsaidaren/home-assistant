@@ -102,12 +102,6 @@ class BaseNotificationService:
 
     hass: Optional[HomeAssistantType] = None
 
-    def __init__(self):
-        """Init the notification service."""
-        self._service_name = None
-        self._target_service_name_prefix = None
-        self._registered_targets: Dict = {}
-
     def send_message(self, message, **kwargs):
         """Send a message.
 
@@ -144,12 +138,17 @@ class BaseNotificationService:
         await self.async_send_message(**kwargs)
 
     async def async_setup(
-        self, service_name: str, target_service_name_prefix: str
+        self,
+        hass: HomeAssistantType,
+        service_name: str,
+        target_service_name_prefix: str,
     ) -> None:
         """Store the data for the notify service."""
+        # pylint: disable=attribute-defined-outside-init
+        self.hass = hass
         self._service_name = service_name
         self._target_service_name_prefix = target_service_name_prefix
-        self._registered_targets = {}
+        self._registered_targets: Dict = {}
 
     async def async_register_services(self) -> None:
         """Create or update the notify services."""
@@ -258,8 +257,6 @@ async def async_setup(hass, config):
             _LOGGER.exception("Error setting up platform %s", integration_name)
             return
 
-        notify_service.hass = hass
-
         if discovery_info is None:
             discovery_info = {}
 
@@ -267,7 +264,7 @@ async def async_setup(hass, config):
         target_service_name_prefix = conf_name or integration_name
         service_name = slugify(conf_name or SERVICE_NOTIFY)
 
-        await notify_service.async_setup(service_name, target_service_name_prefix)
+        await notify_service.async_setup(hass, service_name, target_service_name_prefix)
         await notify_service.async_register_services()
 
         hass.data[NOTIFY_SERVICES].setdefault(integration_name, []).append(
