@@ -664,11 +664,11 @@ class TimePattern:
         """Initialize time pattern."""
         self.maximum = maximum
 
-    def __call__(self, value: Any) -> Any:
+    def __call__(self, value: Any) -> str:
         """Validate input."""
         try:
             if value == "*":
-                return value
+                return "*"
 
             if isinstance(value, str) and value.startswith("/"):
                 number = int(value[1:])
@@ -680,7 +680,7 @@ class TimePattern:
         except ValueError as err:
             raise vol.Invalid("invalid time_pattern value") from err
 
-        return value
+        return str(value)
 
 
 class multi_select:
