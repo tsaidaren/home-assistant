@@ -10,7 +10,6 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.reload import async_setup_reload_service
-from homeassistant.helpers.restore_state import RestoreEntity
 
 from . import DOMAIN, PLATFORMS
 
@@ -60,7 +59,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     async_add_entities(entities)
 
 
-class TimeIntervalSensor(RestoreEntity, Entity):
+class TimeIntervalSensor(Entity):
     """Implementation of a time interval sensor."""
 
     def __init__(self, device, hours, minutes, seconds):
@@ -94,11 +93,6 @@ class TimeIntervalSensor(RestoreEntity, Entity):
 
     async def async_added_to_hass(self) -> None:
         """Set up next update."""
-        await super().async_added_to_hass()
-        state = await self.async_get_last_state()
-        if state:
-            self._state = state.state
-
         self.async_on_remove(
             async_track_time_change(
                 self.hass,
