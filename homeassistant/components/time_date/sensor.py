@@ -16,6 +16,8 @@ _LOGGER = logging.getLogger(__name__)
 
 TIME_STR_FORMAT = "%H:%M"
 
+ATTR_DATETIME = "datetime"
+
 OPTION_TYPES = {
     "time": "Time",
     "date": "Date",
@@ -55,7 +57,7 @@ class TimeDateSensor(Entity):
         self._name = OPTION_TYPES[option_type]
         self.type = option_type
         self._state = None
-        self.hass = hass
+        self._datetime = None
         self.unsub = None
 
         self._update_internal_state(dt_util.utcnow())
@@ -138,6 +140,13 @@ class TimeDateSensor(Entity):
             self._state = f"@{beat:03d}"
         elif self.type == "date_time_iso":
             self._state = dt_util.parse_datetime(f"{date} {time}").isoformat()
+
+        self._datetime = time_date
+
+    @property
+    def state_attributes(self):
+        """Attributes for easy use in templates."""
+        return {ATTR_DATETIME: self._datetime}
 
     @callback
     def point_in_time_listener(self, time_date):
