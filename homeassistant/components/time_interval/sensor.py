@@ -10,7 +10,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.reload import async_setup_reload_service
-import homeassistant.util.dt as dt_util
+from homeassistant.helpers.restore_state import RestoreEntity
 
 from . import DOMAIN, PLATFORMS
 
@@ -60,7 +60,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     async_add_entities(entities)
 
 
-class TimeIntervalSensor(Entity):
+class TimeIntervalSensor(RestoreEntity, Entity):
     """Implementation of a time interval sensor."""
 
     def __init__(self, device, hours, minutes, seconds):
@@ -83,14 +83,25 @@ class TimeIntervalSensor(Entity):
     @property
     def state(self):
         """Return the state of the sensor."""
-        return dt_util.now()
+        return self._state
+
+    @callback
+    def _async_update(self, now):
+        """Update when the time pattern matches."""
+        self._state = now
+        self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
         """Set up next update."""
+        await super().async_added_to_hass()
+        state = await self.async_get_last_state()
+        if state:
+            self._state = state.state
+
         self.async_on_remove(
             async_track_time_change(
                 self.hass,
-                callback(lambda now: self.async_write_ha_state()),
+                self._async_update,
                 hour=self._hours,
                 minute=self._minutes,
                 second=self._seconds,
