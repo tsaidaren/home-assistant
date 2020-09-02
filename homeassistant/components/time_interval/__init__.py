@@ -1,1 +1,4 @@
-"""The time_date component."""
+"""The time_interval component."""
+
+DOMAIN = "time_interval"
+PLATFORMS = "sensor"
