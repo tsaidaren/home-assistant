@@ -83,7 +83,7 @@ class TimeIntervalSensor(Entity):
     @property
     def state(self):
         """Return the state of the sensor."""
-        return dt_util.utcnow()
+        return dt_util.now()
 
     async def async_added_to_hass(self) -> None:
         """Set up next update."""
