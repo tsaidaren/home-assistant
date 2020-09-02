@@ -65,6 +65,7 @@ class TimeIntervalSensor(RestoreEntity, Entity):
 
     def __init__(self, device, hours, minutes, seconds):
         """Initialize the sensor."""
+        self._state = None
         self._name = device
         self._hours = hours
         self._minutes = minutes
