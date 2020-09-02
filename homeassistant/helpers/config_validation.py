@@ -654,6 +654,35 @@ def ensure_list_csv(value: Any) -> List:
     return ensure_list(value)
 
 
+class TimePattern:
+    """Validate a time pattern value.
+
+    :raises Invalid: If the value has a wrong format or is outside the range.
+    """
+
+    def __init__(self, maximum: int) -> None:
+        """Initialize time pattern."""
+        self.maximum = maximum
+
+    def __call__(self, value: Any) -> str:
+        """Validate input."""
+        try:
+            if value == "*":
+                return "*"
+
+            if isinstance(value, str) and value.startswith("/"):
+                number = int(value[1:])
+            else:
+                number = int(value)
+
+            if not (0 <= number <= self.maximum):
+                raise vol.Invalid(f"must be a value between 0 and {self.maximum}")
+        except ValueError as err:
+            raise vol.Invalid("invalid time_pattern value") from err
+
+        return str(value)
+
+
 class multi_select:
     """Multi select validator returning list of selected values."""
 
