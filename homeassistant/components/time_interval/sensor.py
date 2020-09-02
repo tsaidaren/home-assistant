@@ -62,12 +62,12 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 class TimeIntervalSensor(Entity):
     """Implementation of a time interval sensor."""
 
-    def __init__(self, device, hour, minute, second):
+    def __init__(self, device, hours, minutes, seconds):
         """Initialize the sensor."""
         self._name = device
-        self._hour = hour
-        self._minute = minute
-        self._second = second
+        self._hours = hours
+        self._minutes = minutes
+        self._seconds = seconds
 
     @property
     def device_class(self):
