@@ -1,5 +1,8 @@
 """The tests for time_date sensor platform."""
+import datetime
 import unittest
+
+from pytz import UTC
 
 import homeassistant.components.time_date.sensor as time_date
 import homeassistant.util.dt as dt_util
@@ -59,30 +62,51 @@ class TestTimeDateSensor(unittest.TestCase):
         device = time_date.TimeDateSensor(self.hass, "time")
         device._update_internal_state(now)
         assert device.state == "00:54"
+        assert device.state_attributes()["datetime"] == datetime.datetime(
+            2017, 5, 18, 0, 54, 16, tzinfo=UTC
+        )
 
         device = time_date.TimeDateSensor(self.hass, "date")
         device._update_internal_state(now)
         assert device.state == "2017-05-18"
+        assert device.state_attributes()["datetime"] == datetime.datetime(
+            2017, 5, 18, 0, 54, 16, tzinfo=UTC
+        )
 
         device = time_date.TimeDateSensor(self.hass, "time_utc")
         device._update_internal_state(now)
         assert device.state == "00:54"
+        assert device.state_attributes()["datetime"] == datetime.datetime(
+            2017, 5, 18, 0, 54, 16, tzinfo=UTC
+        )
 
         device = time_date.TimeDateSensor(self.hass, "date_time")
         device._update_internal_state(now)
         assert device.state == "2017-05-18, 00:54"
+        assert device.state_attributes()["datetime"] == datetime.datetime(
+            2017, 5, 18, 0, 54, 16, tzinfo=UTC
+        )
 
         device = time_date.TimeDateSensor(self.hass, "date_time_utc")
         device._update_internal_state(now)
         assert device.state == "2017-05-18, 00:54"
+        assert device.state_attributes()["datetime"] == datetime.datetime(
+            2017, 5, 18, 0, 54, 16, tzinfo=UTC
+        )
 
         device = time_date.TimeDateSensor(self.hass, "beat")
         device._update_internal_state(now)
         assert device.state == "@079"
+        assert device.state_attributes()["datetime"] == datetime.datetime(
+            2017, 5, 18, 0, 54, 16, tzinfo=UTC
+        )
 
         device = time_date.TimeDateSensor(self.hass, "date_time_iso")
         device._update_internal_state(now)
         assert device.state == "2017-05-18T00:54:00"
+        assert device.state_attributes()["datetime"] == datetime.datetime(
+            2017, 5, 18, 0, 54, 16, tzinfo=UTC
+        )
 
     def test_states_non_default_timezone(self):
         """Test states of sensors in a timezone other than UTC."""
@@ -94,30 +118,51 @@ class TestTimeDateSensor(unittest.TestCase):
         device = time_date.TimeDateSensor(self.hass, "time")
         device._update_internal_state(now)
         assert device.state == "20:54"
+        assert device.state_attributes()["datetime"] == datetime.datetime(
+            2017, 5, 18, 0, 54, 16, tzinfo=UTC
+        )
 
         device = time_date.TimeDateSensor(self.hass, "date")
         device._update_internal_state(now)
         assert device.state == "2017-05-17"
+        assert device.state_attributes()["datetime"] == datetime.datetime(
+            2017, 5, 18, 0, 54, 16, tzinfo=UTC
+        )
 
         device = time_date.TimeDateSensor(self.hass, "time_utc")
         device._update_internal_state(now)
         assert device.state == "00:54"
+        assert device.state_attributes()["datetime"] == datetime.datetime(
+            2017, 5, 18, 0, 54, 16, tzinfo=UTC
+        )
 
         device = time_date.TimeDateSensor(self.hass, "date_time")
         device._update_internal_state(now)
         assert device.state == "2017-05-17, 20:54"
+        assert device.state_attributes()["datetime"] == datetime.datetime(
+            2017, 5, 18, 0, 54, 16, tzinfo=UTC
+        )
 
         device = time_date.TimeDateSensor(self.hass, "date_time_utc")
         device._update_internal_state(now)
         assert device.state == "2017-05-18, 00:54"
+        assert device.state_attributes()["datetime"] == datetime.datetime(
+            2017, 5, 18, 0, 54, 16, tzinfo=UTC
+        )
 
         device = time_date.TimeDateSensor(self.hass, "beat")
         device._update_internal_state(now)
         assert device.state == "@079"
+        assert device.state_attributes()["datetime"] == datetime.datetime(
+            2017, 5, 18, 0, 54, 16, tzinfo=UTC
+        )
 
         device = time_date.TimeDateSensor(self.hass, "date_time_iso")
         device._update_internal_state(now)
         assert device.state == "2017-05-17T20:54:00"
+        assert device.state_attributes()["datetime"] == datetime.datetime(
+            2017, 5, 18, 0, 54, 16, tzinfo=UTC
+        )
 
     # pylint: disable=no-member
     def test_timezone_intervals(self):
