@@ -691,7 +691,7 @@ class _TrackTemplateResultInfo:
             info_changed = True
 
             try:
-                result: Union[str, TemplateError] = self._info[template].result
+                result: Union[str, TemplateError] = self._info[template].result()
             except TemplateError as ex:
                 result = ex
 
