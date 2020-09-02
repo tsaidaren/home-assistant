@@ -1,0 +1,7 @@
+{
+  "domain": "time_interval",
+  "name": "Time Interval",
+  "documentation": "https://www.home-assistant.io/integrations/time_interval",
+  "codeowners": ["@bdraco"],
+  "quality_scale": "internal"
+}
