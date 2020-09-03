@@ -177,6 +177,11 @@ class ZoneStorageCollection(collection.StorageCollection):
 
 async def async_setup(hass: HomeAssistant, config: Dict) -> bool:
     """Set up configured zones as well as Home Assistant zone if necessary."""
+    import cProfile
+
+    pr = cProfile.Profile()
+    pr.enable()
+
     component = entity_component.EntityComponent(_LOGGER, DOMAIN, hass)
     id_manager = collection.IDManager()
 
@@ -250,6 +255,9 @@ async def async_setup(hass: HomeAssistant, config: Dict) -> bool:
 
     hass.data[DOMAIN] = storage_collection
 
+    pr.disable()
+    pr.create_stats()
+    pr.dump_stats("zone.cprof")
     return True
 
 
