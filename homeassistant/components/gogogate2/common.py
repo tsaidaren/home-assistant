@@ -4,21 +4,16 @@ import logging
 from typing import Awaitable, Callable, NamedTuple, Optional
 
 import async_timeout
-from gogogate2_api import AbstractGateApi, GogoGate2Api, ISmartGateApi
-from gogogate2_api.common import AbstractDoor
+from gogogate2_api import GogoGate2Api
+from gogogate2_api.common import Door
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (
-    CONF_DEVICE,
-    CONF_IP_ADDRESS,
-    CONF_PASSWORD,
-    CONF_USERNAME,
-)
+from homeassistant.const import CONF_IP_ADDRESS, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.debounce import Debouncer
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import DATA_UPDATE_COORDINATOR, DEVICE_TYPE_ISMARTGATE, DOMAIN
+from .const import DATA_UPDATE_COORDINATOR, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -28,17 +23,17 @@ class StateData(NamedTuple):
 
     config_unique_id: str
     unique_id: Optional[str]
-    door: Optional[AbstractDoor]
+    door: Optional[Door]
 
 
-class DeviceDataUpdateCoordinator(DataUpdateCoordinator):
+class GogoGateDataUpdateCoordinator(DataUpdateCoordinator):
     """Manages polling for state changes from the device."""
 
     def __init__(
         self,
         hass: HomeAssistant,
         logger: logging.Logger,
-        api: AbstractGateApi,
+        api: GogoGate2Api,
         *,
         name: str,
         update_interval: timedelta,
@@ -60,7 +55,7 @@ class DeviceDataUpdateCoordinator(DataUpdateCoordinator):
 
 def get_data_update_coordinator(
     hass: HomeAssistant, config_entry: ConfigEntry
-) -> DeviceDataUpdateCoordinator:
+) -> GogoGateDataUpdateCoordinator:
     """Get an update coordinator."""
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN].setdefault(config_entry.entry_id, {})
@@ -78,7 +73,7 @@ def get_data_update_coordinator(
                     f"Error communicating with API: {exception}"
                 ) from exception
 
-        config_entry_data[DATA_UPDATE_COORDINATOR] = DeviceDataUpdateCoordinator(
+        config_entry_data[DATA_UPDATE_COORDINATOR] = GogoGateDataUpdateCoordinator(
             hass,
             _LOGGER,
             api,
@@ -92,19 +87,14 @@ def get_data_update_coordinator(
     return config_entry_data[DATA_UPDATE_COORDINATOR]
 
 
-def cover_unique_id(config_entry: ConfigEntry, door: AbstractDoor) -> str:
+def cover_unique_id(config_entry: ConfigEntry, door: Door) -> str:
     """Generate a cover entity unique id."""
     return f"{config_entry.unique_id}_{door.door_id}"
 
 
-def get_api(config_data: dict) -> AbstractGateApi:
+def get_api(config_data: dict) -> GogoGate2Api:
     """Get an api object for config data."""
-    gate_class = GogoGate2Api
-
-    if config_data[CONF_DEVICE] == DEVICE_TYPE_ISMARTGATE:
-        gate_class = ISmartGateApi
-
-    return gate_class(
+    return GogoGate2Api(
         config_data[CONF_IP_ADDRESS],
         config_data[CONF_USERNAME],
         config_data[CONF_PASSWORD],

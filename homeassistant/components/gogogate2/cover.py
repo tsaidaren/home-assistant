@@ -2,12 +2,7 @@
 import logging
 from typing import Callable, List, Optional
 
-from gogogate2_api.common import (
-    AbstractDoor,
-    DoorStatus,
-    get_configured_doors,
-    get_door_by_id,
-)
+from gogogate2_api.common import Door, DoorStatus, get_configured_doors, get_door_by_id
 import voluptuous as vol
 
 from homeassistant.components.cover import (
@@ -17,22 +12,17 @@ from homeassistant.components.cover import (
     CoverEntity,
 )
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
-from homeassistant.const import (
-    CONF_DEVICE,
-    CONF_IP_ADDRESS,
-    CONF_PASSWORD,
-    CONF_USERNAME,
-)
+from homeassistant.const import CONF_IP_ADDRESS, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant, callback
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import Entity
 
 from .common import (
-    DeviceDataUpdateCoordinator,
+    GogoGateDataUpdateCoordinator,
     cover_unique_id,
     get_data_update_coordinator,
 )
-from .const import DEVICE_TYPE_GOGOGATE2, DEVICE_TYPE_ISMARTGATE, DOMAIN
+from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,9 +30,6 @@ _LOGGER = logging.getLogger(__name__)
 COVER_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_IP_ADDRESS): cv.string,
-        vol.Required(CONF_DEVICE, default=DEVICE_TYPE_GOGOGATE2): vol.In(
-            (DEVICE_TYPE_GOGOGATE2, DEVICE_TYPE_ISMARTGATE)
-        ),
         vol.Required(CONF_PASSWORD): cv.string,
         vol.Required(CONF_USERNAME): cv.string,
     }
@@ -70,20 +57,20 @@ async def async_setup_entry(
 
     async_add_entities(
         [
-            DeviceCover(config_entry, data_update_coordinator, door)
+            Gogogate2Cover(config_entry, data_update_coordinator, door)
             for door in get_configured_doors(data_update_coordinator.data)
         ]
     )
 
 
-class DeviceCover(CoverEntity):
+class Gogogate2Cover(CoverEntity):
     """Cover entity for goggate2."""
 
     def __init__(
         self,
         config_entry: ConfigEntry,
-        data_update_coordinator: DeviceDataUpdateCoordinator,
-        door: AbstractDoor,
+        data_update_coordinator: GogoGateDataUpdateCoordinator,
+        door: Door,
     ) -> None:
         """Initialize the object."""
         self._config_entry = config_entry

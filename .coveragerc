@@ -622,9 +622,6 @@ omit =
     homeassistant/components/openuv/sensor.py
     homeassistant/components/openweathermap/sensor.py
     homeassistant/components/openweathermap/weather.py
-    homeassistant/components/openweathermap/forecast_update_coordinator.py
-    homeassistant/components/openweathermap/weather_update_coordinator.py
-    homeassistant/components/openweathermap/abstract_owm_sensor.py
     homeassistant/components/opnsense/*
     homeassistant/components/opple/light.py
     homeassistant/components/orangepi_gpio/*
@@ -782,7 +779,6 @@ omit =
     homeassistant/components/smappee/binary_sensor.py
     homeassistant/components/smappee/sensor.py
     homeassistant/components/smappee/switch.py
-    homeassistant/components/smart_meter_texas/sensor.py
     homeassistant/components/smarty/*
     homeassistant/components/smarthab/__init__.py
     homeassistant/components/smarthab/cover.py
