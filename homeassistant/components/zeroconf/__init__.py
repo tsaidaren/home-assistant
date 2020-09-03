@@ -134,19 +134,7 @@ class HaZeroconf(Zeroconf):
     ha_close = Zeroconf.close
 
 
-def setup(hass, config):
-    """Set up Zeroconf and make Home Assistant discoverable."""
-    zc_config = config.get(DOMAIN, {})
-    zeroconf = hass.data[DOMAIN] = _get_instance(
-        hass,
-        default_interface=zc_config.get(
-            CONF_DEFAULT_INTERFACE, DEFAULT_DEFAULT_INTERFACE
-        ),
-        ipv6=zc_config.get(CONF_IPV6, DEFAULT_IPV6),
-    )
-
-    install_multiple_zeroconf_catcher(zeroconf)
-
+def _register_hass_zc_service(hass, zeroconf):
     # Get instance UUID
     uuid = asyncio.run_coroutine_threadsafe(
         hass.helpers.instance_id.async_get(), hass.loop
@@ -198,18 +186,34 @@ def setup(hass, config):
         properties=params,
     )
 
+    _LOGGER.info("Starting Zeroconf broadcast")
+    try:
+        zeroconf.register_service(info)
+    except NonUniqueNameException:
+        _LOGGER.error(
+            "Home Assistant instance with identical name present in the local network"
+        )
+
+
+def setup(hass, config):
+    """Set up Zeroconf and make Home Assistant discoverable."""
+    zc_config = config.get(DOMAIN, {})
+    zeroconf = hass.data[DOMAIN] = _get_instance(
+        hass,
+        default_interface=zc_config.get(
+            CONF_DEFAULT_INTERFACE, DEFAULT_DEFAULT_INTERFACE
+        ),
+        ipv6=zc_config.get(CONF_IPV6, DEFAULT_IPV6),
+    )
+
+    install_multiple_zeroconf_catcher(zeroconf)
+
     def zeroconf_hass_start(_event):
         """Expose Home Assistant on zeroconf when it starts.
 
         Wait till started or otherwise HTTP is not up and running.
         """
-        _LOGGER.info("Starting Zeroconf broadcast")
-        try:
-            zeroconf.register_service(info)
-        except NonUniqueNameException:
-            _LOGGER.error(
-                "Home Assistant instance with identical name present in the local network"
-            )
+        _register_hass_zc_service(hass, zeroconf)
 
     hass.bus.listen_once(EVENT_HOMEASSISTANT_START, zeroconf_hass_start)
 
