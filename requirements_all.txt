@@ -263,7 +263,7 @@ apcaccess==0.0.13
 apns2==0.3.0
 
 # homeassistant.components.apprise
-apprise==0.8.7
+apprise==0.8.8
 
 # homeassistant.components.aprs
 aprslib==0.6.46
@@ -716,7 +716,7 @@ habitipy==0.2.0
 hangups==0.4.10
 
 # homeassistant.components.cloud
-hass-nabucasa==0.35.0
+hass-nabucasa==0.36.1
 
 # homeassistant.components.jewish_calendar
 hdate==0.9.5
@@ -1805,7 +1805,7 @@ pytraccar==0.9.0
 pytrackr==0.0.5
 
 # homeassistant.components.tradfri
-pytradfri[async]==6.4.0
+pytradfri[async]==7.0.0
 
 # homeassistant.components.trafikverket_train
 # homeassistant.components.trafikverket_weatherstation
@@ -1959,7 +1959,7 @@ sense-hat==2.2.0
 sense_energy==0.7.2
 
 # homeassistant.components.sentry
-sentry-sdk==0.17.1
+sentry-sdk==0.17.3
 
 # homeassistant.components.sharkiq
 sharkiqpy==0.1.8
