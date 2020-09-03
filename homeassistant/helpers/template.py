@@ -1051,6 +1051,7 @@ class TemplateEnvironment(ImmutableSandboxedEnvironment):
         self.filters["atan2"] = arc_tangent2
         self.filters["sqrt"] = square_root
         self.filters["as_timestamp"] = forgiving_as_timestamp
+        self.filters["as_local"] = dt_util.as_local
         self.filters["timestamp_custom"] = timestamp_custom
         self.filters["timestamp_local"] = timestamp_local
         self.filters["timestamp_utc"] = timestamp_utc
