@@ -1,19 +1,11 @@
 """Utils for Nexia / Trane XL Thermostats."""
 
-from homeassistant.const import (
-    HTTP_BAD_REQUEST,
-    HTTP_INTERNAL_SERVER_ERROR,
-    HTTP_NOT_FOUND,
-)
+from homeassistant.const import HTTP_FORBIDDEN, HTTP_UNAUTHORIZED
 
 
 def is_invalid_auth_code(http_status_code):
     """HTTP status codes that mean invalid auth."""
-    if (
-        http_status_code >= HTTP_BAD_REQUEST
-        and http_status_code != HTTP_NOT_FOUND
-        and http_status_code < HTTP_INTERNAL_SERVER_ERROR
-    ):
+    if http_status_code in (HTTP_UNAUTHORIZED, HTTP_FORBIDDEN):
         return True
 
     return False
