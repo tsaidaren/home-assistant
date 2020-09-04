@@ -1,6 +1,5 @@
 """Support for local power state reporting of entities by emulating TP-Link Kasa smart plugs."""
 import logging
-from time import time
 
 from sense_energy import PlugInstance, SenseLink
 import voluptuous as vol
@@ -88,28 +87,28 @@ def get_plug_devices(hass, entity_configs):
             continue
         name = entity_config.get(CONF_NAME, state.name)
 
-        if state.state == STATE_ON:
-            if CONF_POWER in entity_config:
-                power_val = entity_config[CONF_POWER]
-                if isinstance(power_val, (float, int)):
-                    power = float(power_val)
-                elif isinstance(power_val, str):
-                    if is_template_string(power_val):
-                        power_val = Template(power_val, hass)
-                        entity_config[CONF_POWER] = power_val
-                        power = float(power_val.async_render())
-                    else:
-                        power = float(hass.states.get(power_val).state)
-                elif isinstance(power_val, Template):
-                    power_val.hass = hass
+        if CONF_POWER in entity_config:
+            power_val = entity_config[CONF_POWER]
+            if state.state == STATE_ON and isinstance(power_val, (float, int)):
+                power = float(power_val)
+            elif isinstance(power_val, str):
+                if is_template_string(power_val):
+                    power_val = Template(power_val, hass)
+                    entity_config[CONF_POWER] = power_val
                     power = float(power_val.async_render())
-            elif ATTR_CURRENT_POWER_W in state.attributes:
-                power = float(state.attributes[ATTR_CURRENT_POWER_W])
-            else:
-                _LOGGER.warning("No power value defined for: %s", name)
+                else:
+                    power = float(hass.states.get(power_val).state)
+            elif isinstance(power_val, Template):
+                power_val.hass = hass
+                power = float(power_val.async_render())
+        elif ATTR_CURRENT_POWER_W in state.attributes:
+            power = float(state.attributes[ATTR_CURRENT_POWER_W])
         else:
             power = 0.0
+            _LOGGER.warning("No power value defined for: %s", name)
+
         last_changed = state.last_changed.timestamp()
+
         _LOGGER.warning(
             "entity_id = %s start_time =  %s, alias =  %s, power = %s",
             entity_id,
