@@ -1610,9 +1610,8 @@ def test_result_as_boolean(hass):
     assert template.result_as_boolean(-1) is True
     assert template.result_as_boolean(500) is True
     assert template.result_as_boolean(0.5) is True
-    assert template.result_as_boolean("0.5") is True
     assert template.result_as_boolean(0.389) is True
-    assert template.result_as_boolean("0.389") is True
+    assert template.result_as_boolean(35) is True
 
     assert template.result_as_boolean(False) is False
     assert template.result_as_boolean(" 0 ") is False
