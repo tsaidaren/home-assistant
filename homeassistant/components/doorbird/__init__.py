@@ -374,6 +374,7 @@ class DoorBirdRequestView(HomeAssistantView):
             DOOR_STATION_EVENT_ENTITY_IDS
         ].get(event)
 
+        _LOGGER.warning("doorbird_event: %s %s", f"{DOMAIN}_{event}", event_data)
         hass.bus.async_fire(f"{DOMAIN}_{event}", event_data)
 
         return web.Response(status=HTTP_OK, text="OK")
