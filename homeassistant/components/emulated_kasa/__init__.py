@@ -119,7 +119,9 @@ def get_plug_devices(hass, entity_configs):
         last_changed = state.last_changed.timestamp()
 
         _LOGGER.warning(
-            "entity_id=%s, last_changed=%s, name=%s, power=%s",
+            "state.state=%s, result_as_boolean=%s, entity_id=%s, last_changed=%s, name=%s, power=%s",
+            state.state,
+            result_as_boolean(state.state),
             entity_id,
             last_changed,
             name,
