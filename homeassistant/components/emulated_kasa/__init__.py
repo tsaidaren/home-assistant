@@ -116,8 +116,5 @@ def get_plug_devices(hass, entity_configs):
                 power = float(state.attributes[ATTR_CURRENT_POWER_W])
         else:
             power = 0.0
-            _LOGGER.warning("No power value defined for: %s", name)
-
         last_changed = state.last_changed.timestamp()
-
         yield PlugInstance(entity_id, start_time=last_changed, alias=name, power=power)
