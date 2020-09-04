@@ -117,14 +117,4 @@ def get_plug_devices(hass, entity_configs):
         else:
             power = 0.0
         last_changed = state.last_changed.timestamp()
-
-        _LOGGER.warning(
-            "state.state=%s, result_as_boolean=%s, entity_id=%s, last_changed=%s, name=%s, power=%s",
-            state.state,
-            result_as_boolean(state.state),
-            entity_id,
-            last_changed,
-            name,
-            power,
-        )
         yield PlugInstance(entity_id, start_time=last_changed, alias=name, power=power)
