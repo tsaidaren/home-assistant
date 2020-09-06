@@ -604,10 +604,14 @@ class Group(Entity):
 
             tracking_patterns.append(re.compile(fnmatch.translate(entry)))
 
+        if not tracking_patterns:
+            return
+
         _LOGGER.warning(
-            "_async_build_tracking_expanded: %s, %s",
+            "_async_build_tracking_expanded: %s, %s, %s",
             self._tracking_unexpanded,
             tracking_patterns,
+            self.hass.states.async_all(),
         )
 
         self._tracking_expanded.extend(
