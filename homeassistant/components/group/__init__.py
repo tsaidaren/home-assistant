@@ -567,11 +567,9 @@ class Group(Entity):
         self._tracking_unexpanded = tuple(ent_id.lower() for ent_id in entity_ids)
         self.group_on, self.group_off = None, None
 
-        self.async_start()
-        await self.async_update_ha_state(True)
+        await self.async_start()
 
-    @callback
-    def async_start(self, *_):
+    async def async_start(self, *_):
         """Start tracking members.
 
         This method must be run in the event loop.
@@ -581,6 +579,7 @@ class Group(Entity):
             self._async_unsub_state_changed = async_track_state_change_event(
                 self.hass, self._tracking_expanded, self._async_state_changed_listener
             )
+        await self.async_update_ha_state(True)
 
     @callback
     def _async_build_tracking_expanded(self):
@@ -607,13 +606,6 @@ class Group(Entity):
         if not tracking_patterns:
             return
 
-        _LOGGER.warning(
-            "_async_build_tracking_expanded: %s, %s, %s",
-            self._tracking_unexpanded,
-            tracking_patterns,
-            self.hass.states.async_all(),
-        )
-
         self._tracking_expanded.extend(
             [
                 state.entity_id
@@ -638,14 +630,14 @@ class Group(Entity):
 
     async def async_added_to_hass(self):
         """Handle addition to Home Assistant."""
-        if self._tracking_unexpanded:
-            if self.hass.state != CoreState.running:
-                self.hass.bus.async_listen_once(
-                    EVENT_HOMEASSISTANT_START, self.async_start
-                )
-                return
+        if not self._tracking_unexpanded:
+            return
 
-            self.async_start()
+        if self.hass.state != CoreState.running:
+            self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, self.async_start)
+            return
+
+        await self.async_start()
 
     async def async_will_remove_from_hass(self):
         """Handle removal from Home Assistant."""
