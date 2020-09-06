@@ -571,7 +571,7 @@ class Group(Entity):
         await self.async_update_ha_state(True)
 
     @callback
-    def async_start(self):
+    def async_start(self, *_):
         """Start tracking members.
 
         This method must be run in the event loop.
@@ -625,6 +625,12 @@ class Group(Entity):
     async def async_added_to_hass(self):
         """Handle addition to Home Assistant."""
         if self._tracking_unexpanded:
+            if self.hass.state != CoreState.running:
+                self.hass.bus.async_listen_once(
+                    EVENT_HOMEASSISTANT_START, self.async_start
+                )
+                return
+
             self.async_start()
 
     async def async_will_remove_from_hass(self):
