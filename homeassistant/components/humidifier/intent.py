@@ -42,7 +42,7 @@ class HumidityHandler(intent.IntentHandler):
         slots = self.async_validate_slots(intent_obj.slots)
         state = hass.helpers.intent.async_match_state(
             slots["name"]["value"],
-            [state for state in hass.states.async_all() if state.domain == DOMAIN],
+            [state for state in hass.states.async_all(DOMAIN)],
         )
 
         service_data = {ATTR_ENTITY_ID: state.entity_id}
@@ -87,7 +87,7 @@ class SetModeHandler(intent.IntentHandler):
         slots = self.async_validate_slots(intent_obj.slots)
         state = hass.helpers.intent.async_match_state(
             slots["name"]["value"],
-            [state for state in hass.states.async_all() if state.domain == DOMAIN],
+            [state for state in hass.states.async_all(DOMAIN)],
         )
 
         service_data = {ATTR_ENTITY_ID: state.entity_id}
