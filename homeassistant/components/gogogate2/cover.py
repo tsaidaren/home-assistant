@@ -151,7 +151,6 @@ class DeviceCover(CoordinatorEntity, CoverEntity):
         return attrs
 
     def _get_door(self) -> AbstractDoor:
-        _LOGGER.warning("data: %s", self.coordinator.data)
         door = get_door_by_id(self._door.door_id, self.coordinator.data)
         self._door = door or self._door
         return self._door
