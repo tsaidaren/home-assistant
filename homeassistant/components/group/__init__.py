@@ -604,9 +604,19 @@ class Group(Entity):
 
             tracking_patterns.append(re.compile(fnmatch.translate(entry)))
 
-        for state in self.hass.states.async_all():
-            if test_against_patterns(tracking_patterns, state.entity_id):
-                self._tracking_expanded.append(state.entity_id)
+        _LOGGER.warning(
+            "_async_build_tracking_expanded: %s, %s",
+            self._tracking_unexpanded,
+            tracking_patterns,
+        )
+
+        self._tracking_expanded.extend(
+            [
+                state.entity_id
+                for state in self.hass.states.async_all()
+                if test_against_patterns(tracking_patterns, state.entity_id)
+            ]
+        )
 
     async def async_stop(self):
         """Unregister the group from Home Assistant.
