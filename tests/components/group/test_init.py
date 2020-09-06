@@ -584,6 +584,8 @@ async def test_group_with_fnmatch(hass):
     hass.states.async_set("light.bowl", STATE_ON)
     hass.states.async_set("light.upstairs_floor", STATE_ON)
     hass.states.async_set("light.upstairs_top", STATE_ON)
+    hass.states.async_set("switch.bar_dog_water", STATE_ON)
+    hass.states.async_set("switch.master_dog_water", STATE_ON)
 
     assert await async_setup_component(
         hass,
@@ -599,6 +601,7 @@ async def test_group_with_fnmatch(hass):
                     "icon": "mdi:work",
                 },
                 "group_two": {"entities": ["light.[!b]*"], "icon": "mdi:work"},
+                "dog_water": {"entities": ["switch.*_dog_water"], "icon": "mdi:work"},
             }
         },
     )
@@ -618,4 +621,8 @@ async def test_group_with_fnmatch(hass):
     assert set(hass.states.get("group.group_two").attributes[ATTR_ENTITY_ID]) == {
         "light.upstairs_floor",
         "light.upstairs_top",
+    }
+    assert set(hass.states.get("group.dog_water").attributes[ATTR_ENTITY_ID]) == {
+        "switch.bar_dog_water",
+        "switch.master_dog_water",
     }
