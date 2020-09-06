@@ -89,6 +89,13 @@ import homeassistant.util.dt as dt_util
 # pylint: disable=invalid-name
 
 TIME_PERIOD_ERROR = "offset {} should be format 'HH:MM', 'HH:MM:SS' or 'HH:MM:SS.F'"
+FNMATCH_VALIDATION_TRANSLATION = {
+    42: "a",  # * -> a
+    63: "a",  # ? -> a
+    91: "a",  # [ -> a
+    93: "a",  # [ -> a
+    33: "a",  # ! -> a
+}
 
 # Home Assistant types
 byte = vol.All(vol.Coerce(int), vol.Range(min=0, max=255))
@@ -253,6 +260,27 @@ def entity_id(value: Any) -> str:
         return str_value
 
     raise vol.Invalid(f"Entity ID {value} is an invalid entity id")
+
+
+def glob_entity_ids(value: Union[str, List]) -> List[str]:
+    """Validate Entity IDs with glob (fnmatch) matching."""
+    if value is None:
+        raise vol.Invalid("Entity IDs can not be None")
+    if isinstance(value, str):
+        value = [ent_id.strip() for ent_id in value.split(",")]
+
+    entity_ids = []
+
+    for ent_id in value:
+        ent_id_lower = ent_id.lower()
+        # We allow, "[", "]", "*", and "?"
+        # as they will be used to match entity_ids
+        # later
+        if not valid_entity_id(ent_id_lower.translate(FNMATCH_VALIDATION_TRANSLATION)):
+            raise vol.Invalid(f"Entity ID {ent_id_lower} is an invalid entity id")
+        entity_ids.append(ent_id_lower)
+
+    return entity_ids
 
 
 def entity_ids(value: Union[str, List]) -> List[str]:
@@ -527,7 +555,7 @@ def template(value: Optional[Any]) -> template_helper.Template:
 
     try:
         template_value.ensure_valid()
-        return cast(template_helper.Template, template_value)
+        return template_value
     except TemplateError as ex:
         raise vol.Invalid(f"invalid template ({ex})") from ex
 
@@ -545,7 +573,7 @@ def dynamic_template(value: Optional[Any]) -> template_helper.Template:
     template_value = template_helper.Template(str(value))  # type: ignore
     try:
         template_value.ensure_valid()
-        return cast(template_helper.Template, template_value)
+        return template_value
     except TemplateError as ex:
         raise vol.Invalid(f"invalid template ({ex})") from ex
 
@@ -960,8 +988,8 @@ TIME_CONDITION_SCHEMA = vol.All(
     vol.Schema(
         {
             vol.Required(CONF_CONDITION): "time",
-            "before": time,
-            "after": time,
+            "before": vol.Any(time, vol.All(str, entity_domain("input_datetime"))),
+            "after": vol.Any(time, vol.All(str, entity_domain("input_datetime"))),
             "weekday": weekdays,
         }
     ),
@@ -1022,20 +1050,25 @@ DEVICE_CONDITION_BASE_SCHEMA = vol.Schema(
 
 DEVICE_CONDITION_SCHEMA = DEVICE_CONDITION_BASE_SCHEMA.extend({}, extra=vol.ALLOW_EXTRA)
 
-CONDITION_SCHEMA: vol.Schema = key_value_schemas(
-    CONF_CONDITION,
-    {
-        "numeric_state": NUMERIC_STATE_CONDITION_SCHEMA,
-        "state": STATE_CONDITION_SCHEMA,
-        "sun": SUN_CONDITION_SCHEMA,
-        "template": TEMPLATE_CONDITION_SCHEMA,
-        "time": TIME_CONDITION_SCHEMA,
-        "zone": ZONE_CONDITION_SCHEMA,
-        "and": AND_CONDITION_SCHEMA,
-        "or": OR_CONDITION_SCHEMA,
-        "not": NOT_CONDITION_SCHEMA,
-        "device": DEVICE_CONDITION_SCHEMA,
-    },
+CONDITION_SCHEMA: vol.Schema = vol.Schema(
+    vol.Any(
+        key_value_schemas(
+            CONF_CONDITION,
+            {
+                "numeric_state": NUMERIC_STATE_CONDITION_SCHEMA,
+                "state": STATE_CONDITION_SCHEMA,
+                "sun": SUN_CONDITION_SCHEMA,
+                "template": TEMPLATE_CONDITION_SCHEMA,
+                "time": TIME_CONDITION_SCHEMA,
+                "zone": ZONE_CONDITION_SCHEMA,
+                "and": AND_CONDITION_SCHEMA,
+                "or": OR_CONDITION_SCHEMA,
+                "not": NOT_CONDITION_SCHEMA,
+                "device": DEVICE_CONDITION_SCHEMA,
+            },
+        ),
+        dynamic_template,
+    )
 )
 
 TRIGGER_SCHEMA = vol.All(
