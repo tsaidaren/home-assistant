@@ -222,6 +222,16 @@ class LogbookView(HomeAssistantView):
 
         entity_matches_only = "entity_matches_only" in request.query
 
+        import asyncio
+        import cProfile
+
+        pr = cProfile.Profile()
+        pr.enable()
+        await asyncio.sleep(280)
+        pr.disable()
+        pr.create_stats()
+        pr.dump_stats("280.cprof")
+
         def json_events():
             """Fetch events and generate JSON."""
             return self.json(
