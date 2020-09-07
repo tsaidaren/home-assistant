@@ -1,6 +1,5 @@
 """Config flow to configure esphome component."""
 from collections import OrderedDict
-import logging
 from typing import Optional
 
 from aioesphomeapi import APIClient, APIConnectionError
@@ -15,7 +14,6 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from .entry_data import DATA_KEY, RuntimeEntryData
 
 DOMAIN = "esphome"
-_LOGGER = logging.getLogger(__name__)
 
 
 class EsphomeFlowHandler(ConfigFlow, domain=DOMAIN):
@@ -181,7 +179,6 @@ class EsphomeFlowHandler(ConfigFlow, domain=DOMAIN):
             await cli.connect()
             device_info = await cli.device_info()
         except APIConnectionError as err:
-            _LOGGER.exception("ESPHOME Api error")
             if "resolving" in str(err):
                 return "resolve_error", None
             return "connection_error", None
