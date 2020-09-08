@@ -18,6 +18,7 @@ from homeassistant.helpers import entity_platform
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity_platform import async_get_platforms
 import homeassistant.helpers.entity_registry as er
+from homeassistant.helpers.services import entity_service_call
 from homeassistant.helpers.typing import HomeAssistantType
 
 from .const import (
@@ -355,9 +356,8 @@ def async_setup_services(hass: HomeAssistantType):
     )
 
     async def _async_send_raw_node_command(call: ServiceCall):
-        await hass.helpers.services.entity_service_call(
-            async_get_platforms(hass, DOMAIN), SERVICE_SEND_RAW_NODE_COMMAND, call
-        )
+        platforms = async_get_platforms(hass, DOMAIN)
+        await entity_service_call(platforms, SERVICE_SEND_RAW_NODE_COMMAND, call)
 
     hass.services.async_register(
         domain=DOMAIN,
@@ -367,9 +367,8 @@ def async_setup_services(hass: HomeAssistantType):
     )
 
     async def _async_send_node_command(call: ServiceCall):
-        await hass.helpers.services.entity_service_call(
-            async_get_platforms(hass, DOMAIN), SERVICE_SEND_NODE_COMMAND, call
-        )
+        platforms = async_get_platforms(hass, DOMAIN)
+        await entity_service_call(platforms, SERVICE_SEND_NODE_COMMAND, call)
 
     hass.services.async_register(
         domain=DOMAIN,
