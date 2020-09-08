@@ -402,11 +402,9 @@ async def entity_service_call(hass, platforms, func, call, required_features=Non
 
     else:
         for platform in platforms:
-            _LOGGER.warning("checking platform: %s", platform)
-
             platform_entities = []
             for entity in platform.entities.values():
-                _LOGGER.warning("checking entity: %s", entity)
+
                 if entity.entity_id not in entity_ids:
                     continue
 
