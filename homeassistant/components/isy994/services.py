@@ -13,10 +13,9 @@ from homeassistant.const import (
     CONF_UNIT_OF_MEASUREMENT,
     SERVICE_RELOAD,
 )
-from homeassistant.core import ServiceCall, callback
-from homeassistant.helpers import entity_platform
+from homeassistant.core import callback
+from homeassistant.helpers import entity_component, entity_platform
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.entity_platform import async_get_platforms
 import homeassistant.helpers.entity_registry as er
 from homeassistant.helpers.typing import HomeAssistantType
 
@@ -354,28 +353,16 @@ def async_setup_services(hass: HomeAssistantType):
         domain=DOMAIN, service=SERVICE_RELOAD, service_func=async_reload_config_entries
     )
 
-    async def _async_send_raw_node_command(call: ServiceCall):
-        await hass.helpers.service.entity_service_call(
-            async_get_platforms(hass, DOMAIN), SERVICE_SEND_RAW_NODE_COMMAND, call
-        )
-
-    hass.services.async_register(
-        domain=DOMAIN,
-        service=SERVICE_SEND_RAW_NODE_COMMAND,
-        schema=cv.make_entity_service_schema(SERVICE_SEND_RAW_NODE_COMMAND_SCHEMA),
-        service_func=_async_send_raw_node_command,
+    component = entity_component.current_component.get()
+    component.async_register_entity_service(
+        SERVICE_SEND_RAW_NODE_COMMAND,
+        SERVICE_SEND_RAW_NODE_COMMAND_SCHEMA,
+        SERVICE_SEND_RAW_NODE_COMMAND,
     )
-
-    async def _async_send_node_command(call: ServiceCall):
-        await hass.helpers.service.entity_service_call(
-            async_get_platforms(hass, DOMAIN), SERVICE_SEND_NODE_COMMAND, call
-        )
-
-    hass.services.async_register(
-        domain=DOMAIN,
-        service=SERVICE_SEND_NODE_COMMAND,
-        schema=cv.make_entity_service_schema(SERVICE_SEND_NODE_COMMAND_SCHEMA),
-        service_func=_async_send_node_command,
+    component.async_register_entity_service(
+        SERVICE_SEND_NODE_COMMAND,
+        SERVICE_SEND_NODE_COMMAND_SCHEMA,
+        SERVICE_SEND_NODE_COMMAND,
     )
 
 
