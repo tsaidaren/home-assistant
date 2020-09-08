@@ -16,6 +16,7 @@ from homeassistant.const import (
 from homeassistant.core import ServiceCall, callback
 from homeassistant.helpers import entity_platform
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.entity_platform import DATA_ENTITY_PLATFORM
 import homeassistant.helpers.entity_registry as er
 from homeassistant.helpers.typing import HomeAssistantType
 
@@ -355,7 +356,7 @@ def async_setup_services(hass: HomeAssistantType):
 
     async def _async_send_raw_node_command(call: ServiceCall):
         await hass.helpers.services.entity_service_call(
-            DOMAIN, SERVICE_SEND_RAW_NODE_COMMAND, call
+            hass.data[DATA_ENTITY_PLATFORM][DOMAIN], SERVICE_SEND_RAW_NODE_COMMAND, call
         )
 
     hass.services.async_register(
@@ -367,7 +368,7 @@ def async_setup_services(hass: HomeAssistantType):
 
     async def _async_send_node_command(call: ServiceCall):
         await hass.helpers.services.entity_service_call(
-            DOMAIN, SERVICE_SEND_NODE_COMMAND, call
+            hass.data[DATA_ENTITY_PLATFORM][DOMAIN], SERVICE_SEND_NODE_COMMAND, call
         )
 
     hass.services.async_register(
