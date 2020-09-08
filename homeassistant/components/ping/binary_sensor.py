@@ -133,7 +133,9 @@ class PingDataICMPLib(PingData):
 
     def ping(self):
         """Send ICMP echo request and return details."""
-        return icmp_ping(self._ip_address, count=self._count)
+        data = icmp_ping(self._ip_address, count=self._count)
+        _LOGGER.warning("ping address: %s -- data: %s", self._ip_address, data)
+        return data
 
     async def async_update(self) -> None:
         """Retrieve the latest details from the host."""
