@@ -595,3 +595,11 @@ class EntityPlatform:
 current_platform: ContextVar[Optional[EntityPlatform]] = ContextVar(
     "current_platform", default=None
 )
+
+
+@callback
+def async_get_platforms(
+    hass: HomeAssistantType, integration_name: str
+) -> List[EntityPlatform]:
+    """Find an existing platforms."""
+    return hass.data[DATA_ENTITY_PLATFORM][integration_name]
