@@ -160,7 +160,7 @@ class PingDataICMPLib(PingData):
         )
         self.available = data.is_alive
         if not self.available:
-            self.data = {}
+            self.data = False
             return
 
         self.data = {
