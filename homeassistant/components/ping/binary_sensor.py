@@ -139,10 +139,13 @@ class PingDataICMPLib(PingData):
         """Retrieve the latest details from the host."""
         data = await self.hass.async_add_executor_job(self.ping)
         _LOGGER.warning(
-            "ping_data: %s, alive: %s, ip_address: %s",
+            "ping_data: %s, address: %s, alive: %s, ip_address: %s, packets_sent: %s, packets_received: %s",
             data,
+            data.address,
             data.is_alive,
             self._ip_address,
+            data.packets_sent,
+            data.packets_received,
         )
         self.available = data.is_alive
         if not self.available:
