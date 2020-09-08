@@ -356,7 +356,7 @@ def async_setup_services(hass: HomeAssistantType):
 
     async def _async_send_raw_node_command(call: ServiceCall):
         await hass.helpers.services.entity_service_call(
-            async_get_platforms(DOMAIN), SERVICE_SEND_RAW_NODE_COMMAND, call
+            async_get_platforms(hass, DOMAIN), SERVICE_SEND_RAW_NODE_COMMAND, call
         )
 
     hass.services.async_register(
@@ -368,7 +368,7 @@ def async_setup_services(hass: HomeAssistantType):
 
     async def _async_send_node_command(call: ServiceCall):
         await hass.helpers.services.entity_service_call(
-            async_get_platforms(DOMAIN), SERVICE_SEND_NODE_COMMAND, call
+            async_get_platforms(hass, DOMAIN), SERVICE_SEND_NODE_COMMAND, call
         )
 
     hass.services.async_register(
