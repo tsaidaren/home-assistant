@@ -134,30 +134,11 @@ class PingDataICMPLib(PingData):
     def ping(self):
         """Send ICMP echo request and return details."""
         _LOGGER.warning("ping address: %s", self._ip_address)
-        data = icmp_ping(self._ip_address, count=self._count, verify_source=True)
-        _LOGGER.warning(
-            "ping_data: %s, address: %s, alive: %s, ip_address: %s, packets_sent: %s, packets_received: %s",
-            data,
-            data.address,
-            data.is_alive,
-            self._ip_address,
-            data.packets_sent,
-            data.packets_received,
-        )
-        return data
+        return icmp_ping(self._ip_address, count=self._count, verify_source=True)
 
     async def async_update(self) -> None:
         """Retrieve the latest details from the host."""
         data = await self.hass.async_add_executor_job(self.ping)
-        _LOGGER.warning(
-            "ping_data: %s, address: %s, alive: %s, ip_address: %s, packets_sent: %s, packets_received: %s",
-            data,
-            data.address,
-            data.is_alive,
-            self._ip_address,
-            data.packets_sent,
-            data.packets_received,
-        )
         self.available = data.is_alive
         if not self.available:
             self.data = False
