@@ -138,13 +138,17 @@ class PingDataICMPLib(PingData):
     async def async_update(self) -> None:
         """Retrieve the latest details from the host."""
         data = await self.hass.async_add_executor_job(self.ping)
+        self.available = data.is_alive
+        if not self.available:
+            self.data = {}
+            return
+
         self.data = {
             "min": data.min_rtt,
             "max": data.max_rtt,
             "avg": data.avg_rtt,
             "mdev": "",
         }
-        self.available = data.is_alive
 
 
 class PingDataSubProcess(PingData):
