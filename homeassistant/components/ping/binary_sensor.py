@@ -134,7 +134,7 @@ class PingDataICMPLib(PingData):
     def ping(self):
         """Send ICMP echo request and return details."""
         _LOGGER.warning("ping address: %s", self._ip_address)
-        data = icmp_ping(self._ip_address, count=self._count)
+        data = icmp_ping(self._ip_address, count=self._count, verify_source=True)
         _LOGGER.warning(
             "ping_data: %s, address: %s, alive: %s, ip_address: %s, packets_sent: %s, packets_received: %s",
             data,
