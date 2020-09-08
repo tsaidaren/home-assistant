@@ -354,6 +354,8 @@ class DoorBirdRequestView(HomeAssistantView):
 
         token = request.query.get("token")
 
+        _LOGGER.warning("doorbird_data: %s %s %s", event, request, request.query)
+
         device = get_doorstation_by_token(hass, token)
 
         if device is None:
