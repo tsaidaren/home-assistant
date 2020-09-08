@@ -367,8 +367,12 @@ def async_setup_services(hass: HomeAssistantType):
     )
 
     async def _async_send_node_command(call: ServiceCall):
+        platforms = async_get_platforms(hass, DOMAIN)
+
+        _LOGGER.warning("platforms: %s", platforms)
+
         await hass.helpers.services.entity_service_call(
-            async_get_platforms(hass, DOMAIN), SERVICE_SEND_NODE_COMMAND, call
+            platforms, SERVICE_SEND_NODE_COMMAND, call
         )
 
     hass.services.async_register(
