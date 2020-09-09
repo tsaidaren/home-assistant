@@ -233,12 +233,12 @@ class ConfiguredDoorBird:
     def __init__(self, device, name, events, custom_url, token):
         """Initialize configured device."""
         self._name = name
+        self._slug = slugify(name)
         self._device = device
         self._custom_url = custom_url
         self.events = events
         self.doorstation_events = [self._get_event_name(event) for event in self.events]
         self._token = token
-        self._slug = slugify(name)
 
     @property
     def name(self):
