@@ -64,6 +64,8 @@ class DoorBirdSource(MediaSource):
         except Unresolvable as err:
             raise BrowseError(str(err)) from err
 
+        _LOGGER.warning("async_parse_identifier: %s", item)
+
         if camera_id and not get_doorstation_by_slug(self.hass, camera_id):
             raise BrowseError("Camera does not exist.")
 
