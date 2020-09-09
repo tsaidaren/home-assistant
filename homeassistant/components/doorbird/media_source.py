@@ -72,12 +72,11 @@ class DoorBirdSource(MediaSource):
             event_id,
         )
 
-        #if camera_id and not get_doorstation_by_slug(self.hass, camera_id):
+        # if camera_id and not get_doorstation_by_slug(self.hass, camera_id):
         #    raise BrowseError("Camera does not exist.")
 
-        #if event_id not in EVENT_IDS:
+        # if event_id not in EVENT_IDS:
         #    raise BrowseError("Event does not exist.")
-        
 
         media = BrowseMediaSource(
             domain=DOMAIN,
@@ -131,5 +130,10 @@ def async_parse_identifier(
     if not item.identifier:
         return None, None, None
 
-    camera_id, source, event_id = item.identifier.lstrip("/").split("/")
-    return camera_id, source, event_id
+    tup = item.identifier.lstrip("/").split("/")
+    while len(tup) < 3:
+        tup.append(None)
+
+    tup[-1] = int(tup[-1]) if tup[-1] else None
+
+    return tup
