@@ -667,6 +667,9 @@ class _TrackTemplateResultInfo:
 
         for track_template_ in self._track_templates:
             template = track_template_.template
+            _LOGGER.debug(
+                "Template[%s] update triggered by event: %s", template.template, event
+            )
             if (
                 entity_id
                 and len(self._last_info) > 1
