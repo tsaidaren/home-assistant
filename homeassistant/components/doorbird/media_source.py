@@ -60,15 +60,15 @@ class DoorBirdSource(MediaSource):
     ) -> BrowseMediaSource:
         """Return media."""
         try:
-            source, camera_id, event_id = async_parse_identifier(item)
+            camera_slug, source, event_id = async_parse_identifier(item)
         except Unresolvable as err:
             raise BrowseError(str(err)) from err
 
         _LOGGER.warning(
             "async_parse_identifier: %s -> %s, %s, %s",
             item,
+            camera_slug,
             source,
-            camera_id,
             event_id,
         )
 
@@ -90,20 +90,49 @@ class DoorBirdSource(MediaSource):
         )
         media.children = []
 
-        for doorstation in get_all_doorstations(self.hass):
-            camera_id = doorstation.slug
-            media_source = BrowseMediaSource(
-                domain=DOMAIN,
-                identifier=f"{camera_id}",
-                media_class=MEDIA_CLASS_DIRECTORY,
-                media_content_type="directory",
-                title=f"{camera_id}",
-                can_play=False,
-                can_expand=True,
-                thumbnail=None,
-            )
-            media.children.append(media_source)
-
+        if camera_slug is None:
+            for doorstation in get_all_doorstations(self.hass):
+                camera_id = doorstation.slug
+                media.children.append(
+                    BrowseMediaSource(
+                        domain=DOMAIN,
+                        identifier=f"{camera_id}",
+                        media_class=MEDIA_CLASS_DIRECTORY,
+                        media_content_type="directory",
+                        title=f"{camera_id}",
+                        can_play=False,
+                        can_expand=True,
+                        thumbnail=None,
+                    )
+                )
+        elif source is None:
+            for source in SOURCES:
+                media.children.append(
+                    BrowseMediaSource(
+                        domain=DOMAIN,
+                        identifier=f"{camera_slug}/{source}",
+                        media_class=MEDIA_CLASS_DIRECTORY,
+                        media_content_type="directory",
+                        title=f"{camera_slug} {source}",
+                        can_play=False,
+                        can_expand=True,
+                        thumbnail=None,
+                    )
+                )
+        elif event_id is None:
+            for event_id in EVENT_IDS:
+                media.children.append(
+                    BrowseMediaSource(
+                        domain=DOMAIN,
+                        identifier=f"{camera_slug}/{source}/{event_id}",
+                        media_class=MEDIA_CLASS_IMAGE,
+                        media_content_type=MEDIA_TYPE_IMAGE,
+                        title=f"{camera_slug} {source} {event_id}",
+                        can_play=True,
+                        can_expand=False,
+                        thumbnail=None,
+                    )
+                )
         return media
 
 
