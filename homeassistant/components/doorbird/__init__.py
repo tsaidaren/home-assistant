@@ -238,6 +238,7 @@ class ConfiguredDoorBird:
         self.events = events
         self.doorstation_events = [self._get_event_name(event) for event in self.events]
         self._token = token
+        self._slug = slugify(name)
 
     @property
     def name(self):
@@ -276,7 +277,7 @@ class ConfiguredDoorBird:
     @property
     def slug(self):
         """Get device slug."""
-        return slugify(self._name)
+        return self._slug
 
     def _get_event_name(self, event):
         return f"{self.slug}_{event}"

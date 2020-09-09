@@ -1,4 +1,4 @@
-"""Netatmo Media Source Implementation."""
+"""DoorBird Media Source Implementation."""
 import datetime as dt
 import logging
 import re
@@ -30,17 +30,17 @@ class IncompatibleMediaSource(MediaSourceError):
 
 
 async def async_get_media_source(hass: HomeAssistant):
-    """Set up Netatmo media source."""
-    return NetatmoSource(hass)
+    """Set up DoorBird media source."""
+    return DoorBirdSource(hass)
 
 
-class NetatmoSource(MediaSource):
-    """Provide Netatmo camera recordings as media sources."""
+class DoorBirdSource(MediaSource):
+    """Provide DoorBird camera recordings as media sources."""
 
     name: str = MANUFACTURER
 
     def __init__(self, hass: HomeAssistant):
-        """Initialize Netatmo source."""
+        """Initialize DoorBird source."""
         super().__init__(DOMAIN)
         self.hass = hass
         self.events = self.hass.data[DOMAIN][DATA_EVENTS]
