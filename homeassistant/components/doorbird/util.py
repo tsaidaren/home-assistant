@@ -33,6 +33,9 @@ def get_all_doorstations(hass):
 
     doorstations = []
     for config_entry_id in hass.data[DOMAIN]:
+        if DOOR_STATION not in hass.data[DOMAIN][config_entry_id]:
+            continue
+
         doorstation = hass.data[DOMAIN][config_entry_id][DOOR_STATION]
         doorstations.append(doorstation)
 
