@@ -72,11 +72,12 @@ class DoorBirdSource(MediaSource):
             event_id,
         )
 
-        if camera_id and not get_doorstation_by_slug(self.hass, camera_id):
-            raise BrowseError("Camera does not exist.")
+        #if camera_id and not get_doorstation_by_slug(self.hass, camera_id):
+        #    raise BrowseError("Camera does not exist.")
 
-        if event_id not in EVENT_IDS:
-            raise BrowseError("Event does not exist.")
+        #if event_id not in EVENT_IDS:
+        #    raise BrowseError("Event does not exist.")
+        
 
         media = BrowseMediaSource(
             domain=DOMAIN,
@@ -128,15 +129,7 @@ def async_parse_identifier(
 ) -> Tuple[str, str, Optional[int]]:
     """Parse identifier."""
     if not item.identifier:
-        return "events", "", None
+        return None, None, None
 
-    source, path = item.identifier.lstrip("/").split("/", 1)
-
-    if source != "events":
-        raise Unresolvable("Unknown source directory.")
-
-    if "/" in path:
-        camera_id, event_id = path.split("/", 1)
-        return source, camera_id, int(event_id)
-
-    return source, path, None
+    camera_id, source, event_id = item.identifier.lstrip("/").split("/")
+    return camera_id, source, event_id
