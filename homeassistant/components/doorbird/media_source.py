@@ -19,7 +19,7 @@ from homeassistant.components.media_source.models import (
 from homeassistant.core import HomeAssistant, callback
 
 from .const import DOMAIN, MANUFACTURER
-from .util import get_doorstation_by_slug
+from .util import get_all_doorstations, get_doorstation_by_slug
 
 _LOGGER = logging.getLogger(__name__)
 MIME_TYPE = "image/jpeg"
@@ -80,45 +80,30 @@ class DoorBirdSource(MediaSource):
 
         media = BrowseMediaSource(
             domain=DOMAIN,
-            identifier=f"{camera_id}",
+            identifier=MANUFACTURER,
             media_class=MEDIA_CLASS_DIRECTORY,
             media_content_type="directory",
-            title=f"{camera_id}",
+            title=MANUFACTURER,
             can_play=False,
             can_expand=True,
             thumbnail=None,
         )
-
         media.children = []
-        for source in SOURCES:
+
+        for doorstation in get_all_doorstations(self.hass):
+            camera_id = doorstation.slug
             media_source = BrowseMediaSource(
                 domain=DOMAIN,
-                identifier=f"{camera_id}/{source}",
+                identifier=f"{camera_id}",
                 media_class=MEDIA_CLASS_DIRECTORY,
                 media_content_type="directory",
-                title=f"{camera_id} {source}",
+                title=f"{camera_id}",
                 can_play=False,
                 can_expand=True,
                 thumbnail=None,
             )
-
             media.children.append(media_source)
-            media_source.children = []
-            for event_id in EVENT_IDS:
-                media_source.children.append(
-                    BrowseMediaSource(
-                        domain=DOMAIN,
-                        identifier=f"{camera_id}/{source}/{event_id}",
-                        media_class=MEDIA_CLASS_IMAGE,
-                        media_content_type=MEDIA_TYPE_IMAGE,
-                        title=f"{camera_id} {source} {event_id}",
-                        can_play=True,
-                        can_expand=False,
-                        thumbnail=None,
-                    )
-                )
 
-        _LOGGER.warning("MEDIA: %s", media)
         return media
 
 
