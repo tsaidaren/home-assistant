@@ -280,7 +280,7 @@ class ConfiguredDoorBird:
         return self._slug
 
     def _get_event_name(self, event):
-        return f"{self.slug}_{event}"
+        return f"{self._slug}_{event}"
 
     def _register_event(self, hass_url, event):
         """Add a schedule entry in the device for a sensor."""
