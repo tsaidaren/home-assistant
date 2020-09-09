@@ -110,6 +110,7 @@ class DoorBirdSource(MediaSource):
                     )
                 )
 
+        _LOGGER.warning("MEDIA: %s", media)
         return media
 
 
