@@ -5,7 +5,7 @@
   "requirements": ["doorbirdpy==2.1.0"],
   "dependencies": ["http"],
   "after_dependencies": ["media_source"],
-  "zeroconf": ["_axis-video._tcp.local."],
+  "zeroconf": [{"type":"_axis-video._tcp.local.","macaddress":"1CCAE3"}],
   "codeowners": ["@oblogic7", "@bdraco"],
   "config_flow": true
 }

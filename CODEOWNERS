@@ -437,7 +437,6 @@ homeassistant/components/threshold/* @fabaff
 homeassistant/components/tibber/* @danielhiversen
 homeassistant/components/tile/* @bachya
 homeassistant/components/time_date/* @fabaff
-homeassistant/components/time_interval/* @home-assistant/core
 homeassistant/components/tmb/* @alemuro
 homeassistant/components/todoist/* @boralyl
 homeassistant/components/toon/* @frenck
