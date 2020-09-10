@@ -66,7 +66,7 @@ class DoorBirdSource(MediaSource):
         except Unresolvable as err:
             raise BrowseError(str(err)) from err
 
-        if camera_slug is None or source is None:
+        if camera_slug is None:
             media = BrowseMediaSource(
                 domain=DOMAIN,
                 identifier=MANUFACTURER,
@@ -81,26 +81,52 @@ class DoorBirdSource(MediaSource):
             for doorstation in get_all_doorstations(self.hass):
                 camera_slug = doorstation.slug
                 camera_name = doorstation.name
-                for available_source in SOURCES:
-                    source_title = available_source.title()
-                    media.children.append(
-                        BrowseMediaSource(
-                            domain=DOMAIN,
-                            identifier=f"{camera_slug}/{source}",
-                            media_class=MEDIA_CLASS_DIRECTORY,
-                            media_content_type=MEDIA_TYPE_DIRECTORY,
-                            title=f"{camera_name} {source_title}",
-                            can_play=False,
-                            can_expand=True,
-                            thumbnail=None,
-                        )
+                media.children.append(
+                    BrowseMediaSource(
+                        domain=DOMAIN,
+                        identifier=f"{camera_slug}",
+                        media_class=MEDIA_CLASS_DIRECTORY,
+                        media_content_type=MEDIA_TYPE_DIRECTORY,
+                        title=f"{camera_name}",
+                        can_play=False,
+                        can_expand=True,
+                        thumbnail=None,
                     )
+                )
             return media
 
         doorstation = get_doorstation_by_slug(self.hass, camera_slug)
         camera_name = doorstation.name
-        source_title = source.title()
 
+        if source is None:
+            media = BrowseMediaSource(
+                domain=DOMAIN,
+                identifier=f"{camera_slug}",
+                media_class=MEDIA_CLASS_DIRECTORY,
+                media_content_type=MEDIA_TYPE_DIRECTORY,
+                title=f"{camera_name}",
+                can_play=False,
+                can_expand=True,
+                thumbnail=None,
+            )
+            media.children = []
+            for available_source in SOURCES:
+                source_title = available_source.title()
+                media.children.append(
+                    BrowseMediaSource(
+                        domain=DOMAIN,
+                        identifier=f"{camera_slug}/{source}",
+                        media_class=MEDIA_CLASS_DIRECTORY,
+                        media_content_type=MEDIA_TYPE_DIRECTORY,
+                        title=f"{camera_name} {source_title}",
+                        can_play=False,
+                        can_expand=True,
+                        thumbnail=None,
+                    )
+                )
+            return media
+
+        source_title = source.title()
         media = BrowseMediaSource(
             domain=DOMAIN,
             identifier=f"{camera_slug}/{source}",
