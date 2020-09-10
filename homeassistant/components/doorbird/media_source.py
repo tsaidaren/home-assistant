@@ -81,7 +81,7 @@ class DoorBirdSource(MediaSource):
             for doorstation in get_all_doorstations(self.hass):
                 camera_slug = doorstation.slug
                 camera_name = doorstation.name
-                source_tile = source.title()
+                source_title = source.title()
                 for source in SOURCES:
                     media.children.append(
                         BrowseMediaSource(
@@ -89,7 +89,7 @@ class DoorBirdSource(MediaSource):
                             identifier=f"{camera_slug}/{source}",
                             media_class=MEDIA_CLASS_DIRECTORY,
                             media_content_type=MEDIA_TYPE_DIRECTORY,
-                            title=f"{camera_name} {source_tile}",
+                            title=f"{camera_name} {source_title}",
                             can_play=False,
                             can_expand=True,
                             thumbnail=None,
@@ -99,14 +99,14 @@ class DoorBirdSource(MediaSource):
 
         doorstation = get_doorstation_by_slug(self.hass, camera_slug)
         camera_name = doorstation.name
-        source_tile = source.title()
+        source_title = source.title()
 
         media = BrowseMediaSource(
             domain=DOMAIN,
             identifier=f"{camera_slug}/{source}",
             media_class=MEDIA_CLASS_DIRECTORY,
             media_content_type=MEDIA_TYPE_DIRECTORY,
-            title=f"{camera_name} {source_tile}",
+            title=f"{camera_name} {source_title}",
             can_play=False,
             can_expand=True,
             thumbnail=None,
@@ -121,7 +121,7 @@ class DoorBirdSource(MediaSource):
                     identifier=f"{camera_slug}/{source}/{event_id}",
                     media_class=MEDIA_CLASS_IMAGE,
                     media_content_type=MEDIA_TYPE_IMAGE,
-                    title=f"{camera_name} {source_tile} Event {event_id}",
+                    title=f"{camera_name} {source_title} Event {event_id}",
                     can_play=True,
                     can_expand=False,
                     thumbnail=url,
