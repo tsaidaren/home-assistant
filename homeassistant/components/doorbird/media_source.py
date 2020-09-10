@@ -27,6 +27,8 @@ MIME_TYPE = "image/jpeg"
 MIN_EVENT_ID = 1
 MAX_EVENT_ID = 50
 
+MEDIA_TYPE_DIRECTORY = "directory"
+
 EVENT_IDS = range(MIN_EVENT_ID, MAX_EVENT_ID + 1)
 SOURCES = ["doorbell", "motion"]
 
@@ -64,25 +66,12 @@ class DoorBirdSource(MediaSource):
         except Unresolvable as err:
             raise BrowseError(str(err)) from err
 
-        _LOGGER.warning(
-            "async_parse_identifier: %s -> %s, %s, %s",
-            item,
-            camera_slug,
-            source,
-            event_id,
-        )
-
-        # if camera_id and not get_doorstation_by_slug(self.hass, camera_id):
-        #    raise BrowseError("Camera does not exist.")
-
-        # if event_id not in EVENT_IDS:
-        #    raise BrowseError("Event does not exist.")
         if camera_slug is None or source is None:
             media = BrowseMediaSource(
                 domain=DOMAIN,
                 identifier=MANUFACTURER,
                 media_class=MEDIA_CLASS_DIRECTORY,
-                media_content_type="directory",
+                media_content_type=MEDIA_TYPE_DIRECTORY,
                 title=MANUFACTURER,
                 can_play=False,
                 can_expand=True,
@@ -92,46 +81,52 @@ class DoorBirdSource(MediaSource):
             for doorstation in get_all_doorstations(self.hass):
                 camera_slug = doorstation.slug
                 camera_name = doorstation.name
+                source_tile = source.title()
                 for source in SOURCES:
                     media.children.append(
                         BrowseMediaSource(
                             domain=DOMAIN,
                             identifier=f"{camera_slug}/{source}",
                             media_class=MEDIA_CLASS_DIRECTORY,
-                            media_content_type="directory",
-                            title=f"{camera_name} {source}",
+                            media_content_type=MEDIA_TYPE_DIRECTORY,
+                            title=f"{camera_name} {source_tile}",
                             can_play=False,
                             can_expand=True,
                             thumbnail=None,
                         )
                     )
-        else:
-            doorstation = get_doorstation_by_slug(self.hass, camera_slug)
-            camera_name = doorstation.name
-            media = BrowseMediaSource(
-                domain=DOMAIN,
-                identifier=f"{camera_slug}/{source}",
-                media_class=MEDIA_CLASS_DIRECTORY,
-                media_content_type="directory",
-                title=f"{camera_name} {source}",
-                can_play=False,
-                can_expand=True,
-                thumbnail=None,
-            )
-            media.children = []
-            for event_id in EVENT_IDS:
-                media.children.append(
-                    BrowseMediaSource(
-                        domain=DOMAIN,
-                        identifier=f"{camera_slug}/{source}/{event_id}",
-                        media_class=MEDIA_CLASS_IMAGE,
-                        media_content_type=MEDIA_TYPE_IMAGE,
-                        title=f"{camera_slug} {source} {event_id}",
-                        can_play=True,
-                        can_expand=False,
-                        thumbnail=None,
-                    )
+            return media
+
+        doorstation = get_doorstation_by_slug(self.hass, camera_slug)
+        camera_name = doorstation.name
+        source_tile = source.title()
+
+        media = BrowseMediaSource(
+            domain=DOMAIN,
+            identifier=f"{camera_slug}/{source}",
+            media_class=MEDIA_CLASS_DIRECTORY,
+            media_content_type=MEDIA_TYPE_DIRECTORY,
+            title=f"{camera_name} {source_tile}",
+            can_play=False,
+            can_expand=True,
+            thumbnail=None,
+        )
+        media.children = []
+        for event_id in EVENT_IDS:
+            url = doorstation.device.history_image_url(event_id, source)
+
+            media.children.append(
+                BrowseMediaSource(
+                    domain=DOMAIN,
+                    identifier=f"{camera_slug}/{source}/{event_id}",
+                    media_class=MEDIA_CLASS_IMAGE,
+                    media_content_type=MEDIA_TYPE_IMAGE,
+                    title=f"{camera_name} {source_tile} Event {event_id}",
+                    can_play=True,
+                    can_expand=False,
+                    thumbnail=url,
                 )
+            )
 
         return media
 
