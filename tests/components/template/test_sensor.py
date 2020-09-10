@@ -760,10 +760,15 @@ async def test_sun_renders_once_per_sensor(hass):
     }
 
 
-async def test_entity_ids_tracked(hass):
-    """Test entity_ids changed without the entity in the template changing."""
+async def test_self_referencing_sensor_loop(hass, caplog):
+    """Test a self referencing sensor does not loop forever."""
 
-    hass.states.async_set("binary_sensor.xtime", "on")
+    template_str = """
+{% for state in states -%}
+  {{ state.last_updated }}
+{%- endfor %}
+"""
+
     await async_setup_component(
         hass,
         "sensor",
@@ -771,9 +776,8 @@ async def test_entity_ids_tracked(hass):
             "sensor": {
                 "platform": "template",
                 "sensors": {
-                    "now": {
-                        "entity_id": "binary_sensor.xtime",
-                        "value_template": "{{ now() }}",
+                    "test": {
+                        "value_template": template_str,
                     },
                 },
             }
@@ -784,83 +788,17 @@ async def test_entity_ids_tracked(hass):
     await hass.async_start()
     await hass.async_block_till_done()
 
-    assert len(hass.states.async_all()) == 2
+    assert len(hass.states.async_all()) == 1
 
-    assert hass.states.get("sensor.now")
-
-    original_state = hass.states.get("sensor.now").state
-    hass.states.async_set("binary_sensor.xtime", "off")
-    await hass.async_block_till_done()
-    assert hass.states.get("sensor.now").state != original_state
-    new_state = hass.states.get("sensor.now").state
-
-    hass.states.async_set("binary_sensor.xtime", "off")
-    await hass.async_block_till_done()
-    assert hass.states.get("sensor.now").state == new_state
-
-    hass.states.async_set("binary_sensor.xtime", "on")
-    await hass.async_block_till_done()
-    assert hass.states.get("sensor.now").state != new_state
-    third_state = hass.states.get("sensor.now").state
-
-    hass.states.async_set("binary_sensor.xtime", "off")
-    await hass.async_block_till_done()
-    assert hass.states.get("sensor.now").state != third_state
-    forth_state = hass.states.get("sensor.now").state
-
-    hass.states.async_set("binary_sensor.xtime", "on")
-    await hass.async_block_till_done()
-    assert hass.states.get("sensor.now").state != forth_state
-
-
-async def test_entity_ids_and_template_has_the_same_tracked(hass):
-    """Test entity_ids changed without the entity in the template changing."""
-
-    hass.states.async_set("binary_sensor.xtime", "on")
-    await async_setup_component(
-        hass,
-        "sensor",
-        {
-            "sensor": {
-                "platform": "template",
-                "sensors": {
-                    "now": {
-                        "entity_id": "binary_sensor.xtime",
-                        "value_template": "{{ states.binary_sensor.xtime.state and now() }}",
-                    },
-                },
-            }
-        },
-    )
-
-    await hass.async_block_till_done()
-    await hass.async_start()
+    value = hass.states.get("sensor.test").state
     await hass.async_block_till_done()
 
-    assert len(hass.states.async_all()) == 2
+    value2 = hass.states.get("sensor.test").state
+    assert value2 == value
 
-    assert hass.states.get("sensor.now")
-
-    original_state = hass.states.get("sensor.now").state
-    hass.states.async_set("binary_sensor.xtime", "off")
     await hass.async_block_till_done()
-    assert hass.states.get("sensor.now").state != original_state
-    new_state = hass.states.get("sensor.now").state
 
-    hass.states.async_set("binary_sensor.xtime", "off")
-    await hass.async_block_till_done()
-    assert hass.states.get("sensor.now").state == new_state
+    value3 = hass.states.get("sensor.test").state
+    assert value3 == value2
 
-    hass.states.async_set("binary_sensor.xtime", "on")
-    await hass.async_block_till_done()
-    assert hass.states.get("sensor.now").state != new_state
-    third_state = hass.states.get("sensor.now").state
-
-    hass.states.async_set("binary_sensor.xtime", "off")
-    await hass.async_block_till_done()
-    assert hass.states.get("sensor.now").state != third_state
-    forth_state = hass.states.get("sensor.now").state
-
-    hass.states.async_set("binary_sensor.xtime", "on")
-    await hass.async_block_till_done()
-    assert hass.states.get("sensor.now").state != forth_state
+    assert "Template loop detected" in caplog.text

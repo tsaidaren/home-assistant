@@ -352,7 +352,7 @@ ha-ffmpeg==2.0
 hangups==0.4.10
 
 # homeassistant.components.cloud
-hass-nabucasa==0.36.1
+hass-nabucasa==0.37.0
 
 # homeassistant.components.jewish_calendar
 hdate==0.9.5
@@ -583,7 +583,7 @@ pyMetno==0.8.1
 pyRFXtrx==0.25
 
 # homeassistant.components.tibber
-pyTibber==0.14.0
+pyTibber==0.15.2
 
 # homeassistant.components.nextbus
 py_nextbusnext==0.1.4
@@ -782,7 +782,7 @@ pysignalclirestapi==0.3.4
 pysma==0.3.5
 
 # homeassistant.components.smappee
-pysmappee==0.2.10
+pysmappee==0.2.13
 
 # homeassistant.components.smartthings
 pysmartapp==0.3.2
@@ -912,7 +912,7 @@ samsungtvws[websocket]==1.4.0
 sense_energy==0.8.0
 
 # homeassistant.components.sentry
-sentry-sdk==0.17.3
+sentry-sdk==0.17.4
 
 # homeassistant.components.sharkiq
 sharkiqpy==0.1.8
