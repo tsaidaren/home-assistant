@@ -119,7 +119,7 @@ class DoorBirdSource(MediaSource):
                 media.children.append(
                     BrowseMediaSource(
                         domain=DOMAIN,
-                        identifier=f"{camera_slug}/{source}",
+                        identifier=f"{camera_slug}/{available_source}",
                         media_class=MEDIA_CLASS_DIRECTORY,
                         media_content_type=MEDIA_TYPE_DIRECTORY,
                         title=f"{camera_name} {source_title}",
