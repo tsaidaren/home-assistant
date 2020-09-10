@@ -1,6 +1,5 @@
 """Helpers for components that manage entities."""
 import asyncio
-from contextvars import ContextVar
 from datetime import timedelta
 from itertools import chain
 import logging
@@ -137,8 +136,6 @@ class EntityComponent:
 
     async def async_setup_entry(self, config_entry: ConfigEntry) -> bool:
         """Set up a config entry."""
-        current_component.set(self)
-
         platform_type = config_entry.domain
         platform = await async_prepare_setup_platform(
             self.hass,
@@ -219,8 +216,6 @@ class EntityComponent:
         """Set up a platform for this component."""
         if self.config is None:
             raise RuntimeError("async_setup needs to be called first")
-
-        current_component.set(self)
 
         platform = await async_prepare_setup_platform(
             self.hass, self.config, self.domain, platform_type
@@ -323,8 +318,3 @@ class EntityComponent:
             scan_interval=scan_interval,
             entity_namespace=entity_namespace,
         )
-
-
-current_component: ContextVar[Optional[EntityComponent]] = ContextVar(
-    "current_component", default=None
-)
