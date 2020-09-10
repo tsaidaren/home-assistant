@@ -70,7 +70,7 @@ class DoorBirdSource(MediaSource):
         if camera_slug is None:
             media = BrowseMediaSource(
                 domain=DOMAIN,
-                identifier=MANUFACTURER,
+                identifier="",
                 media_class=MEDIA_CLASS_DIRECTORY,
                 media_content_type=MEDIA_TYPE_DIRECTORY,
                 title=MANUFACTURER,
