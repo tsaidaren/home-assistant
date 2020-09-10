@@ -160,6 +160,8 @@ def async_parse_identifier(
 ) -> Tuple[str, str, Optional[int]]:
     """Parse identifier."""
 
+    _LOGGER.warning("async_parse_identifier: %s", item.identifier)
+
     if not item.identifier:
         return None, None, None
 
