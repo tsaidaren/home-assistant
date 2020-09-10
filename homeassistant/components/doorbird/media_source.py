@@ -66,6 +66,10 @@ class DoorBirdSource(MediaSource):
         except Unresolvable as err:
             raise BrowseError(str(err)) from err
 
+        _LOGGER.warning(
+            "camera_slug: %s, source: %s, event_id: %s", camera_slug, source, event_id
+        )
+
         if camera_slug is None:
             media = BrowseMediaSource(
                 domain=DOMAIN,
