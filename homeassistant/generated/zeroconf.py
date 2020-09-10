@@ -69,6 +69,9 @@ ZEROCONF = {
             "domain": "homekit_controller"
         }
     ],
+    "_homekit._tcp.local.": [
+        "homekit"
+    ],
     "_http._tcp.local.": [
         {
             "domain": "shelly",
