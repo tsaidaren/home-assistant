@@ -30,7 +30,8 @@ MAX_EVENT_ID = 50
 MEDIA_TYPE_DIRECTORY = "directory"
 
 EVENT_IDS = range(MIN_EVENT_ID, MAX_EVENT_ID + 1)
-SOURCES = ["doorbell", "motion"]
+SOURCES = ["doorbell", "motionsensor"]
+SOURCE_NAMES = {"doorbell": "Doorbell", "motionsensor": "Motion Sensor"}
 
 
 async def async_get_media_source(hass: HomeAssistant):
@@ -65,10 +66,6 @@ class DoorBirdSource(MediaSource):
             camera_slug, source, event_id = async_parse_identifier(item)
         except Unresolvable as err:
             raise BrowseError(str(err)) from err
-
-        _LOGGER.warning(
-            "camera_slug: %s, source: %s, event_id: %s", camera_slug, source, event_id
-        )
 
         if camera_slug is None:
             media = BrowseMediaSource(
@@ -115,14 +112,13 @@ class DoorBirdSource(MediaSource):
             )
             media.children = []
             for available_source in SOURCES:
-                source_title = available_source.title()
                 media.children.append(
                     BrowseMediaSource(
                         domain=DOMAIN,
                         identifier=f"{camera_slug}/{available_source}",
                         media_class=MEDIA_CLASS_DIRECTORY,
                         media_content_type=MEDIA_TYPE_DIRECTORY,
-                        title=source_title,
+                        title=SOURCE_NAMES[available_source],
                         can_play=False,
                         can_expand=True,
                         thumbnail=None,
@@ -130,21 +126,18 @@ class DoorBirdSource(MediaSource):
                 )
             return media
 
-        source_title = source.title()
         media = BrowseMediaSource(
             domain=DOMAIN,
             identifier=f"{camera_slug}/{source}",
             media_class=MEDIA_CLASS_DIRECTORY,
             media_content_type=MEDIA_TYPE_DIRECTORY,
-            title=source_title,
+            title=SOURCE_NAMES[source],
             can_play=False,
             can_expand=True,
             thumbnail=None,
         )
         media.children = []
         for event_id in EVENT_IDS:
-            url = doorstation.device.history_image_url(event_id, source)
-
             media.children.append(
                 BrowseMediaSource(
                     domain=DOMAIN,
@@ -154,7 +147,7 @@ class DoorBirdSource(MediaSource):
                     title=f"Event {event_id}",
                     can_play=True,
                     can_expand=False,
-                    thumbnail=url,
+                    thumbnail=None,
                 )
             )
 
@@ -166,8 +159,6 @@ def async_parse_identifier(
     item: MediaSourceItem,
 ) -> Tuple[str, str, Optional[int]]:
     """Parse identifier."""
-
-    _LOGGER.warning("async_parse_identifier: %s", item.identifier)
 
     if not item.identifier:
         return None, None, None
