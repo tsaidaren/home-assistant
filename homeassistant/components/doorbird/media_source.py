@@ -81,8 +81,8 @@ class DoorBirdSource(MediaSource):
             for doorstation in get_all_doorstations(self.hass):
                 camera_slug = doorstation.slug
                 camera_name = doorstation.name
-                source_title = source.title()
-                for source in SOURCES:
+                for available_source in SOURCES:
+                    source_title = available_source.title()
                     media.children.append(
                         BrowseMediaSource(
                             domain=DOMAIN,
