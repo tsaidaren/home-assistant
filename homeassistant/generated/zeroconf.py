@@ -19,19 +19,19 @@ ZEROCONF = {
     "_axis-video._tcp.local.": [
         {
             "domain": "axis",
-            "macaddress": "00408C"
+            "macaddress": "00408C*"
         },
         {
             "domain": "axis",
-            "macaddress": "ACCC8E"
+            "macaddress": "ACCC8E*"
         },
         {
             "domain": "axis",
-            "macaddress": "B8A44F"
+            "macaddress": "B8A44F*"
         },
         {
             "domain": "doorbird",
-            "macaddress": "1CCAE3"
+            "macaddress": "1CCAE3*"
         }
     ],
     "_bond._tcp.local.": [
@@ -72,7 +72,7 @@ ZEROCONF = {
     "_http._tcp.local.": [
         {
             "domain": "shelly",
-            "name": "shelly"
+            "name": "shelly*"
         }
     ],
     "_ipp._tcp.local.": [
@@ -106,7 +106,7 @@ ZEROCONF = {
     "_printer._tcp.local.": [
         {
             "domain": "brother",
-            "name": "brother"
+            "name": "brother*"
         }
     ],
     "_spotify-connect._tcp.local.": [
@@ -117,11 +117,11 @@ ZEROCONF = {
     "_ssh._tcp.local.": [
         {
             "domain": "smappee",
-            "name": "smappee1"
+            "name": "smappee1*"
         },
         {
             "domain": "smappee",
-            "name": "smappee2"
+            "name": "smappee2*"
         }
     ],
     "_viziocast._tcp.local.": [
