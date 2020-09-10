@@ -48,9 +48,9 @@ class DoorBirdSource(MediaSource):
 
     async def async_resolve_media(self, item: MediaSourceItem) -> PlayMedia:
         """Resolve media to a url."""
-        source, camera_id, event_id = async_parse_identifier(item)
+        camera_slug, source, event_id = async_parse_identifier(item)
 
-        doorstation = get_doorstation_by_slug(self.hass, camera_id)
+        doorstation = get_doorstation_by_slug(self.hass, camera_slug)
         url = doorstation.device.history_image_url(event_id, source)
 
         return PlayMedia(url, MIME_TYPE)
@@ -77,49 +77,48 @@ class DoorBirdSource(MediaSource):
 
         # if event_id not in EVENT_IDS:
         #    raise BrowseError("Event does not exist.")
-
-        media = BrowseMediaSource(
-            domain=DOMAIN,
-            identifier=MANUFACTURER,
-            media_class=MEDIA_CLASS_DIRECTORY,
-            media_content_type="directory",
-            title=MANUFACTURER,
-            can_play=False,
-            can_expand=True,
-            thumbnail=None,
-        )
-        media.children = []
-
-        if camera_slug is None:
+        if camera_slug is None or source is None:
+            media = BrowseMediaSource(
+                domain=DOMAIN,
+                identifier=MANUFACTURER,
+                media_class=MEDIA_CLASS_DIRECTORY,
+                media_content_type="directory",
+                title=MANUFACTURER,
+                can_play=False,
+                can_expand=True,
+                thumbnail=None,
+            )
+            media.children = []
             for doorstation in get_all_doorstations(self.hass):
-                camera_id = doorstation.slug
-                media.children.append(
-                    BrowseMediaSource(
-                        domain=DOMAIN,
-                        identifier=f"{camera_id}",
-                        media_class=MEDIA_CLASS_DIRECTORY,
-                        media_content_type="directory",
-                        title=f"{camera_id}",
-                        can_play=False,
-                        can_expand=True,
-                        thumbnail=None,
+                camera_slug = doorstation.slug
+                camera_name = doorstation.name
+                for source in SOURCES:
+                    media.children.append(
+                        BrowseMediaSource(
+                            domain=DOMAIN,
+                            identifier=f"{camera_slug}/{source}",
+                            media_class=MEDIA_CLASS_DIRECTORY,
+                            media_content_type="directory",
+                            title=f"{camera_name} {source}",
+                            can_play=False,
+                            can_expand=True,
+                            thumbnail=None,
+                        )
                     )
-                )
-        elif source is None:
-            for source in SOURCES:
-                media.children.append(
-                    BrowseMediaSource(
-                        domain=DOMAIN,
-                        identifier=f"{camera_slug}/{source}",
-                        media_class=MEDIA_CLASS_DIRECTORY,
-                        media_content_type="directory",
-                        title=f"{camera_slug} {source}",
-                        can_play=False,
-                        can_expand=True,
-                        thumbnail=None,
-                    )
-                )
-        elif event_id is None:
+        else:
+            doorstation = get_doorstation_by_slug(self.hass, camera_slug)
+            camera_name = doorstation.name
+            media = BrowseMediaSource(
+                domain=DOMAIN,
+                identifier=f"{camera_slug}/{source}",
+                media_class=MEDIA_CLASS_DIRECTORY,
+                media_content_type="directory",
+                title=f"{camera_name} {source}",
+                can_play=False,
+                can_expand=True,
+                thumbnail=None,
+            )
+            media.children = []
             for event_id in EVENT_IDS:
                 media.children.append(
                     BrowseMediaSource(
@@ -133,6 +132,7 @@ class DoorBirdSource(MediaSource):
                         thumbnail=None,
                     )
                 )
+
         return media
 
 
