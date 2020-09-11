@@ -139,6 +139,53 @@ class HaZeroconf(Zeroconf):
     ha_close = Zeroconf.close
 
 
+async def async_setup(hass, config):
+    """Set up Zeroconf and make Home Assistant discoverable."""
+    import cProfile
+
+    pr = cProfile.Profile()
+    pr.enable()
+    zc_config = config.get(DOMAIN, {})
+    zeroconf = hass.data[DOMAIN] = await hass.async_add_executor_job(
+        partial(
+            _get_instance,
+            hass,
+            default_interface=zc_config.get(
+                CONF_DEFAULT_INTERFACE, DEFAULT_DEFAULT_INTERFACE
+            ),
+            ipv6=zc_config.get(CONF_IPV6, DEFAULT_IPV6),
+        )
+    )
+
+    install_multiple_zeroconf_catcher(zeroconf)
+
+    async def _async_zeroconf_hass_start(_event):
+        """Expose Home Assistant on zeroconf when it starts.
+
+        Wait till started or otherwise HTTP is not up and running.
+        """
+        uuid = await hass.helpers.instance_id.async_get()
+        await hass.async_add_executor_job(
+            _register_hass_zc_service, hass, zeroconf, uuid
+        )
+
+    async def _async_zeroconf_hass_started(_event):
+        """Start the service browser."""
+
+        await _async_start_zeroconf_browser(hass, zeroconf)
+
+    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, _async_zeroconf_hass_start)
+    hass.bus.async_listen_once(
+        EVENT_HOMEASSISTANT_STARTED, _async_zeroconf_hass_started
+    )
+
+    pr.disable()
+    pr.create_stats()
+    pr.dump_stats("zc.cprof")
+
+    return True
+
+
 def _register_hass_zc_service(hass, zeroconf, uuid):
     # Get instance UUID
     valid_location_name = _truncate_location_name_to_valid(hass.config.location_name)
@@ -194,53 +241,6 @@ def _register_hass_zc_service(hass, zeroconf, uuid):
         _LOGGER.error(
             "Home Assistant instance with identical name present in the local network"
         )
-
-
-async def async_setup(hass, config):
-    """Set up Zeroconf and make Home Assistant discoverable."""
-    import cProfile
-
-    pr = cProfile.Profile()
-    pr.enable()
-    zc_config = config.get(DOMAIN, {})
-    zeroconf = hass.data[DOMAIN] = await hass.async_add_executor_job(
-        partial(
-            _get_instance,
-            hass,
-            default_interface=zc_config.get(
-                CONF_DEFAULT_INTERFACE, DEFAULT_DEFAULT_INTERFACE
-            ),
-            ipv6=zc_config.get(CONF_IPV6, DEFAULT_IPV6),
-        )
-    )
-
-    install_multiple_zeroconf_catcher(zeroconf)
-
-    async def _async_zeroconf_hass_start(_event):
-        """Expose Home Assistant on zeroconf when it starts.
-
-        Wait till started or otherwise HTTP is not up and running.
-        """
-        uuid = await hass.helpers.instance_id.async_get()
-        await hass.async_add_executor_job(
-            _register_hass_zc_service, hass, zeroconf, uuid
-        )
-
-    async def _async_zeroconf_hass_started(_event):
-        """Start the service browser."""
-
-        await _async_start_zeroconf_browser(hass, zeroconf)
-
-    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, _async_zeroconf_hass_start)
-    hass.bus.async_listen_once(
-        EVENT_HOMEASSISTANT_STARTED, _async_zeroconf_hass_started
-    )
-
-    pr.disable()
-    pr.create_stats()
-    pr.dump_stats("zc.cprof")
-
-    return True
 
 
 async def _async_start_zeroconf_browser(hass, zeroconf):
