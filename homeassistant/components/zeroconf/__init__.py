@@ -198,6 +198,10 @@ def _register_hass_zc_service(hass, zeroconf):
 
 def setup(hass, config):
     """Set up Zeroconf and make Home Assistant discoverable."""
+    import cProfile
+
+    pr = cProfile.Profile()
+    pr.enable()
     zc_config = config.get(DOMAIN, {})
     zeroconf = hass.data[DOMAIN] = _get_instance(
         hass,
@@ -223,6 +227,11 @@ def setup(hass, config):
 
     hass.bus.listen_once(EVENT_HOMEASSISTANT_START, _zeroconf_hass_start)
     hass.bus.listen_once(EVENT_HOMEASSISTANT_STARTED, _zeroconf_hass_started)
+
+    pr.disable()
+    pr.create_stats()
+    pr.dump_stats("zc.cprof")
+
     return True
 
 
