@@ -141,10 +141,7 @@ class HaZeroconf(Zeroconf):
 
 async def async_setup(hass, config):
     """Set up Zeroconf and make Home Assistant discoverable."""
-    import cProfile
 
-    pr = cProfile.Profile()
-    pr.enable()
     zc_config = config.get(DOMAIN, {})
     zeroconf = hass.data[DOMAIN] = await hass.async_add_executor_job(
         partial(
@@ -178,10 +175,6 @@ async def async_setup(hass, config):
     hass.bus.async_listen_once(
         EVENT_HOMEASSISTANT_STARTED, _async_zeroconf_hass_started
     )
-
-    pr.disable()
-    pr.create_stats()
-    pr.dump_stats("zc.cprof")
 
     return True
 
