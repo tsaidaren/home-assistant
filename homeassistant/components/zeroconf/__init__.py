@@ -88,27 +88,6 @@ async def async_get_instance(hass):
     return hass.data[DOMAIN]
 
 
-def _get_instance(hass, default_interface=False, ipv6=True):
-    """Create an instance."""
-    logging.getLogger("zeroconf").setLevel(logging.NOTSET)
-
-    zc_args = {}
-    if default_interface:
-        zc_args["interfaces"] = InterfaceChoice.Default
-    if not ipv6:
-        zc_args["ip_version"] = IPVersion.V4Only
-
-    zeroconf = HaZeroconf(**zc_args)
-
-    def stop_zeroconf(_):
-        """Stop Zeroconf."""
-        zeroconf.ha_close()
-
-    hass.bus.listen_once(EVENT_HOMEASSISTANT_STOP, stop_zeroconf)
-
-    return zeroconf
-
-
 class HaServiceBrowser(ServiceBrowser):
     """ServiceBrowser that only consumes DNSPointer records."""
 
@@ -141,17 +120,17 @@ class HaZeroconf(Zeroconf):
 
 async def async_setup(hass, config):
     """Set up Zeroconf and make Home Assistant discoverable."""
+    logging.getLogger("zeroconf").setLevel(logging.NOTSET)
 
     zc_config = config.get(DOMAIN, {})
+    zc_args = {}
+    if zc_config.get(CONF_DEFAULT_INTERFACE, DEFAULT_DEFAULT_INTERFACE):
+        zc_args["interfaces"] = InterfaceChoice.Default
+    if not zc_config.get(CONF_IPV6, DEFAULT_IPV6):
+        zc_args["ip_version"] = IPVersion.V4Only
+
     zeroconf = hass.data[DOMAIN] = await hass.async_add_executor_job(
-        partial(
-            _get_instance,
-            hass,
-            default_interface=zc_config.get(
-                CONF_DEFAULT_INTERFACE, DEFAULT_DEFAULT_INTERFACE
-            ),
-            ipv6=zc_config.get(CONF_IPV6, DEFAULT_IPV6),
-        )
+        partial(HaZeroconf, **zc_args)
     )
 
     install_multiple_zeroconf_catcher(zeroconf)
@@ -171,6 +150,11 @@ async def async_setup(hass, config):
 
         await _async_start_zeroconf_browser(hass, zeroconf)
 
+    def _stop_zeroconf(_):
+        """Stop Zeroconf."""
+        zeroconf.ha_close()
+
+    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, _stop_zeroconf)
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, _async_zeroconf_hass_start)
     hass.bus.async_listen_once(
         EVENT_HOMEASSISTANT_STARTED, _async_zeroconf_hass_started
