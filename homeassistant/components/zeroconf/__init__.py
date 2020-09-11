@@ -83,7 +83,7 @@ async def async_get_instance(hass):
     """Zeroconf instance to be shared with other integrations that use it."""
     if DOMAIN not in hass.data:
         raise HomeAssistantError(
-            "async_get_instance called before zeroconf was setup. Ensure zeroconf is added to after_dependencies in manifest.json"
+            "async_get_instance called before zeroconf was setup. Ensure zeroconf is added to dependencies in manifest.json"
         )
     return hass.data[DOMAIN]
 
