@@ -464,6 +464,7 @@ async def test_info_from_service_with_addresses(hass):
 
 async def test_get_instance(hass, mock_zeroconf):
     """Test we get an instance."""
+    assert await async_setup_component(hass, zeroconf.DOMAIN, {zeroconf.DOMAIN: {}})
     assert await hass.components.zeroconf.async_get_instance() is mock_zeroconf
     hass.bus.async_fire(EVENT_HOMEASSISTANT_STOP)
     await hass.async_block_till_done()
