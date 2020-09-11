@@ -209,17 +209,33 @@ def setup(hass, config):
 
     install_multiple_zeroconf_catcher(zeroconf)
 
-    def zeroconf_hass_start(_event):
+    def _zeroconf_hass_start(_event):
         """Expose Home Assistant on zeroconf when it starts.
 
         Wait till started or otherwise HTTP is not up and running.
         """
         _register_hass_zc_service(hass, zeroconf)
 
-    hass.bus.listen_once(EVENT_HOMEASSISTANT_START, zeroconf_hass_start)
+    async def _zeroconf_hass_started(_event):
+        """Start the service browser."""
 
-    zeroconf_types = {}
-    homekit_models = {}
+        await _async_start_zeroconf_browser(hass, zeroconf)
+
+    hass.bus.listen_once(EVENT_HOMEASSISTANT_START, _zeroconf_hass_start)
+    hass.bus.listen_once(EVENT_HOMEASSISTANT_STARTED, _zeroconf_hass_started)
+    return True
+
+
+async def _async_start_zeroconf_browser(hass, zeroconf):
+    """Start the zeroconf browser."""
+
+    zeroconf_types = await async_get_zeroconf(hass)
+    homekit_models = await async_get_homekit(hass)
+
+    types = list(zeroconf_types)
+
+    if HOMEKIT_TYPE not in zeroconf_types:
+        types.append(HOMEKIT_TYPE)
 
     def service_update(zeroconf, service_type, name, state_change):
         """Service state changed."""
@@ -296,25 +312,8 @@ def setup(hass, config):
                 )
             )
 
-    async def zeroconf_hass_started(_event):
-        """Start the service browser."""
-        nonlocal zeroconf_types
-        nonlocal homekit_models
-
-        zeroconf_types = await async_get_zeroconf(hass)
-        homekit_models = await async_get_homekit(hass)
-
-        types = list(zeroconf_types)
-
-        if HOMEKIT_TYPE not in zeroconf_types:
-            types.append(HOMEKIT_TYPE)
-
-        _LOGGER.debug("Starting Zeroconf browser")
-        HaServiceBrowser(zeroconf, types, handlers=[service_update])
-
-    hass.bus.listen_once(EVENT_HOMEASSISTANT_STARTED, zeroconf_hass_started)
-
-    return True
+    _LOGGER.debug("Starting Zeroconf browser")
+    HaServiceBrowser(zeroconf, types, handlers=[service_update])
 
 
 def handle_homekit(hass, homekit_models, info) -> bool:
