@@ -384,11 +384,13 @@ class HomekitControllerFlowHandler(config_entries.ConfigFlow):
     @callback
     def _async_step_pair_show_form(self, errors=None):
         # pylint: disable=no-member # https://github.com/PyCQA/pylint/issues/3167
-        self.context["title_placeholders"] = {"name": self.name, "model": self.model}
+        placeholders = {"name": self.name, "model": self.model}
+        self.context["title_placeholders"] = placeholders
 
         return self.async_show_form(
             step_id="pair",
             errors=errors or {},
+            description_placeholders=placeholders,
             data_schema=vol.Schema(
                 {vol.Required("pairing_code"): vol.All(str, vol.Strip)}
             ),
