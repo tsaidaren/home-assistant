@@ -16,6 +16,8 @@ HOMEKIT_IGNORE = ["Home Assistant Bridge"]
 HOMEKIT_DIR = ".homekit"
 PAIRING_FILE = "pairing.json"
 
+MDNS_SUFFIX = "._hap._tcp.local."
+
 PIN_FORMAT = re.compile(r"^(\d{3})-{0,1}(\d{2})-{0,1}(\d{3})$")
 
 _LOGGER = logging.getLogger(__name__)
@@ -96,7 +98,7 @@ class HomekitControllerFlowHandler(config_entries.ConfigFlow):
             key = user_input["device"]
             self.hkid = self.devices[key].device_id
             self.model = self.devices[key].info["md"]
-            self.name = key
+            self.name = key[: -len(MDNS_SUFFIX)] if key.endswith(MDNS_SUFFIX) else key
             await self.async_set_unique_id(
                 normalize_hkid(self.hkid), raise_on_progress=False
             )
