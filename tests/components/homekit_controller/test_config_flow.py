@@ -184,7 +184,7 @@ async def test_discovery_works(hass, controller, upper_case_props, missing_cshar
     assert get_flow_context(hass, result) == {
         "hkid": "00:00:00:00:00:00",
         "source": "zeroconf",
-        "title_placeholders": {"name": "TestDevice", "model": "TestDevice"},
+        "title_placeholders": {"name": "TestDevice"},
         "unique_id": "00:00:00:00:00:00",
     }
 
@@ -405,7 +405,7 @@ async def test_pair_form_errors_on_start(hass, controller, exception, expected):
 
     assert get_flow_context(hass, result) == {
         "hkid": "00:00:00:00:00:00",
-        "title_placeholders": {"name": "TestDevice", "model": "TestDevice"},
+        "title_placeholders": {"name": "TestDevice"},
         "unique_id": "00:00:00:00:00:00",
         "source": "zeroconf",
     }
@@ -421,7 +421,7 @@ async def test_pair_form_errors_on_start(hass, controller, exception, expected):
 
     assert get_flow_context(hass, result) == {
         "hkid": "00:00:00:00:00:00",
-        "title_placeholders": {"name": "TestDevice", "model": "TestDevice"},
+        "title_placeholders": {"name": "TestDevice"},
         "unique_id": "00:00:00:00:00:00",
         "source": "zeroconf",
     }
@@ -453,7 +453,7 @@ async def test_pair_abort_errors_on_finish(hass, controller, exception, expected
 
     assert get_flow_context(hass, result) == {
         "hkid": "00:00:00:00:00:00",
-        "title_placeholders": {"name": "TestDevice", "model": "TestDevice"},
+        "title_placeholders": {"name": "TestDevice"},
         "unique_id": "00:00:00:00:00:00",
         "source": "zeroconf",
     }
@@ -467,7 +467,7 @@ async def test_pair_abort_errors_on_finish(hass, controller, exception, expected
     assert result["type"] == "form"
     assert get_flow_context(hass, result) == {
         "hkid": "00:00:00:00:00:00",
-        "title_placeholders": {"name": "TestDevice", "model": "TestDevice"},
+        "title_placeholders": {"name": "TestDevice"},
         "unique_id": "00:00:00:00:00:00",
         "source": "zeroconf",
     }
@@ -493,7 +493,7 @@ async def test_pair_form_errors_on_finish(hass, controller, exception, expected)
 
     assert get_flow_context(hass, result) == {
         "hkid": "00:00:00:00:00:00",
-        "title_placeholders": {"name": "TestDevice", "model": "TestDevice"},
+        "title_placeholders": {"name": "TestDevice"},
         "unique_id": "00:00:00:00:00:00",
         "source": "zeroconf",
     }
@@ -507,7 +507,7 @@ async def test_pair_form_errors_on_finish(hass, controller, exception, expected)
     assert result["type"] == "form"
     assert get_flow_context(hass, result) == {
         "hkid": "00:00:00:00:00:00",
-        "title_placeholders": {"name": "TestDevice", "model": "TestDevice"},
+        "title_placeholders": {"name": "TestDevice"},
         "unique_id": "00:00:00:00:00:00",
         "source": "zeroconf",
     }
@@ -521,7 +521,7 @@ async def test_pair_form_errors_on_finish(hass, controller, exception, expected)
 
     assert get_flow_context(hass, result) == {
         "hkid": "00:00:00:00:00:00",
-        "title_placeholders": {"name": "TestDevice", "model": "TestDevice"},
+        "title_placeholders": {"name": "TestDevice"},
         "unique_id": "00:00:00:00:00:00",
         "source": "zeroconf",
     }
@@ -551,7 +551,7 @@ async def test_user_works(hass, controller):
     assert get_flow_context(hass, result) == {
         "source": "user",
         "unique_id": "00:00:00:00:00:00",
-        "title_placeholders": {"model": "TestDevice", "name": "TestDevice"},
+        "title_placeholders": {"name": "TestDevice"},
     }
 
     result = await hass.config_entries.flow.async_configure(
@@ -601,7 +601,7 @@ async def test_unignore_works(hass, controller):
     assert result["step_id"] == "pair"
     assert get_flow_context(hass, result) == {
         "hkid": "00:00:00:00:00:00",
-        "title_placeholders": {"name": "TestDevice", "model": "TestDevice"},
+        "title_placeholders": {"name": "TestDevice"},
         "unique_id": "00:00:00:00:00:00",
         "source": "unignore",
     }
