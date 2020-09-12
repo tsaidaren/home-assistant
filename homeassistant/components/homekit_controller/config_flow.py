@@ -49,7 +49,7 @@ def ensure_pin_format(pin):
 
     If incorrect code is entered, an exception is raised.
     """
-    match = PIN_FORMAT.search(pin)
+    match = PIN_FORMAT.search(pin.strip())
     if not match:
         raise aiohomekit.exceptions.MalformedPinError(f"Invalid PIN code f{pin}")
     return "-".join(match.groups())
