@@ -11,8 +11,8 @@
         }
       },
       "pair": {
-        "title": "Pair with HomeKit Accessory",
-        "description": "{model} will be controlled via HomeKit Accessory Protocol without the need for a separate HomeKit controller. Enter your HomeKit pairing code (in the format XXX-XX-XXX) to use this accessory",
+        "title": "Pair with HomeKit Accessory {model}",
+        "description": "The device will be controlled via HomeKit Accessory Protocol without the need for a separate HomeKit controller. Enter your HomeKit pairing code (in the format XXX-XX-XXX) to use this accessory",
         "data": {
           "pairing_code": "Pairing Code"
         }
