@@ -78,6 +78,7 @@ class HomekitControllerFlowHandler(config_entries.ConfigFlow):
         """Initialize the homekit_controller flow."""
         self.model = None
         self.hkid = None
+        self.name = None
         self.devices = {}
         self.controller = None
         self.finish_pairing = None
@@ -95,12 +96,11 @@ class HomekitControllerFlowHandler(config_entries.ConfigFlow):
             key = user_input["device"]
             self.hkid = self.devices[key].device_id
             self.model = self.devices[key].info["md"]
+            self.name = key
             await self.async_set_unique_id(
                 normalize_hkid(self.hkid), raise_on_progress=False
             )
-            # pylint: disable=no-member # https://github.com/PyCQA/pylint/issues/3167
-            self.context["hkid"] = self.hkid
-            self.context["title_placeholders"] = {"name": key, "model": self.model}
+
             return await self.async_step_pair()
 
         if self.controller is None:
@@ -220,7 +220,6 @@ class HomekitControllerFlowHandler(config_entries.ConfigFlow):
 
         # pylint: disable=no-member # https://github.com/PyCQA/pylint/issues/3167
         self.context["hkid"] = hkid
-        self.context["title_placeholders"] = {"name": name, "model": self.model}
 
         if paired:
             # Device is paired but not to us - ignore it
@@ -233,6 +232,7 @@ class HomekitControllerFlowHandler(config_entries.ConfigFlow):
         if model in HOMEKIT_IGNORE:
             return self.async_abort(reason="ignored_model")
 
+        self.name = name
         self.model = model
         self.hkid = hkid
 
@@ -354,6 +354,9 @@ class HomekitControllerFlowHandler(config_entries.ConfigFlow):
 
     @callback
     def _async_step_pair_show_form(self, errors=None):
+        # pylint: disable=no-member # https://github.com/PyCQA/pylint/issues/3167
+        self.context["title_placeholders"] = {"name": self.name, "model": self.model}
+
         return self.async_show_form(
             step_id="pair",
             errors=errors or {},
