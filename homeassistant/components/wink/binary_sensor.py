@@ -3,7 +3,14 @@ import logging
 
 import pywink
 
-from homeassistant.components.binary_sensor import BinarySensorEntity
+from homeassistant.components.binary_sensor import (
+    DEVICE_CLASS_OCCUPANCY,
+    DEVICE_CLASS_OPENING,
+    DEVICE_CLASS_SMOKE,
+    DEVICE_CLASS_SOUND,
+    DEVICE_CLASS_VIBRATION,
+    BinarySensorEntity,
+)
 
 from . import DOMAIN, WinkDevice
 
@@ -12,17 +19,17 @@ _LOGGER = logging.getLogger(__name__)
 # These are the available sensors mapped to binary_sensor class
 SENSOR_TYPES = {
     "brightness": "light",
-    "capturing_audio": "sound",
+    "capturing_audio": DEVICE_CLASS_SOUND,
     "capturing_video": None,
     "co_detected": "gas",
     "liquid_detected": "moisture",
-    "loudness": "sound",
+    "loudness": DEVICE_CLASS_SOUND,
     "motion": "motion",
-    "noise": "sound",
-    "opened": "opening",
-    "presence": "occupancy",
-    "smoke_detected": "smoke",
-    "vibration": "vibration",
+    "noise": DEVICE_CLASS_SOUND,
+    "opened": DEVICE_CLASS_OPENING,
+    "presence": DEVICE_CLASS_OCCUPANCY,
+    "smoke_detected": DEVICE_CLASS_SMOKE,
+    "vibration": DEVICE_CLASS_VIBRATION,
 }
 
 
