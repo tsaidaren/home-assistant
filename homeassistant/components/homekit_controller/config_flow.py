@@ -287,9 +287,6 @@ class HomekitControllerFlowHandler(config_entries.ConfigFlow):
 
         errors = {}
 
-        # pylint: disable=no-member # https://github.com/PyCQA/pylint/issues/3167
-        self.context["title_placeholders"] = {"model": self.model}
-
         if self.controller is None:
             await self._async_setup_controller()
 
