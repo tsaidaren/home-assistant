@@ -42,7 +42,7 @@ def ensure_pin_format(pin):
 
     If incorrect code is entered, an exception is raised.
     """
-    match = PIN_FORMAT.search(pin)
+    match = PIN_FORMAT.search(pin.strip())
     if not match:
         raise aiohomekit.exceptions.MalformedPinError(f"Invalid PIN code f{pin}")
     return "-".join(match.groups())
@@ -332,6 +332,8 @@ class HomekitControllerFlowHandler(config_entries.ConfigFlow):
 
     @callback
     def _async_step_pair_show_form(self, errors=None):
+        # pylint: disable=no-member # https://github.com/PyCQA/pylint/issues/3167
+        self.context["title_placeholders"] = {"model": self.model}
         return self.async_show_form(
             step_id="pair",
             errors=errors or {},
