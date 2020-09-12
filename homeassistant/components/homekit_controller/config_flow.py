@@ -245,7 +245,6 @@ class HomekitControllerFlowHandler(config_entries.ConfigFlow):
 
         # pylint: disable=no-member # https://github.com/PyCQA/pylint/issues/3167
         self.context["hkid"] = hkid
-        self.context["title_placeholders"] = {"name": name, "model": model}
 
         if paired:
             # Device is paired but not to us - ignore it
@@ -383,6 +382,8 @@ class HomekitControllerFlowHandler(config_entries.ConfigFlow):
     @callback
     def _async_step_pair_show_form(self, errors=None):
         # pylint: disable=no-member # https://github.com/PyCQA/pylint/issues/3167
+        self.context["title_placeholders"] = {"model": self.model}
+
         return self.async_show_form(
             step_id="pair",
             errors=errors or {},
