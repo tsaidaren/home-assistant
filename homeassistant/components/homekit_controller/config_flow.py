@@ -108,7 +108,8 @@ class HomekitControllerFlowHandler(config_entries.ConfigFlow):
                 normalize_hkid(self.hkid), raise_on_progress=False
             )
             # pylint: disable=no-member # https://github.com/PyCQA/pylint/issues/3167
-            self.context["title_placeholders"] = {"model": self.model}
+            self.context["hkid"] = self.hkid
+            self.context["title_placeholders"] = {"name": key, "model": self.model}
             return await self.async_step_pair()
 
         if self.controller is None:
