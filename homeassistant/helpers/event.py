@@ -630,12 +630,25 @@ class _TrackTemplateResultInfo:
         self._setup_entities_listener(self._last_domains, self._last_entities)
 
     @callback
-    def _cancel_listener(self, attr_name: str) -> None:
-        attr_ = getattr(self, attr_name)
-        if attr_ is None:
+    def _cancel_domains_listener(self) -> None:
+        if self._domains_listener is None:
             return
-        attr_()
-        attr_ = None
+        self._domains_listener()
+        self._domains_listener = None
+
+    @callback
+    def _cancel_entities_listener(self) -> None:
+        if self._entities_listener is None:
+            return
+        self._entities_listener()
+        self._entities_listener = None
+
+    @callback
+    def _cancel_all_listener(self) -> None:
+        if self._all_listener is None:
+            return
+        self._all_listener()
+        self._all_listener = None
 
     @callback
     def _update_listeners(self) -> None:
@@ -644,23 +657,25 @@ class _TrackTemplateResultInfo:
                 return
             self._last_domains = set()
             self._last_entities = set()
-            self._cancel_listeners()
+            self._cancel_domains_listener()
+            self._cancel_entities_listener()
+            self._setup_all_listener()
             return
 
         had_all_listener = self._all_listener is not None
         if had_all_listener:
-            self._cancel_listener("_all_listener")
+            self._cancel_all_listener()
 
         entities, domains = _entities_domains_from_info(self._info.values())
         domains_changed = domains != self._last_domains
 
         if had_all_listener or domains_changed:
             domains_changed = True
-            self._cancel_listener("_domains_listener")
+            self._cancel_domains_listener()
             self._setup_domains_listener(domains)
 
         if had_all_listener or domains_changed or entities != self._last_entities:
-            self._cancel_listener("_entities_listener")
+            self._cancel_entities_listener()
             self._setup_entities_listener(domains, entities)
 
         self._last_domains = domains
@@ -697,14 +712,10 @@ class _TrackTemplateResultInfo:
 
     @callback
     def async_remove(self) -> None:
-        """Cancel all the listeners."""
-        self._cancel_listeners()
-
-    def _cancel_listeners(self) -> None:
-        """Cancel all the listener."""
-        self._cancel_listener("_domains_listener")
-        self._cancel_listener("_entities_listener")
-        self._cancel_listener("_all_listener")
+        """Cancel the listener."""
+        self._cancel_all_listener()
+        self._cancel_domains_listener()
+        self._cancel_entities_listener()
 
     @callback
     def async_refresh(self) -> None:
@@ -875,7 +886,7 @@ class _TrackEntityStateChangedGlobs:
         if attr_ is None:
             return
         attr_()
-        attr_ = None
+        setattr(self, attr_name, None)
 
     @callback
     def async_remove(self) -> None:
