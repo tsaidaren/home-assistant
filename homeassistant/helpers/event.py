@@ -883,12 +883,10 @@ class _TrackEntityStateChangedGlobs:
     def _domain_event(self, event: Event) -> None:
         """Domain event."""
         entity_id: str = event.data["entity_id"]
-        from_state: Optional[State] = event.data.get("old_state")
-        to_state: Optional[State] = event.data.get("new_state")
 
-        if from_state is None:
+        if event.data.get("old_state") is None:
             self._watched_entities.add(entity_id)
-        elif to_state is None:
+        elif event.data.get("new_state") is None:
             self._watched_entities.remove(entity_id)
 
         self._cancel_listener("_entities_listener")
