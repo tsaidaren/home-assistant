@@ -839,7 +839,7 @@ class _TrackEntityStateChangedGlobs:
         self._entities_listener: Optional[Callable] = None
         for entity_id in entity_globs:
             domain, object_id = split_entity_id(entity_id)
-            if has_fnmatch(object_id):
+            if _has_fnmatch(object_id):
                 self._watched_domains.setdefault(domain, []).append(object_id)
             else:
                 self._watched_entities.add(entity_id)
@@ -903,7 +903,7 @@ class _TrackEntityStateChangedGlobs:
             )
 
 
-def has_fnmatch(entry: str) -> bool:
+def _has_fnmatch(entry: str) -> bool:
     """Check a string for a fnmatch character."""
     if "*" in entry or "[" in entry or "]" in entry or "?" in entry or "!" in entry:
         return True
