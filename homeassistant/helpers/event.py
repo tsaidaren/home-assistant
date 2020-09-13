@@ -630,25 +630,12 @@ class _TrackTemplateResultInfo:
         self._setup_entities_listener(self._last_domains, self._last_entities)
 
     @callback
-    def _cancel_domains_listener(self) -> None:
-        if self._domains_listener is None:
+    def _cancel_listener(self, attr_name: str) -> None:
+        attr_ = getattr(self, attr_name)
+        if attr_ is None:
             return
-        self._domains_listener()
-        self._domains_listener = None
-
-    @callback
-    def _cancel_entities_listener(self) -> None:
-        if self._entities_listener is None:
-            return
-        self._entities_listener()
-        self._entities_listener = None
-
-    @callback
-    def _cancel_all_listener(self) -> None:
-        if self._all_listener is None:
-            return
-        self._all_listener()
-        self._all_listener = None
+        attr_()
+        attr_ = None
 
     @callback
     def _update_listeners(self) -> None:
@@ -657,25 +644,23 @@ class _TrackTemplateResultInfo:
                 return
             self._last_domains = set()
             self._last_entities = set()
-            self._cancel_domains_listener()
-            self._cancel_entities_listener()
-            self._setup_all_listener()
+            self._cancel_listeners()
             return
 
         had_all_listener = self._all_listener is not None
         if had_all_listener:
-            self._cancel_all_listener()
+            self._cancel_listener("_all_listener")
 
         entities, domains = _entities_domains_from_info(self._info.values())
         domains_changed = domains != self._last_domains
 
         if had_all_listener or domains_changed:
             domains_changed = True
-            self._cancel_domains_listener()
+            self._cancel_listener("_domains_listener")
             self._setup_domains_listener(domains)
 
         if had_all_listener or domains_changed or entities != self._last_entities:
-            self._cancel_entities_listener()
+            self._cancel_listener("_entities_listener")
             self._setup_entities_listener(domains, entities)
 
         self._last_domains = domains
@@ -712,10 +697,14 @@ class _TrackTemplateResultInfo:
 
     @callback
     def async_remove(self) -> None:
-        """Cancel the listener."""
-        self._cancel_all_listener()
-        self._cancel_domains_listener()
-        self._cancel_entities_listener()
+        """Cancel all the listeners."""
+        self._cancel_listeners()
+
+    def _cancel_listeners(self) -> None:
+        """Cancel all the listener."""
+        self._cancel_listener("_domains_listener")
+        self._cancel_listener("_entities_listener")
+        self._cancel_listener("_all_listener")
 
     @callback
     def async_refresh(self) -> None:
@@ -829,6 +818,118 @@ def async_track_template_result(
 
     """
     tracker = _TrackTemplateResultInfo(hass, track_templates, action)
+    tracker.async_setup()
+    return tracker
+
+
+class _TrackEntityStateChangedGlobs:
+    """Track state changed events for a list of entity globs."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entity_globs: Iterable[str],
+        action: Callable,
+    ):
+        """Handle removal / refresh of tracker init."""
+        self.hass = hass
+        self._action = action
+        self._watched_domains: Dict[str, List] = {}
+        self._watched_entities: Set = set()
+        self._domains_added_listener: Optional[Callable] = None
+        self._domains_removed_listener: Optional[Callable] = None
+        self._entities_listener: Optional[Callable] = None
+        for entity_id in entity_globs:
+            domain, object_id = split_entity_id(entity_id)
+            if has_fnmatch(object_id):
+                self._watched_domains.setdefault(domain, []).append(object_id)
+            else:
+                self._watched_entities.add(entity_id)
+
+    def async_setup(self) -> None:
+        """Activation of tracking."""
+        self._create_listeners()
+
+    @property
+    def entities(self) -> Set:
+        """Return a set of entities being watched."""
+        return self._watched_entities
+
+    @callback
+    def _create_listeners(self) -> None:
+        if self._watched_domains:
+            self._domains_added_listener = async_track_state_added_domain(
+                self.hass, self._watched_domains, self._domain_event
+            )
+            self._domains_removed_listener = async_track_state_removed_domain(
+                self.hass, self._watched_domains, self._domain_event
+            )
+        if self._watched_entities:
+            self._entities_listener = async_track_state_change_event(
+                self.hass, self._watched_entities, self._action
+            )
+
+    @callback
+    def _cancel_listener(self, attr_name: str) -> None:
+        attr_ = getattr(self, attr_name)
+        if attr_ is None:
+            return
+        attr_()
+        attr_ = None
+
+    @callback
+    def async_remove(self) -> None:
+        """Cancel the listeners."""
+        self._cancel_listener("_domains_added_listener")
+        self._cancel_listener("_domains_removed_listener")
+        self._cancel_listener("_entities_listener")
+
+    @callback
+    def _domain_event(self, event: Event) -> None:
+        """Domain event."""
+        entity_id: str = event.data["entity_id"]
+        from_state: Optional[State] = event.data.get("old_state")
+        to_state: Optional[State] = event.data.get("new_state")
+
+        if from_state is None:
+            self._watched_entities.add(entity_id)
+        elif to_state is None:
+            self._watched_entities.remove(entity_id)
+
+        self._cancel_listener("_entities_listener")
+        self._entities_listener = async_track_state_change_event(
+            self.hass, self._watched_entities, self._action
+        )
+        try:
+            self.hass.async_run_job(self._action, event)
+        except Exception:  # pylint: disable=broad-except
+            _LOGGER.exception(
+                "Error while processing state changed glob event for %s", entity_id
+            )
+
+
+def has_fnmatch(entry: str) -> bool:
+    """Check a string for a fnmatch character."""
+    if "*" in entry or "[" in entry or "]" in entry or "?" in entry or "!" in entry:
+        return True
+
+    return False
+
+
+@callback
+@bind_hass
+def async_track_state_changed_globs(
+    hass: HomeAssistant,
+    entity_globs: Iterable[str],
+    action: Callable,
+) -> _TrackEntityStateChangedGlobs:
+    """Track specific state change events globs indexed by entity_id.
+
+    Unlike async_track_state_change_event, globs are supported
+    in the object_id.
+    """
+
+    tracker = _TrackEntityStateChangedGlobs(hass, entity_globs, action)
     tracker.async_setup()
     return tracker
 
