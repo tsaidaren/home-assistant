@@ -69,6 +69,7 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Store an AugustGateway()."""
         self._august_gateway = None
         self.user_auth_details = {}
+        self._needs_reset = False
         super().__init__()
 
     async def async_step_user(self, user_input=None):
@@ -79,6 +80,9 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             combined_inputs = {**self.user_auth_details, **user_input}
             await self._august_gateway.async_setup(combined_inputs)
+            if self._needs_reset:
+                self._needs_reset = False
+                await self._august_gateway.async_reset_authentication()
 
             try:
                 info = await async_validate_input(
@@ -141,9 +145,7 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_reauth(self, data):
         """Handle configuration by re-auth."""
         self.user_auth_details = dict(data)
-        self._august_gateway = AugustGateway(self.hass)
-        await self._august_gateway.async_setup(self.user_auth_details)
-        await self._august_gateway.async_reset_authentication()
+        self._needs_reset = True
         return await self.async_step_user()
 
     def _async_build_schema(self):
