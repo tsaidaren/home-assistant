@@ -4,7 +4,7 @@ import logging
 from august.authenticator import ValidationResult
 import voluptuous as vol
 
-from homeassistant import config_entries, core
+from homeassistant import config_entries
 from homeassistant.const import CONF_PASSWORD, CONF_TIMEOUT, CONF_USERNAME
 
 from .const import (
@@ -21,7 +21,6 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_validate_input(
-    hass: core.HomeAssistant,
     data,
     august_gateway,
 ):
@@ -84,7 +83,6 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             try:
                 info = await async_validate_input(
-                    self.hass,
                     combined_inputs,
                     self._august_gateway,
                 )
@@ -108,7 +106,7 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
                 if existing_entry:
                     self.hass.config_entries.async_update_entry(
-                        existing_entry, data=combined_inputs
+                        existing_entry, data=info["data"]
                     )
                     await self.hass.config_entries.async_reload(existing_entry.entry_id)
                     return self.async_abort(reason="reauth_successful")
@@ -144,6 +142,9 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_reauth(self, data):
         """Handle configuration by re-auth."""
         self.user_auth_details = dict(data)
+        self._august_gateway = AugustGateway(self.hass)
+        await self._august_gateway.async_setup(self.user_auth_details)
+        await self._august_gateway.async_reset_authentication()
         return await self.async_step_user()
 
     def _async_build_schema(self):
