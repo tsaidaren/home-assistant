@@ -115,12 +115,6 @@ class AugustGateway:
             _LOGGER.error("Unknown authentication state: %s", self.authentication.state)
             raise InvalidAuth
 
-        _LOGGER.debug(
-            "async_authenticate: _authentication=%s state=%s",
-            self.authentication,
-            self.authentication.state,
-        )
-
         return self.authentication
 
     async def async_reset_authentication(self):
