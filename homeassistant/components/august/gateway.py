@@ -116,6 +116,12 @@ class AugustGateway:
             )
             raise InvalidAuth
 
+        _LOGGER.debug(
+            "async_authenticate: _authentication=%s state=%s",
+            self._authentication,
+            self._authentication.state,
+        )
+
         return self._authentication
 
     async def async_refresh_access_token_if_needed(self):
