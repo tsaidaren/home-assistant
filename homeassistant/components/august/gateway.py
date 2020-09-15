@@ -113,7 +113,7 @@ class AugustGateway:
             _LOGGER.debug("got response: %s", response)
         except ClientResponseError as ex:
             if ex.status == HTTP_UNAUTHORIZED:
-                raise InvalidAuth
+                raise InvalidAuth from ex
 
             raise CannotConnect from ex
         except ClientError as ex:

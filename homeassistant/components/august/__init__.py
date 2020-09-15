@@ -173,11 +173,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     try:
         await august_gateway.async_setup(entry.data)
         return await async_setup_august(hass, entry, august_gateway)
-    except ClientResponseError as ex:
-        if ex.status == HTTP_UNAUTHORIZED:
-            _async_reauth(hass, entry)
-            return False
-        raise ConfigEntryNotReady from ex
     except InvalidAuth:
         _async_reauth(hass, entry)
         return False
