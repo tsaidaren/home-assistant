@@ -68,7 +68,6 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def __init__(self):
         """Store an AugustGateway()."""
         self._august_gateway = None
-        self._username = None
         self.user_auth_details = {}
         super().__init__()
 
