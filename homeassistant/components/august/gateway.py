@@ -3,11 +3,16 @@
 import asyncio
 import logging
 
-from aiohttp import ClientError
+from aiohttp import ClientError, ClientResponseError
 from august.api_async import ApiAsync
 from august.authenticator_async import AuthenticationState, AuthenticatorAsync
 
-from homeassistant.const import CONF_PASSWORD, CONF_TIMEOUT, CONF_USERNAME
+from homeassistant.const import (
+    CONF_PASSWORD,
+    CONF_TIMEOUT,
+    CONF_USERNAME,
+    HTTP_UNAUTHORIZED,
+)
 from homeassistant.helpers import aiohttp_client
 
 from .const import (
@@ -106,6 +111,11 @@ class AugustGateway:
             # by have no access
             response = self._api.async_get_operable_locks(self.access_token)
             _LOGGER.debug("got response: %s", response)
+        except ClientResponseError as ex:
+            if ex.status == HTTP_UNAUTHORIZED:
+                raise InvalidAuth
+
+            raise CannotConnect from ex
         except ClientError as ex:
             _LOGGER.error("Unable to connect to August service: %s", str(ex))
             raise CannotConnect from ex
