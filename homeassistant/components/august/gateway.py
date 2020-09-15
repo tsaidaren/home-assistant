@@ -104,7 +104,8 @@ class AugustGateway:
             # Call the locks api to verify we are actually
             # authenticated because we can be authenticated
             # by have no access
-            self._api.async_get_operable_locks(self.access_token)
+            response = self._api.async_get_operable_locks(self.access_token)
+            _LOGGER.debug("got response: %s", response)
         except ClientError as ex:
             _LOGGER.error("Unable to connect to August service: %s", str(ex))
             raise CannotConnect from ex

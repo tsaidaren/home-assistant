@@ -4,7 +4,7 @@ import logging
 from august.authenticator import ValidationResult
 import voluptuous as vol
 
-from homeassistant import config_entries, core
+from homeassistant import config_entries
 from homeassistant.const import CONF_PASSWORD, CONF_TIMEOUT, CONF_USERNAME
 
 from .const import (
@@ -21,7 +21,6 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_validate_input(
-    hass: core.HomeAssistant,
     data,
     august_gateway,
 ):
@@ -84,7 +83,6 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             try:
                 info = await async_validate_input(
-                    self.hass,
                     combined_inputs,
                     self._august_gateway,
                 )
