@@ -65,8 +65,6 @@ class Light(HomeAccessory):
         if self._features & SUPPORT_COLOR:
             self.chars.append(CHAR_HUE)
             self.chars.append(CHAR_SATURATION)
-            self._hue = None
-            self._saturation = None
         elif self._features & SUPPORT_COLOR_TEMP:
             # ColorTemperature and Hue characteristic should not be
             # exposed both. Both states are tracked separately in HomeKit,
@@ -183,11 +181,15 @@ class Light(HomeAccessory):
             new_attr = new_state.attributes
             if ATTR_HS_COLOR in new_attr:
                 hue, saturation = new_attr[ATTR_HS_COLOR]
-            elif CHAR_COLOR_TEMPERATURE in new_attr:
-                hue, saturation = color_temperature_to_hs(
-                    new_attr[CHAR_COLOR_TEMPERATURE]
+            elif ATTR_COLOR_TEMP in new_attr:
+                hue, saturation = color_temperature_to_hs(new_attr[ATTR_COLOR_TEMP])
+                _LOGGER.debug(
+                    "%s: Mapped color temp %s to %s,%s",
+                    self.entity_id,
+                    new_attr[ATTR_COLOR_TEMP],
+                    hue,
+                    saturation,
                 )
-                _LOGGER.debug("%s: Mapped color temp %s to %s,%s", self.entity_id, new_attr[CHAR_COLOR_TEMPERATURE], hue, saturation)
 
             else:
                 return
