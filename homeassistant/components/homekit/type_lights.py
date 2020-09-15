@@ -178,7 +178,10 @@ class Light(HomeAccessory):
 
         # Handle Color
         if CHAR_SATURATION in self.chars and CHAR_HUE in self.chars:
+
             new_attr = new_state.attributes
+            _LOGGER.debug("checking sat/hue for %s - %s", self.entity_id, new_attr)
+
             if ATTR_HS_COLOR in new_attr:
                 hue, saturation = new_attr[ATTR_HS_COLOR]
             elif ATTR_COLOR_TEMP in new_attr:
