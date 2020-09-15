@@ -106,7 +106,7 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
                 if existing_entry:
                     self.hass.config_entries.async_update_entry(
-                        existing_entry, data=combined_inputs
+                        existing_entry, data=info["data"]
                     )
                     await self.hass.config_entries.async_reload(existing_entry.entry_id)
                     return self.async_abort(reason="reauth_successful")
