@@ -24,6 +24,7 @@ from homeassistant.const import (
     STATE_ON,
 )
 from homeassistant.core import callback
+from homeassistant.util.color import color_temperature_to_hs
 
 from .accessories import TYPES, HomeAccessory
 from .const import (
@@ -179,7 +180,13 @@ class Light(HomeAccessory):
 
         # Handle Color
         if CHAR_SATURATION in self.chars and CHAR_HUE in self.chars:
-            hue, saturation = new_state.attributes.get(ATTR_HS_COLOR, (None, None))
+            new_attr = new_state.attributes
+            if ATTR_HS_COLOR in new_attr:
+                hue, saturation = new_attr[ATTR_HS_COLOR]
+            elif ATTR_COLOR_TEMP in new_attr:
+                hue, saturation = color_temperature_to_hs(new_attr[ATTR_HS_COLOR])
+            else:
+                return
             if isinstance(hue, (int, float)) and isinstance(saturation, (int, float)):
                 hue = round(hue, 0)
                 saturation = round(saturation, 0)
