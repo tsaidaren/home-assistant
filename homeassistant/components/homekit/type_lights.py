@@ -187,6 +187,8 @@ class Light(HomeAccessory):
                 hue, saturation = color_temperature_to_hs(
                     new_attr[CHAR_COLOR_TEMPERATURE]
                 )
+                _LOGGER.debug("%s: Mapped color temp %s to %s,%s", self.entity_id, new_attr[CHAR_COLOR_TEMPERATURE], hue, saturation)
+
             else:
                 return
             if isinstance(hue, (int, float)) and isinstance(saturation, (int, float)):
