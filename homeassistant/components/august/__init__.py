@@ -3,7 +3,7 @@ import asyncio
 import itertools
 import logging
 
-from aiohttp import ClientError
+from aiohttp import ClientError, ClientResponseError
 from august.authenticator import ValidationResult
 from august.exceptions import AugustApiAIOHTTPError
 import voluptuous as vol
@@ -25,6 +25,7 @@ from .const import (
     DEFAULT_NAME,
     DEFAULT_TIMEOUT,
     DOMAIN,
+    HTTP_UNAUTHORIZED,
     LOGIN_METHODS,
     MIN_TIME_BETWEEN_DETAIL_UPDATES,
     VERIFICATION_CODE_KEY,
@@ -168,18 +169,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     try:
         await august_gateway.async_setup(entry.data)
         return await async_setup_august(hass, entry, august_gateway)
+    except ClientResponseError as ex:
+        if ex.status == HTTP_UNAUTHORIZED:
+            _async_reauth(hass, entry)
+            return False
+        raise ConfigEntryNotReady from ex
     except InvalidAuth:
-        hass.async_create_task(
-            hass.config_entries.flow.async_init(
-                DOMAIN,
-                context={"source": "reauth"},
-                data=entry.data,
-            )
-        )
-        _LOGGER.error("Password is no longer valid. Please reauthenticate.")
+        _async_reauth(hass, entry)
         return False
     except asyncio.TimeoutError as err:
         raise ConfigEntryNotReady from err
+
+
+def _async_reauth(hass: HomeAssistant, entry: ConfigEntry):
+    hass.async_create_task(
+        hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": "reauth"},
+            data=entry.data,
+        )
+    )
+    _LOGGER.error("Password is no longer valid. Please reauthenticate.")
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
