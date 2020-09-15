@@ -106,12 +106,11 @@ class AugustGateway:
         self._authentication = None
         try:
             self._authentication = await self.authenticator.async_authenticate()
-
-            # Call the locks api to verify we are actually
-            # authenticated because we can be authenticated
-            # by have no access
-            response = await self._api.async_get_operable_locks(self.access_token)
-            _LOGGER.debug("got response: %s", response)
+            if self._authentication.state == AuthenticationState.AUTHENTICATED:
+                # Call the locks api to verify we are actually
+                # authenticated because we can be authenticated
+                # by have no access
+                await self._api.async_get_operable_locks(self.access_token)
         except ClientResponseError as ex:
             if ex.status == HTTP_UNAUTHORIZED:
                 raise InvalidAuth from ex
