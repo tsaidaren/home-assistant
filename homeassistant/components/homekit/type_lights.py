@@ -183,8 +183,10 @@ class Light(HomeAccessory):
             new_attr = new_state.attributes
             if ATTR_HS_COLOR in new_attr:
                 hue, saturation = new_attr[ATTR_HS_COLOR]
-            elif ATTR_COLOR_TEMP in new_attr:
-                hue, saturation = color_temperature_to_hs(new_attr[ATTR_HS_COLOR])
+            elif CHAR_COLOR_TEMPERATURE in new_attr:
+                hue, saturation = color_temperature_to_hs(
+                    new_attr[CHAR_COLOR_TEMPERATURE]
+                )
             else:
                 return
             if isinstance(hue, (int, float)) and isinstance(saturation, (int, float)):
