@@ -142,9 +142,12 @@ class AugustGateway:
 
     async def async_reset_authentication(self):
         """Remove the cache file."""
-        await self._hass.async_add_executor_job(
-            os.unlink, self._access_token_cache_file
-        )
+        await self._hass.async_add_executor_job(self._reset_authentication)
+
+    def _reset_authentication(self):
+        """Remove the cache file."""
+        if os.path.exists(self._access_token_cache_file):
+            os.unlink(self._access_token_cache_file)
 
     async def async_refresh_access_token_if_needed(self):
         """Refresh the august access token if needed."""
