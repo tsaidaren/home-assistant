@@ -142,6 +142,9 @@ class AugustConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_reauth(self, data):
         """Handle configuration by re-auth."""
         self.user_auth_details = dict(data)
+        self._august_gateway = AugustGateway(self.hass)
+        await self._august_gateway.async_setup(self.user_auth_details)
+        await self._august_gateway.async_reset_authentication()
         return await self.async_step_user()
 
     def _async_build_schema(self):

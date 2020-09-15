@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import os
 
 from aiohttp import ClientError, ClientResponseError
 from august.api_async import ApiAsync
@@ -139,6 +140,12 @@ class AugustGateway:
         )
 
         return self._authentication
+
+    async def async_reset_authentication(self):
+        """Remove the cache file."""
+        await self._hass.async_add_executor_job(
+            os.unlink, self._access_token_cache_file
+        )
 
     async def async_refresh_access_token_if_needed(self):
         """Refresh the august access token if needed."""
