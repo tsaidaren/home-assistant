@@ -38,29 +38,14 @@ class AugustGateway:
         self._access_token_cache_file = None
         self._hass = hass
         self._config = None
-        self._api = None
-        self._authenticator = None
-        self._authentication = None
-
-    @property
-    def authenticator(self):
-        """August authentication object from py-august."""
-        return self._authenticator
-
-    @property
-    def authentication(self):
-        """August authentication object from py-august."""
-        return self._authentication
+        self.api = None
+        self.authenticator = None
+        self.authentication = None
 
     @property
     def access_token(self):
         """Access token for the api."""
-        return self._authentication.access_token
-
-    @property
-    def api(self):
-        """August api object from py-august."""
-        return self._api
+        return self.authentication.access_token
 
     def config_entry(self):
         """Config entry."""
@@ -84,12 +69,12 @@ class AugustGateway:
         )
         self._config = conf
 
-        self._api = ApiAsync(
+        self.api = ApiAsync(
             self._aiohttp_session, timeout=self._config.get(CONF_TIMEOUT)
         )
 
-        self._authenticator = AuthenticatorAsync(
-            self._api,
+        self.authenticator = AuthenticatorAsync(
+            self.api,
             self._config[CONF_LOGIN_METHOD],
             self._config[CONF_USERNAME],
             self._config[CONF_PASSWORD],
@@ -99,18 +84,18 @@ class AugustGateway:
             ),
         )
 
-        await self._authenticator.async_setup_authentication()
+        await self.authenticator.async_setup_authentication()
 
     async def async_authenticate(self):
         """Authenticate with the details provided to setup."""
-        self._authentication = None
+        self.authentication = None
         try:
-            self._authentication = await self.authenticator.async_authenticate()
-            if self._authentication.state == AuthenticationState.AUTHENTICATED:
+            self.authentication = await self.authenticator.async_authenticate()
+            if self.authentication.state == AuthenticationState.AUTHENTICATED:
                 # Call the locks api to verify we are actually
                 # authenticated because we can be authenticated
                 # by have no access
-                await self._api.async_get_operable_locks(self.access_token)
+                await self.api.async_get_operable_locks(self.access_token)
         except ClientResponseError as ex:
             if ex.status == HTTP_UNAUTHORIZED:
                 raise InvalidAuth from ex
@@ -120,25 +105,23 @@ class AugustGateway:
             _LOGGER.error("Unable to connect to August service: %s", str(ex))
             raise CannotConnect from ex
 
-        if self._authentication.state == AuthenticationState.BAD_PASSWORD:
+        if self.authentication.state == AuthenticationState.BAD_PASSWORD:
             raise InvalidAuth
 
-        if self._authentication.state == AuthenticationState.REQUIRES_VALIDATION:
+        if self.authentication.state == AuthenticationState.REQUIRES_VALIDATION:
             raise RequireValidation
 
-        if self._authentication.state != AuthenticationState.AUTHENTICATED:
-            _LOGGER.error(
-                "Unknown authentication state: %s", self._authentication.state
-            )
+        if self.authentication.state != AuthenticationState.AUTHENTICATED:
+            _LOGGER.error("Unknown authentication state: %s", self.authentication.state)
             raise InvalidAuth
 
         _LOGGER.debug(
             "async_authenticate: _authentication=%s state=%s",
-            self._authentication,
-            self._authentication.state,
+            self.authentication,
+            self.authentication.state,
         )
 
-        return self._authentication
+        return self.authentication
 
     async def async_reset_authentication(self):
         """Remove the cache file."""
@@ -161,4 +144,4 @@ class AugustGateway:
                     self.authentication.access_token_expires,
                     refreshed_authentication.access_token_expires,
                 )
-                self._authentication = refreshed_authentication
+                self.authentication = refreshed_authentication
