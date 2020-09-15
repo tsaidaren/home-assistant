@@ -181,26 +181,16 @@ class Light(HomeAccessory):
 
         # Handle Color
         if CHAR_SATURATION in self.chars and CHAR_HUE in self.chars:
-
-            new_attr = new_state.attributes
-            _LOGGER.debug("checking sat/hue for %s - %s", self.entity_id, new_attr)
-
-            if ATTR_HS_COLOR in new_attr:
-                hue, saturation = new_attr[ATTR_HS_COLOR]
-            elif ATTR_COLOR_TEMP in new_attr:
+            if ATTR_HS_COLOR in new_state.attributes:
+                hue, saturation = new_state.attributes[ATTR_HS_COLOR]
+            elif ATTR_COLOR_TEMP in new_state.attributes:
                 hue, saturation = color_temperature_to_hs(
-                    color_temperature_mired_to_kelvin(new_attr[ATTR_COLOR_TEMP])
+                    color_temperature_mired_to_kelvin(
+                        new_state.attributes[ATTR_COLOR_TEMP]
+                    )
                 )
-                _LOGGER.debug(
-                    "%s: Mapped color temp %s to %s,%s",
-                    self.entity_id,
-                    new_attr[ATTR_COLOR_TEMP],
-                    hue,
-                    saturation,
-                )
-
             else:
-                return
+                hue, saturation = None, None
             if isinstance(hue, (int, float)) and isinstance(saturation, (int, float)):
                 hue = round(hue, 0)
                 saturation = round(saturation, 0)
