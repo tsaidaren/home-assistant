@@ -114,9 +114,6 @@ async def async_setup_august(hass, config_entry, august_gateway):
     except RequireValidation:
         await async_request_validation(hass, config_entry, august_gateway)
         return False
-    except InvalidAuth:
-        _LOGGER.error("Password is no longer valid. Please set up August again")
-        return False
 
     # We still use the configurator to get a new 2fa code
     # when needed since config_flow doesn't have a way
@@ -171,6 +168,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     try:
         await august_gateway.async_setup(entry.data)
         return await async_setup_august(hass, entry, august_gateway)
+    except InvalidAuth:
+        hass.async_create_task(
+            hass.config_entries.flow.async_init(
+                DOMAIN,
+                context={"source": "reauth"},
+                data=entry.data,
+            )
+        )
+        _LOGGER.error("Password is no longer valid. Please reauthenticate.")
+        return False
     except asyncio.TimeoutError as err:
         raise ConfigEntryNotReady from err
 
