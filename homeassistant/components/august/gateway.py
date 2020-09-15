@@ -109,7 +109,7 @@ class AugustGateway:
             # Call the locks api to verify we are actually
             # authenticated because we can be authenticated
             # by have no access
-            response = self._api.async_get_operable_locks(self.access_token)
+            response = await self._api.async_get_operable_locks(self.access_token)
             _LOGGER.debug("got response: %s", response)
         except ClientResponseError as ex:
             if ex.status == HTTP_UNAUTHORIZED:
