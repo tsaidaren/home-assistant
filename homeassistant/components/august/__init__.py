@@ -175,6 +175,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         return await async_setup_august(hass, entry, august_gateway)
     except ClientResponseError as err:
         if err.status == HTTP_UNAUTHORIZED:
+            _LOGGER.debug("Received http error during setup.", exc_info=err)
             _async_start_reauth(hass, entry)
             return False
 
