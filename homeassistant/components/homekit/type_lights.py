@@ -24,7 +24,10 @@ from homeassistant.const import (
     STATE_ON,
 )
 from homeassistant.core import callback
-from homeassistant.util.color import color_temperature_to_hs
+from homeassistant.util.color import (
+    color_temperature_mired_to_kelvin,
+    color_temperature_to_hs,
+)
 
 from .accessories import TYPES, HomeAccessory
 from .const import (
@@ -185,7 +188,9 @@ class Light(HomeAccessory):
             if ATTR_HS_COLOR in new_attr:
                 hue, saturation = new_attr[ATTR_HS_COLOR]
             elif ATTR_COLOR_TEMP in new_attr:
-                hue, saturation = color_temperature_to_hs(new_attr[ATTR_COLOR_TEMP])
+                hue, saturation = color_temperature_to_hs(
+                    color_temperature_mired_to_kelvin(new_attr[ATTR_COLOR_TEMP])
+                )
                 _LOGGER.debug(
                     "%s: Mapped color temp %s to %s,%s",
                     self.entity_id,
