@@ -116,6 +116,7 @@ CONF_LIGHTS = "lights"
 CONF_LONGITUDE = "longitude"
 CONF_MAC = "mac"
 CONF_MAXIMUM = "maximum"
+CONF_MEDIA_DIRS = "media_dirs"
 CONF_METHOD = "method"
 CONF_MINIMUM = "minimum"
 CONF_MODE = "mode"
@@ -380,6 +381,10 @@ ELECTRICAL_VOLT_AMPERE = f"{VOLT}{ELECTRICAL_CURRENT_AMPERE}"
 # Degree units
 DEGREE = "°"
 
+# Currency units
+CURRENCY_EURO = "€"
+CURRENCY_DOLLAR = "$"
+
 # Temperature units
 TEMP_CELSIUS = f"{DEGREE}C"
 TEMP_FAHRENHEIT = f"{DEGREE}F"
@@ -422,6 +427,7 @@ PRESSURE_PSI: str = "psi"
 VOLUME_LITERS: str = "L"
 VOLUME_MILLILITERS: str = "mL"
 VOLUME_CUBIC_METERS = f"{LENGTH_METERS}³"
+VOLUME_CUBIC_FEET = f"{LENGTH_FEET}³"
 
 VOLUME_GALLONS: str = "gal"
 VOLUME_FLUID_OUNCE: str = "fl. oz."
