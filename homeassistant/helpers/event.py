@@ -751,6 +751,11 @@ class _TrackTemplateResultInfo:
 
         if info_changed:
             self._update_listeners()
+            _LOGGER.debug(
+                "Template group %s listens for %s",
+                [template.template for template in self._track_templates],
+                self.listeners,
+            )
             self._last_info = self._info.copy()
 
         if not updates:
