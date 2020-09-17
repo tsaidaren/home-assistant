@@ -719,6 +719,9 @@ class _TrackTemplateResultInfo:
 
         for track_template_ in self._track_templates:
             template = track_template_.template
+            _LOGGER.debug(
+                "Template[%s] update triggered by event: %s", template.template, event
+            )
             if (
                 entity_id
                 and len(self._last_info) > 1
@@ -751,6 +754,11 @@ class _TrackTemplateResultInfo:
 
         if info_changed:
             self._update_listeners()
+            _LOGGER.debug(
+                "Template group %s listens for %s",
+                [template.template for template in self._track_templates],
+                self.listeners,
+            )
             self._last_info = self._info.copy()
 
         if not updates:
