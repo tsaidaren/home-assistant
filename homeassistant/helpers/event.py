@@ -581,6 +581,11 @@ class _TrackTemplateResultInfo:
 
         self._last_info = self._info.copy()
         self._create_listeners()
+        _LOGGER.debug(
+            "Template group %s listens for %s",
+            [template.template for template in self._track_templates],
+            self.listeners,
+        )
 
     @property
     def listeners(self) -> Dict:
