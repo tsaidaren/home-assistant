@@ -9,6 +9,7 @@ import sqlalchemy
 from sqlalchemy.orm import aliased
 import voluptuous as vol
 
+from homeassistant.components import sun
 from homeassistant.components.automation import EVENT_AUTOMATION_TRIGGERED
 from homeassistant.components.history import sqlalchemy_filter_from_include_exclude_conf
 from homeassistant.components.http import HomeAssistantView
@@ -21,6 +22,7 @@ from homeassistant.components.recorder.models import (
 from homeassistant.components.recorder.util import session_scope
 from homeassistant.components.script import EVENT_SCRIPT_STARTED
 from homeassistant.const import (
+    ATTR_DEVICE_CLASS,
     ATTR_DOMAIN,
     ATTR_ENTITY_ID,
     ATTR_FRIENDLY_NAME,
@@ -33,8 +35,16 @@ from homeassistant.const import (
     EVENT_LOGBOOK_ENTRY,
     EVENT_STATE_CHANGED,
     HTTP_BAD_REQUEST,
+    STATE_NOT_HOME,
+    STATE_OFF,
+    STATE_ON,
 )
-from homeassistant.core import DOMAIN as HA_DOMAIN, callback, split_entity_id
+from homeassistant.core import (
+    DOMAIN as HA_DOMAIN,
+    callback,
+    split_entity_id,
+    valid_entity_id,
+)
 from homeassistant.exceptions import InvalidEntityFormatError
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entityfilter import (
@@ -198,15 +208,7 @@ class LogbookView(HomeAssistantView):
         else:
             period = int(period)
 
-        entity_ids = request.query.get("entity")
-        if entity_ids:
-            try:
-                entity_ids = cv.entity_ids(entity_ids)
-            except vol.Invalid:
-                raise InvalidEntityFormatError(
-                    f"Invalid entity id(s) encountered: {entity_ids}. "
-                    "Format should be <domain>.<object_id>"
-                ) from vol.Invalid
+        entity_id = request.query.get("entity")
 
         end_time = request.query.get("end_time")
         if end_time is None:
@@ -229,7 +231,7 @@ class LogbookView(HomeAssistantView):
                     hass,
                     start_day,
                     end_day,
-                    entity_ids,
+                    entity_id,
                     self.filters,
                     self.entities_filter,
                     entity_matches_only,
@@ -317,6 +319,10 @@ def humanify(hass, events, entity_attr_cache, context_lookup):
                     "name": _entity_name_from_event(
                         entity_id, event, entity_attr_cache
                     ),
+                    "message": _entry_message_from_event(
+                        entity_id, domain, event, entity_attr_cache
+                    ),
+                    "domain": domain,
                     "state": event.state,
                     "entity_id": entity_id,
                 }
@@ -382,7 +388,6 @@ def humanify(hass, events, entity_attr_cache, context_lookup):
                     "domain": domain,
                     "entity_id": entity_id,
                 }
-
                 if event.context_user_id:
                     data["context_user_id"] = event.context_user_id
 
@@ -404,7 +409,7 @@ def _get_events(
     hass,
     start_day,
     end_day,
-    entity_ids=None,
+    entity_id=None,
     filters=None,
     entities_filter=None,
     entity_matches_only=False,
@@ -412,6 +417,7 @@ def _get_events(
     """Get events for a period of time."""
     entity_attr_cache = EntityAttributeCache(hass)
     context_lookup = {None: None}
+    entity_id_lower = None
     apply_sql_entities_filter = True
 
     def yield_events(query):
@@ -422,8 +428,14 @@ def _get_events(
             if _keep_event(hass, event, entities_filter):
                 yield event
 
-    if entity_ids is not None:
-        entities_filter = generate_filter([], entity_ids, [], [])
+    if entity_id is not None:
+        entity_id_lower = entity_id.lower()
+        if not valid_entity_id(entity_id_lower):
+            raise InvalidEntityFormatError(
+                f"Invalid entity id encountered: {entity_id_lower}. "
+                "Format should be <domain>.<object_id>"
+            )
+        entities_filter = generate_filter([], [entity_id_lower], [], [])
         apply_sql_entities_filter = False
 
     with session_scope(hass=hass) as session:
@@ -472,31 +484,26 @@ def _get_events(
             .filter((Events.time_fired > start_day) & (Events.time_fired < end_day))
         )
 
-        if entity_ids is not None:
+        if entity_id_lower is not None:
             if entity_matches_only:
                 # When entity_matches_only is provided, contexts and events that do not
-                # contain the entity_ids are not included in the logbook response.
-                states_matchers = Events.event_data.contains(
-                    ENTITY_ID_JSON_TEMPLATE.format(entity_ids[0])
-                )
-
-                for entity_id in entity_ids[1:]:
-                    states_matchers |= Events.event_data.contains(
-                        ENTITY_ID_JSON_TEMPLATE.format(entity_id)
-                    )
-
+                # contain the entity_id are not included in the logbook response.
+                entity_id_json = ENTITY_ID_JSON_TEMPLATE.format(entity_id_lower)
                 query = query.filter(
                     (
                         (States.last_updated == States.last_changed)
-                        & States.entity_id.in_(entity_ids)
+                        & (States.entity_id == entity_id_lower)
                     )
-                    | (States.state_id.is_(None) & states_matchers)
+                    | (
+                        States.state_id.is_(None)
+                        & Events.event_data.contains(entity_id_json)
+                    )
                 )
             else:
                 query = query.filter(
                     (
                         (States.last_updated == States.last_changed)
-                        & States.entity_id.in_(entity_ids)
+                        & (States.entity_id == entity_id_lower)
                     )
                     | (States.state_id.is_(None))
                 )
@@ -539,6 +546,94 @@ def _keep_event(hass, event, entities_filter):
             entity_id = f"{domain}."
 
     return entities_filter is None or entities_filter(entity_id)
+
+
+def _entry_message_from_event(entity_id, domain, event, entity_attr_cache):
+    """Convert a state to a message for the logbook."""
+    # We pass domain in so we don't have to split entity_id again
+    state_state = event.state
+
+    if domain in ["device_tracker", "person"]:
+        if state_state == STATE_NOT_HOME:
+            return "is away"
+        return f"is at {state_state}"
+
+    if domain == "sun":
+        if state_state == sun.STATE_ABOVE_HORIZON:
+            return "has risen"
+        return "has set"
+
+    if domain == "binary_sensor":
+        device_class = entity_attr_cache.get(entity_id, ATTR_DEVICE_CLASS, event)
+        if device_class == "battery":
+            if state_state == STATE_ON:
+                return "is low"
+            if state_state == STATE_OFF:
+                return "is normal"
+
+        if device_class == "connectivity":
+            if state_state == STATE_ON:
+                return "is connected"
+            if state_state == STATE_OFF:
+                return "is disconnected"
+
+        if device_class in ["door", "garage_door", "opening", "window"]:
+            if state_state == STATE_ON:
+                return "is opened"
+            if state_state == STATE_OFF:
+                return "is closed"
+
+        if device_class == "lock":
+            if state_state == STATE_ON:
+                return "is unlocked"
+            if state_state == STATE_OFF:
+                return "is locked"
+
+        if device_class == "plug":
+            if state_state == STATE_ON:
+                return "is plugged in"
+            if state_state == STATE_OFF:
+                return "is unplugged"
+
+        if device_class == "presence":
+            if state_state == STATE_ON:
+                return "is at home"
+            if state_state == STATE_OFF:
+                return "is away"
+
+        if device_class == "safety":
+            if state_state == STATE_ON:
+                return "is unsafe"
+            if state_state == STATE_OFF:
+                return "is safe"
+
+        if device_class in [
+            "cold",
+            "gas",
+            "heat",
+            "light",
+            "moisture",
+            "motion",
+            "occupancy",
+            "power",
+            "problem",
+            "smoke",
+            "sound",
+            "vibration",
+        ]:
+            if state_state == STATE_ON:
+                return f"detected {device_class}"
+            if state_state == STATE_OFF:
+                return f"cleared (no {device_class} detected)"
+
+    if state_state == STATE_ON:
+        # Future: combine groups and its entity entries ?
+        return "turned on"
+
+    if state_state == STATE_OFF:
+        return "turned off"
+
+    return f"changed to {state_state}"
 
 
 def _augment_data_with_context(
