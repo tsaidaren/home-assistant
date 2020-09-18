@@ -53,16 +53,17 @@ def assert_result_info(info, result, entities=None, domains=None, all_states=Fal
     """Check result info."""
     assert info.result() == result
     assert info.all_states == all_states
-    assert info.filter_lifecycle("invalid_entity_name.somewhere") == all_states
+    assert info.filter("invalid_entity_name.somewhere") == all_states
     if entities is not None:
         assert info.entities == frozenset(entities)
         assert all([info.filter(entity) for entity in entities])
-        assert not info.filter("invalid_entity_name.somewhere")
+        if not all_states:
+            assert not info.filter("invalid_entity_name.somewhere")
     else:
         assert not info.entities
     if domains is not None:
         assert info.domains == frozenset(domains)
-        assert all([info.filter_lifecycle(domain + ".entity") for domain in domains])
+        assert all([info.filter(domain + ".entity") for domain in domains])
     else:
         assert not hasattr(info, "_domains")
 

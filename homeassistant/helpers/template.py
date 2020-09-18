@@ -164,6 +164,10 @@ def _true(arg: Any) -> bool:
     return True
 
 
+def _false(arg: Any) -> bool:
+    return False
+
+
 class RenderInfo:
     """Holds information about a template render."""
 
@@ -172,22 +176,29 @@ class RenderInfo:
         self.template = template
         # Will be set sensibly once frozen.
         self.filter_lifecycle = _true
+        self.filter = _true
         self._result = None
         self.is_static = False
         self.exception = None
         self.all_states = False
+        self.all_states_counted = False
         self.domains = set()
+        self.domains_counted = set()
         self.entities = set()
 
-    def filter(self, entity_id: str) -> bool:
-        """Template should re-render if the state changes."""
-        return entity_id in self.entities
+    def __repr__(self) -> str:
+        """Representation of RenderInfo."""
+        return f"<RenderInfo {self.template} all_states={self.all_states} all_states_counted={self.all_states_counted} domains={self.domains} domains_counted={self.domains_counted} entities={self.entities}>"
 
-    def _filter_lifecycle(self, entity_id: str) -> bool:
-        """Template should re-render if the state changes."""
+    def _filter_domains_and_entities(self, entity_id: str) -> bool:
+        """Template should re-render if the entity state changes when we match specific domains or entities."""
         return (
             split_entity_id(entity_id)[0] in self.domains or entity_id in self.entities
         )
+
+    def _filter_lifecycle_domains(self, entity_id: str) -> bool:
+        """Template should re-render if the entity is added or removed with domains watched."""
+        return split_entity_id(entity_id)[0] in self.domains_counted
 
     def result(self) -> str:
         """Results of the template computation."""
@@ -199,19 +210,25 @@ class RenderInfo:
         self.is_static = True
         self.entities = frozenset(self.entities)
         self.domains = frozenset(self.domains)
+        self.domains_counted = frozenset(self.domains_counted)
         self.all_states = False
 
     def _freeze(self) -> None:
         self.entities = frozenset(self.entities)
         self.domains = frozenset(self.domains)
+        self.domains_counted = frozenset(self.domains_counted)
+
+        if self.all_states_counted:
+            self.filter_lifecycle = _true
+        elif self.domains_counted:
+            self.filter_lifecycle = self._filter_lifecycle_domains
+        else:
+            self.filter_lifecycle = _false
 
         if self.all_states or self.exception:
-            return
-
-        if not self.domains:
-            self.filter_lifecycle = self.filter
+            self.filter = _true
         else:
-            self.filter_lifecycle = self._filter_lifecycle
+            self.filter = self._filter_domains_and_entities
 
 
 class Template:
@@ -422,6 +439,11 @@ class AllStates:
         if render_info is not None:
             render_info.all_states = True
 
+    def _collect_all_counted(self) -> None:
+        render_info = self._hass.data.get(_RENDER_INFO)
+        if render_info is not None:
+            render_info.all_states_counted = True
+
     def __iter__(self):
         """Return all states."""
         self._collect_all()
@@ -429,8 +451,12 @@ class AllStates:
 
     def __len__(self) -> int:
         """Return number of states."""
-        self._collect_all()
-        return len(self._hass.states.async_entity_ids())
+        count = len(self._hass.states.async_entity_ids())
+        if not count:
+            self._collect_all()
+        else:
+            self._collect_all_counted()
+        return count
 
     def __call__(self, entity_id):
         """Return the states."""
@@ -462,6 +488,11 @@ class DomainStates:
         if entity_collect is not None:
             entity_collect.domains.add(self._domain)
 
+    def _collect_domain_counted(self) -> None:
+        entity_collect = self._hass.data.get(_RENDER_INFO)
+        if entity_collect is not None:
+            entity_collect.domains_counted.add(self._domain)
+
     def __iter__(self):
         """Return the iteration over all the states."""
         self._collect_domain()
@@ -469,8 +500,12 @@ class DomainStates:
 
     def __len__(self) -> int:
         """Return number of states."""
-        self._collect_domain()
-        return len(self._hass.states.async_entity_ids(self._domain))
+        count = len(self._hass.states.async_entity_ids(self._domain))
+        if not count:
+            self._collect_domain()
+        else:
+            self._collect_domain_counted()
+        return count
 
     def __repr__(self) -> str:
         """Representation of Domain States."""
