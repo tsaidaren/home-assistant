@@ -722,11 +722,11 @@ class _TrackTemplateResultInfo:
     @callback
     def _refresh(self, event: Optional[Event]) -> None:
         entity_id = event and event.data.get(ATTR_ENTITY_ID)
-        updates = []
-        info_changed = False
         lifecycle_event = event and (
             event.data.get("new_state") is None or event.data.get("old_state") is None
         )
+        updates = []
+        info_changed = False
 
         for track_template_ in self._track_templates:
             template = track_template_.template
@@ -740,26 +740,11 @@ class _TrackTemplateResultInfo:
             ):
                 continue
 
-            if self._last_info and entity_id:
-                entity_filter_result = not self._last_info[template].filter(entity_id)
-                entity_lifecycle_filter_result = (
-                    not lifecycle_event
-                    or not self._last_info[template].filter_lifecycle(entity_id)
-                )
-
-                _LOGGER.debug(
-                    "Template update %s triggered by event: %s - [filter_result=%s] [lifecycle_filter_result=%s]",
-                    self._last_info[template],
-                    event,
-                    entity_filter_result,
-                    entity_lifecycle_filter_result,
-                )
-            else:
-                _LOGGER.debug(
-                    "Template update %s triggered by event: %s",
-                    template.template,
-                    event,
-                )
+            _LOGGER.debug(
+                "Template update %s triggered by event: %s",
+                template.template,
+                event,
+            )
 
             self._info[template] = template.async_render_to_info(
                 track_template_.variables
