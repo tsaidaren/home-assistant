@@ -732,7 +732,6 @@ class _TrackTemplateResultInfo:
             template = track_template_.template
             if (
                 entity_id
-                and len(self._last_info) > 1
                 and not self._last_info[template].filter(entity_id)
                 and (
                     not lifecycle_event
@@ -741,7 +740,7 @@ class _TrackTemplateResultInfo:
             ):
                 continue
 
-            if len(self._last_info) > 1 and entity_id:
+            if self._last_info and entity_id:
                 entity_filter_result = not self._last_info[template].filter(entity_id)
                 entity_lifecycle_filter_result = (
                     not lifecycle_event
