@@ -2433,3 +2433,24 @@ async def test_slice_states(hass):
         hass,
     )
     assert tpl.async_render() == "sensor.test"
+
+
+async def test_lifecycle(hass):
+    """Test that we limit template render info for lifecycle events."""
+    hass.states.async_set("sun.sun", "above", {"elevation": 50, "next_rising": "later"})
+    for i in range(2):
+        hass.states.async_set(f"sensor.sensor{i}", "on")
+
+    tmp = template.Template("{{ states | count }}", hass)
+
+    info = tmp.async_render_to_info()
+    assert info.all_states is False
+    assert info.all_states_lifecycle is True
+    assert info.entities == set()
+    assert info.domains == set()
+    assert info.domains_lifecycle == set()
+
+    assert info.filter("sun.sun") is False
+    assert info.filter("sensor.sensor1") is False
+    assert info.filter_lifecycle("sensor.new") is True
+    assert info.filter_lifecycle("sensor.removed") is True

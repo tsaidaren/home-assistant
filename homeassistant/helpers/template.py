@@ -218,6 +218,9 @@ class RenderInfo:
         self.domains = frozenset(self.domains)
         self.domains_lifecycle = frozenset(self.domains_lifecycle)
 
+        if self.exception:
+            return
+
         if self.all_states_lifecycle:
             self.filter_lifecycle = _true
         elif self.domains_lifecycle:
@@ -225,10 +228,12 @@ class RenderInfo:
         else:
             self.filter_lifecycle = _false
 
-        if self.all_states or self.exception:
+        if self.all_states:
             self.filter = _true
-        else:
+        elif self.entities or self.domains:
             self.filter = self._filter_domains_and_entities
+        else:
+            self.filter = _false
 
 
 class Template:
