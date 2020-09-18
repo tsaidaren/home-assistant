@@ -741,11 +741,19 @@ class _TrackTemplateResultInfo:
             ):
                 continue
 
-            if len(self._last_info) > 1:
+            if len(self._last_info) > 1 and entity_id:
+                entity_filter_result = not self._last_info[template].filter(entity_id)
+                entity_lifecycle_filter_result = (
+                    not lifecycle_event
+                    or not self._last_info[template].filter_lifecycle(entity_id)
+                )
+
                 _LOGGER.debug(
-                    "Template update %s triggered by event: %s",
+                    "Template update %s triggered by event: %s - [filter_result=%s] [lifecycle_filter_result=%s]",
                     self._last_info[template],
                     event,
+                    entity_filter_result,
+                    entity_lifecycle_filter_result,
                 )
             else:
                 _LOGGER.debug(
