@@ -741,11 +741,18 @@ class _TrackTemplateResultInfo:
             ):
                 continue
 
-            _LOGGER.debug(
-                "Template update %s triggered by event: %s",
-                self._last_info[template],
-                event,
-            )
+            if len(self._last_info) > 1:
+                _LOGGER.debug(
+                    "Template update %s triggered by event: %s",
+                    self._last_info[template],
+                    event,
+                )
+            else:
+                _LOGGER.debug(
+                    "Template update %s triggered by event: %s",
+                    template.template,
+                    event,
+                )
 
             self._info[template] = template.async_render_to_info(
                 track_template_.variables
