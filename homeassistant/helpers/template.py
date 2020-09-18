@@ -221,16 +221,16 @@ class RenderInfo:
         if self.exception:
             return
 
-        if self.all_states_lifecycle:
-            self.filter_lifecycle = _true
-        elif self.domains_lifecycle:
-            self.filter_lifecycle = self._filter_lifecycle_domains
-        else:
-            self.filter_lifecycle = _false
+        if not self.all_states_lifecycle:
+            if self.domains_lifecycle:
+                self.filter_lifecycle = self._filter_lifecycle_domains
+            else:
+                self.filter_lifecycle = _false
 
         if self.all_states:
-            self.filter = _true
-        elif self.entities or self.domains:
+            return
+
+        if self.entities or self.domains:
             self.filter = self._filter_domains_and_entities
         else:
             self.filter = _false
