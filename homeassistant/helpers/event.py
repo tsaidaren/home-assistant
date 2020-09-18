@@ -602,7 +602,10 @@ class _TrackTemplateResultInfo:
             template = track_template_.template
 
             # Tracking all states
-            if self._info[template].all_states:
+            if (
+                self._info[template].all_states
+                or self._info[template].all_states_lifecycle
+            ):
                 return True
 
             # Previous call had an exception
@@ -721,13 +724,20 @@ class _TrackTemplateResultInfo:
         entity_id = event and event.data.get(ATTR_ENTITY_ID)
         updates = []
         info_changed = False
+        lifecycle_event = event and (
+            event.data.get("new_state") is None or event.data.get("old_state") is None
+        )
 
         for track_template_ in self._track_templates:
             template = track_template_.template
             if (
                 entity_id
                 and len(self._last_info) > 1
-                and not self._last_info[template].filter_lifecycle(entity_id)
+                and not self._last_info[template].filter(entity_id)
+                and not (
+                    lifecycle_event
+                    and self._last_info[template].filter_lifecycle(entity_id)
+                )
             ):
                 continue
 
@@ -1229,4 +1239,6 @@ def _entities_domains_from_info(render_infos: Iterable[RenderInfo]) -> Tuple[Set
             entities.update(render_info.entities)
         if render_info.domains:
             domains.update(render_info.domains)
+        if render_info.domains_lifecycle:
+            domains.update(render_info.domains_lifecycle)
     return entities, domains
