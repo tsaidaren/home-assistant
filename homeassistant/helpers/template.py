@@ -512,7 +512,7 @@ class DomainStates:
 class TemplateState(State):
     """Class to represent a state object in a template."""
 
-    __slots__ = ("_hass", "_state")
+    __slots__ = ("_hass", "_state", "_collected")
 
     # Inheritance is done so functions that check against State keep working
     # pylint: disable=super-init-not-called
@@ -520,17 +520,61 @@ class TemplateState(State):
         """Initialize template state."""
         self._hass = hass
         self._state = state
+        self._collected = False
 
-    def _access_state(self):
-        state = object.__getattribute__(self, "_state")
-        hass = object.__getattribute__(self, "_hass")
-        _collect_state(hass, state.entity_id)
-        return state
+    def _collect_state(self):
+        self._collected = True
+        _collect_state(self._hass, self._state.entity_id)
+
+    @property
+    def entity_id(self):
+        return self._state.entity_id
+
+    @property
+    def state(self):
+        self._collected or self._collect_state()
+        return self._state.state
+
+    @property
+    def attributes(self):
+        self._collected or self._collect_state()
+        return self._state.attributes
+
+    @property
+    def last_changed(self):
+        self._collected or self._collect_state()
+        return self._state.last_changed
+
+    @property
+    def last_updated(self):
+        self._collected or self._collect_state()
+        return self._state.last_updated
+
+    @property
+    def context(self):
+        self._collected or self._collect_state()
+        return self._state.context
+
+    @property
+    def domain(self):
+        self._collected or self._collect_state()
+        return self._state.domain
+
+    @property
+    def object_id(self):
+        self._collected or self._collect_state()
+        return self._state.object_id
+
+    @property
+    def name(self):
+        self._collected or self._collect_state()
+        return self._state.name
 
     @property
     def state_with_unit(self) -> str:
         """Return the state concatenated with the unit if available."""
-        state = object.__getattribute__(self, "_access_state")()
+        self._collected or self._collect_state()
+        state = self._state
         unit = state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
         if unit is None:
             return state.state
@@ -538,29 +582,12 @@ class TemplateState(State):
 
     def __eq__(self, other: Any) -> bool:
         """Ensure we collect on equality check."""
-        state = object.__getattribute__(self, "_state")
-        hass = object.__getattribute__(self, "_hass")
-        _collect_state(hass, state.entity_id)
-        return super().__eq__(other)
-
-    def __getattribute__(self, name):
-        """Return an attribute of the state."""
-        # This one doesn't count as an access of the state
-        # since we either found it by looking direct for the ID
-        # or got it off an iterator.
-        if name == "entity_id" or name in object.__dict__:
-            state = object.__getattribute__(self, "_state")
-            return getattr(state, name)
-        if name in TemplateState.__dict__:
-            return object.__getattribute__(self, name)
-        state = object.__getattribute__(self, "_access_state")()
-        return getattr(state, name)
+        self._collected or self._collect_state()
+        return self._state.__eq__(other)
 
     def __repr__(self) -> str:
         """Representation of Template State."""
-        state = object.__getattribute__(self, "_access_state")()
-        rep = state.__repr__()
-        return f"<template {rep[1:]}"
+        return f"<template {self.state.__repr__()[1:]}"
 
 
 def _collect_state(hass: HomeAssistantType, entity_id: str) -> None:
