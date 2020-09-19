@@ -986,3 +986,46 @@ async def test_self_referencing_icon_with_no_loop(hass, caplog):
     assert state.state == "extreme"
     assert state.attributes[ATTR_ICON] == "mdi:hazard-lights"
     assert "Template loop detected" not in caplog.text
+
+
+async def test_manual_entity_ids(hass):
+    """Test manual entity ids."""
+    await async_setup_component(
+        hass,
+        "sensor",
+        {
+            "sensor": {
+                "platform": "template",
+                "sensors": {
+                    "test": {
+                        "value_template": "{{ states | count }}",
+                        "entity_id": "sensor.one, sensor.two",
+                    },
+                },
+            }
+        },
+    )
+
+    await hass.async_block_till_done()
+    await hass.async_start()
+    await hass.async_block_till_done()
+
+    hass.states.async_set("sensor.three", STATE_ON)
+    assert len(hass.states.async_all()) == 2
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.test").state == "0"
+
+    hass.states.async_set("sensor.one", STATE_ON)
+    await hass.async_block_till_done()
+    assert len(hass.states.async_all()) == 3
+    assert hass.states.get("sensor.test").state == "3"
+
+    hass.states.async_set("sensor.two", STATE_ON)
+    await hass.async_block_till_done()
+    assert len(hass.states.async_all()) == 4
+    assert hass.states.get("sensor.test").state == "4"
+
+    hass.states.async_set("sensor.four", STATE_ON)
+    await hass.async_block_till_done()
+    assert len(hass.states.async_all()) == 5
+    assert hass.states.get("sensor.test").state == "4"

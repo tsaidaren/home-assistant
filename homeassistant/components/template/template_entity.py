@@ -14,6 +14,7 @@ from homeassistant.helpers.event import (
     Event,
     TrackTemplate,
     TrackTemplateResult,
+    async_track_state_change_event,
     async_track_template_result,
 )
 from homeassistant.helpers.template import Template, result_as_boolean
@@ -61,9 +62,6 @@ class _TemplateAttribute:
     @callback
     def handle_result(
         self,
-        event: Optional[Event],
-        template: Template,
-        last_result: Union[str, None, TemplateError],
         result: Union[str, TemplateError],
     ) -> None:
         """Handle a template result event callback."""
@@ -118,6 +116,7 @@ class TemplateEntity(Entity):
         icon_template=None,
         entity_picture_template=None,
         attribute_templates=None,
+        entity_ids=None,
     ):
         """Template Entity."""
         self._template_attrs = {}
@@ -131,6 +130,7 @@ class TemplateEntity(Entity):
         self._icon = None
         self._entity_picture = None
         self._self_ref_update_count = 0
+        self._entities = entity_ids
 
     @property
     def should_poll(self):
@@ -248,14 +248,43 @@ class TemplateEntity(Entity):
 
         for update in updates:
             for attr in self._template_attrs[update.template]:
-                attr.handle_result(
-                    event, update.template, update.last_result, update.result
-                )
+                attr.handle_result(update.result)
+
+        if self._async_update:
+            self.async_write_ha_state()
+
+    @callback
+    def _handle_state_changed(self, *_) -> None:
+        for template, attrs in self._template_attrs.items():
+            try:
+                result = template.async_render()
+            except TemplateError as ex:
+                result = ex
+
+            for attr in attrs:
+                attr.handle_result(result)
 
         if self._async_update:
             self.async_write_ha_state()
 
     async def _async_template_startup(self, *_) -> None:
+        if self._entities:
+            return await self._async_template_startup_fixed_entities()
+        return await self._async_template_startup_dynamic_entites()
+
+    async def _async_template_startup_fixed_entities(self, *_) -> None:
+        for template in self._template_attrs:
+            template.hass = self.hass
+
+        self.async_on_remove(
+            async_track_state_change_event(
+                self.hass, self._entities, self._handle_state_changed
+            )
+        )
+        self._handle_state_changed()
+        self._async_update = self._handle_state_changed
+
+    async def _async_template_startup_dynamic_entites(self, *_) -> None:
         # _handle_results will not write state until "_async_update" is set
         template_var_tups = [
             TrackTemplate(template, None) for template in self._template_attrs
