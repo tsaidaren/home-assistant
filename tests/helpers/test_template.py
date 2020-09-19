@@ -2456,26 +2456,29 @@ async def test_lifecycle(hass):
     assert info.filter_lifecycle("sensor.removed") is True
 
 
-async def test_speed(hass):
-    """Test that we limit template render info for lifecycle events."""
-    hass.states.async_set("sun.sun", "above", {"elevation": 50, "next_rising": "later"})
-    for i in range(2000):
-        hass.states.async_set(f"sensor.sensor{i}", "on")
+async def test_lights(hass):
+    """Test we can sort lights."""
 
-    tmp = template.Template(
-        "{{ states | selectattr('state', 'in', ['unavailable', 'unknown', 'none']) | list | count }}",
-        hass,
-    )
+    tmpl = """
+          {% set lights_on = states.light|selectattr('state','eq','on')|map(attribute='name')|list %}
+          {% if lights_on|length == 0 %}
+            No lights on. Sleep well..
+          {% elif lights_on|length == 1 %}
+            The {{lights_on[0]}} light is on.
+          {% elif lights_on|length == 2 %}
+            The {{lights_on[0]}} and {{lights_on[1]}} lights are on.
+          {% else %}
+            The {{lights_on[:-1]|join(', ')}}, and {{lights_on[-1]}} lights are on.
+          {% endif %}
+    """
+    states = []
+    for i in range(10):
+        states.append(f"light.sensor{i}")
+        hass.states.async_set(f"light.sensor{i}", "on")
+
+    tmp = template.Template(tmpl, hass)
     info = tmp.async_render_to_info()
-
-    import cProfile
-
-    pr = cProfile.Profile()
-    pr.enable()
-
-    for i in range(200):
-        info = tmp.async_render_to_info()
-
-    pr.disable()
-    pr.create_stats()
-    pr.dump_stats("tpl2.cprof")
+    assert info.entities == set(states)
+    assert "lights are on" in info.result()
+    for i in range(10):
+        assert f"sensor{i}" in info.result()

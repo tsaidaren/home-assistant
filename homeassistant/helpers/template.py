@@ -512,7 +512,7 @@ class DomainStates:
 class TemplateState(State):
     """Class to represent a state object in a template."""
 
-    __slots__ = ("_hass", "_state", "_collected")
+    __slots__ = ("_hass", "_state", "_collected_state")
 
     # Inheritance is done so functions that check against State keep working
     # pylint: disable=super-init-not-called
@@ -520,69 +520,79 @@ class TemplateState(State):
         """Initialize template state."""
         self._hass = hass
         self._state = state
-        self._collected = False
+        self._collected_state = False
 
     def _collect_state(self):
-        self._collected = True
-        _collect_state(self._hass, self._state.entity_id)
+        if self._collected_state:
+            return True
+        if _RENDER_INFO in self._hass.data:
+            self._hass.data[_RENDER_INFO].entities.add(self._state.entity_id)
+        self._collected_state = True
 
     @property
     def entity_id(self):
+        """Wrap State.entity_id without collecting."""
         return self._state.entity_id
 
     @property
     def state(self):
-        self._collected or self._collect_state()
+        """Wrap State.state."""
+        self._collect_state()
         return self._state.state
 
     @property
     def attributes(self):
-        self._collected or self._collect_state()
+        """Wrap State.attributes."""
+        self._collect_state()
         return self._state.attributes
 
     @property
     def last_changed(self):
-        self._collected or self._collect_state()
+        """Wrap State.last_changed."""
+        self._collect_state()
         return self._state.last_changed
 
     @property
     def last_updated(self):
-        self._collected or self._collect_state()
+        """Wrap State.last_updated."""
+        self._collect_state()
         return self._state.last_updated
 
     @property
     def context(self):
-        self._collected or self._collect_state()
+        """Wrap State.context."""
+        self._collect_state()
         return self._state.context
 
     @property
     def domain(self):
-        self._collected or self._collect_state()
+        """Wrap State.domain."""
+        self._collect_state()
         return self._state.domain
 
     @property
     def object_id(self):
-        self._collected or self._collect_state()
+        """Wrap State.object_id."""
+        self._collect_state()
         return self._state.object_id
 
     @property
     def name(self):
-        self._collected or self._collect_state()
+        """Wrap State.name."""
+        self._collect_state()
         return self._state.name
 
     @property
     def state_with_unit(self) -> str:
         """Return the state concatenated with the unit if available."""
-        self._collected or self._collect_state()
+        self._collect_state()
         state = self._state
         unit = state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
-        if unit is None:
-            return state.state
-        return f"{state.state} {unit}"
+        return f"{state.state} {unit}" if unit else state.state
 
     def __eq__(self, other: Any) -> bool:
         """Ensure we collect on equality check."""
-        self._collected or self._collect_state()
+        self._collect_state()
         return self._state.__eq__(other)
 
     def __repr__(self) -> str:
