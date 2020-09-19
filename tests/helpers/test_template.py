@@ -2454,28 +2454,3 @@ async def test_lifecycle(hass):
     assert info.filter("sensor.sensor1") is False
     assert info.filter_lifecycle("sensor.new") is True
     assert info.filter_lifecycle("sensor.removed") is True
-
-
-async def test_speed(hass):
-    """Test that we limit template render info for lifecycle events."""
-    hass.states.async_set("sun.sun", "above", {"elevation": 50, "next_rising": "later"})
-    for i in range(2000):
-        hass.states.async_set(f"sensor.sensor{i}", "on")
-
-    tmp = template.Template(
-        "{{ states | selectattr('state', 'in', ['unavailable', 'unknown', 'none']) | list | count }}",
-        hass,
-    )
-    info = tmp.async_render_to_info()
-
-    import cProfile
-
-    pr = cProfile.Profile()
-    pr.enable()
-
-    for i in range(200):
-        info = tmp.async_render_to_info()
-
-    pr.disable()
-    pr.create_stats()
-    pr.dump_stats("tpl2.cprof")
