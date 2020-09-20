@@ -425,10 +425,7 @@ def _get_events(
     entity_matches_only=False,
 ):
     """Get events for a period of time."""
-    import cProfile
 
-    pr = cProfile.Profile()
-    pr.enable()
     entity_attr_cache = EntityAttributeCache(hass)
     context_lookup = {None: None}
 
@@ -480,13 +477,9 @@ def _get_events(
 
         query = query.order_by(Events.time_fired)
 
-        result = list(
+        return list(
             humanify(hass, yield_events(query), entity_attr_cache, context_lookup)
         )
-        pr.disable()
-        pr.create_stats()
-        pr.dump_stats("logbook1.cprof")
-        return result
 
 
 def _generate_events_query(session):
