@@ -1,5 +1,6 @@
 """Event parser and human readable log generator."""
 from datetime import timedelta
+from itertools import groupby
 import json
 import logging
 import re
@@ -259,113 +260,167 @@ class LogbookView(HomeAssistantView):
 
 
 def humanify(hass, events, entity_attr_cache, context_lookup):
-    """Generate a converted list of events into Entry objects."""
+    """Generate a converted list of events into Entry objects.
 
-    # Yield entries
-    external_events = hass.data.get(DOMAIN, {})
-    for event in events:
-        if event.event_type in external_events:
-            domain, describe_event = external_events[event.event_type]
-            data = describe_event(event)
-            data["when"] = event.time_fired_isoformat
-            data["domain"] = domain
-            if event.context_user_id:
-                data["context_user_id"] = event.context_user_id
-            context_event = context_lookup.get(event.context_id)
-            if context_event:
-                _augment_data_with_context(
-                    data,
-                    data.get(ATTR_ENTITY_ID),
-                    event,
-                    context_event,
-                    entity_attr_cache,
-                    external_events,
-                )
-            yield data
+    Will try to group events if possible:
+    - if 2+ sensor updates in GROUP_BY_MINUTES, show last
+    - if Home Assistant stop and start happen in same minute call it restarted
+    """
 
-        if event.event_type == EVENT_STATE_CHANGED:
-            entity_id = event.entity_id
-            domain = event.domain
+    # Group events in batches of GROUP_BY_MINUTES
+    for _, g_events in groupby(
+        events, lambda event: event.time_fired_minute // GROUP_BY_MINUTES
+    ):
 
-            data = {
-                "when": event.time_fired_isoformat,
-                "name": _entity_name_from_event(entity_id, event, entity_attr_cache),
-                "message": _entry_message_from_event(
-                    entity_id, domain, event, entity_attr_cache
-                ),
-                "domain": domain,
-                "state": event.state,
-                "entity_id": entity_id,
-            }
+        events_batch = list(g_events)
 
-            icon = event.attributes_icon
-            if icon:
-                data["icon"] = icon
+        # Keep track of last sensor states
+        last_sensor_event = {}
 
-            if event.context_user_id:
-                data["context_user_id"] = event.context_user_id
+        # Group HA start/stop events
+        # Maps minute of event to 1: stop, 2: stop + start
+        start_stop_events = {}
 
-            context_event = context_lookup.get(event.context_id)
-            if context_event and context_event != event:
-                _augment_data_with_context(
-                    data,
-                    entity_id,
-                    event,
-                    context_event,
-                    entity_attr_cache,
-                    external_events,
-                )
+        # Process events
+        for event in events_batch:
+            if event.event_type == EVENT_STATE_CHANGED:
+                if event.domain in CONTINUOUS_DOMAINS:
+                    last_sensor_event[event.entity_id] = event
 
-            yield data
+            elif event.event_type == EVENT_HOMEASSISTANT_STOP:
+                if event.time_fired_minute in start_stop_events:
+                    continue
 
-        elif event.event_type == EVENT_HOMEASSISTANT_START:
-            yield {
-                "when": event.time_fired_isoformat,
-                "name": "Home Assistant",
-                "message": "started",
-                "domain": HA_DOMAIN,
-            }
+                start_stop_events[event.time_fired_minute] = 1
 
-        elif event.event_type == EVENT_HOMEASSISTANT_STOP:
-            yield {
-                "when": event.time_fired_isoformat,
-                "name": "Home Assistant",
-                "message": "stopped",
-                "domain": HA_DOMAIN,
-            }
+            elif event.event_type == EVENT_HOMEASSISTANT_START:
+                if event.time_fired_minute not in start_stop_events:
+                    continue
 
-        elif event.event_type == EVENT_LOGBOOK_ENTRY:
-            event_data = event.data
-            domain = event_data.get(ATTR_DOMAIN)
-            entity_id = event_data.get(ATTR_ENTITY_ID)
-            if domain is None and entity_id is not None:
-                try:
-                    domain = split_entity_id(str(entity_id))[0]
-                except IndexError:
-                    pass
+                start_stop_events[event.time_fired_minute] = 2
 
-            data = {
-                "when": event.time_fired_isoformat,
-                "name": event_data.get(ATTR_NAME),
-                "message": event_data.get(ATTR_MESSAGE),
-                "domain": domain,
-                "entity_id": entity_id,
-            }
-            if event.context_user_id:
-                data["context_user_id"] = event.context_user_id
+        # Yield entries
+        external_events = hass.data.get(DOMAIN, {})
+        for event in events_batch:
+            if event.event_type in external_events:
+                domain, describe_event = external_events[event.event_type]
+                data = describe_event(event)
+                data["when"] = event.time_fired_isoformat
+                data["domain"] = domain
+                if event.context_user_id:
+                    data["context_user_id"] = event.context_user_id
+                context_event = context_lookup.get(event.context_id)
+                if context_event:
+                    _augment_data_with_context(
+                        data,
+                        data.get(ATTR_ENTITY_ID),
+                        event,
+                        context_event,
+                        entity_attr_cache,
+                        external_events,
+                    )
+                yield data
 
-            context_event = context_lookup.get(event.context_id)
-            if context_event and context_event != event:
-                _augment_data_with_context(
-                    data,
-                    entity_id,
-                    event,
-                    context_event,
-                    entity_attr_cache,
-                    external_events,
-                )
+            if event.event_type == EVENT_STATE_CHANGED:
+                entity_id = event.entity_id
+                domain = event.domain
 
-            yield data
+                if (
+                    domain in CONTINUOUS_DOMAINS
+                    and event != last_sensor_event[entity_id]
+                ):
+                    # Skip all but the last sensor state
+                    continue
+
+                data = {
+                    "when": event.time_fired_isoformat,
+                    "name": _entity_name_from_event(
+                        entity_id, event, entity_attr_cache
+                    ),
+                    "message": _entry_message_from_event(
+                        entity_id, domain, event, entity_attr_cache
+                    ),
+                    "domain": domain,
+                    "state": event.state,
+                    "entity_id": entity_id,
+                }
+
+                icon = event.attributes_icon
+                if icon:
+                    data["icon"] = icon
+
+                if event.context_user_id:
+                    data["context_user_id"] = event.context_user_id
+
+                context_event = context_lookup.get(event.context_id)
+                if context_event and context_event != event:
+                    _augment_data_with_context(
+                        data,
+                        entity_id,
+                        event,
+                        context_event,
+                        entity_attr_cache,
+                        external_events,
+                    )
+
+                yield data
+
+            elif event.event_type == EVENT_HOMEASSISTANT_START:
+                if start_stop_events.get(event.time_fired_minute) == 2:
+                    continue
+
+                yield {
+                    "when": event.time_fired_isoformat,
+                    "name": "Home Assistant",
+                    "message": "started",
+                    "domain": HA_DOMAIN,
+                }
+
+            elif event.event_type == EVENT_HOMEASSISTANT_STOP:
+                if start_stop_events.get(event.time_fired_minute) == 2:
+                    action = "restarted"
+                else:
+                    action = "stopped"
+
+                yield {
+                    "when": event.time_fired_isoformat,
+                    "name": "Home Assistant",
+                    "message": action,
+                    "domain": HA_DOMAIN,
+                }
+
+            elif event.event_type == EVENT_LOGBOOK_ENTRY:
+                event_data = event.data
+                domain = event_data.get(ATTR_DOMAIN)
+                entity_id = event_data.get(ATTR_ENTITY_ID)
+                if domain is None and entity_id is not None:
+                    try:
+                        domain = split_entity_id(str(entity_id))[0]
+                    except IndexError:
+                        pass
+
+                data = {
+                    "when": event.time_fired_isoformat,
+                    "name": event_data.get(ATTR_NAME),
+                    "message": event_data.get(ATTR_MESSAGE),
+                    "domain": domain,
+                    "entity_id": entity_id,
+                }
+                if event.context_user_id:
+                    data["context_user_id"] = event.context_user_id
+
+                context_event = context_lookup.get(event.context_id)
+                if context_event and context_event != event:
+                    _augment_data_with_context(
+                        data,
+                        entity_id,
+                        event,
+                        context_event,
+                        entity_attr_cache,
+                        external_events,
+                    )
+
+                yield data
 
 
 def _get_events(
