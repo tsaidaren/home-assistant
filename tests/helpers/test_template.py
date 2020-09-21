@@ -2484,7 +2484,36 @@ async def test_lights(hass):
         assert f"sensor{i}" in info.result()
 
 
-async def test_unavaiable_states(hass):
+async def test_state_attributes(hass):
+    """Test state attributes."""
+    hass.states.async_set("sensor.test", "23")
+
+    tpl = template.Template(
+        "{{ states.sensor.test.last_changed }}",
+        hass,
+    )
+    assert tpl.async_render() == str(hass.states.get("sensor.test").last_changed)
+
+    tpl = template.Template(
+        "{{ states.sensor.test.object_id }}",
+        hass,
+    )
+    assert tpl.async_render() == hass.states.get("sensor.test").object_id
+
+    tpl = template.Template(
+        "{{ states.sensor.test.domain }}",
+        hass,
+    )
+    assert tpl.async_render() == hass.states.get("sensor.test").domain
+
+    tpl = template.Template(
+        "{{ states.sensor.test.context.id }}",
+        hass,
+    )
+    assert tpl.async_render() == hass.states.get("sensor.test").context.id
+
+
+async def test_unavailable_states(hass):
     """Test watching unavailable states."""
 
     for i in range(10):
