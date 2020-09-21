@@ -2482,3 +2482,20 @@ async def test_lights(hass):
     assert "lights are on" in info.result()
     for i in range(10):
         assert f"sensor{i}" in info.result()
+
+
+async def test_unavaiable_states(hass):
+    """Test watching unavailable states."""
+
+    for i in range(10):
+        hass.states.async_set(f"light.sensor{i}", "on")
+
+    hass.states.async_set("light.unavailable", "unavailable")
+    hass.states.async_set("light.unknown", "unknown")
+    hass.states.async_set("light.none", "none")
+
+    tpl = template.Template(
+        "{{ states | selectattr('state', 'in', ['unavailable','unknown','none']) | map(attribute='entity_id') | list | join(', ') }}",
+        hass,
+    )
+    assert tpl.async_render() == "light.none, light.unavailable, light.unknown"
