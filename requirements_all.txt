@@ -309,7 +309,7 @@ av==8.0.2
 avri-api==0.1.7
 
 # homeassistant.components.axis
-axis==35
+axis==37
 
 # homeassistant.components.azure_event_hub
 azure-eventhub==5.1.0
@@ -723,7 +723,7 @@ hangups==0.4.11
 hass-nabucasa==0.37.0
 
 # homeassistant.components.splunk
-hass_splunk==0.1.0
+hass_splunk==0.1.1
 
 # homeassistant.components.jewish_calendar
 hdate==0.9.5
@@ -1470,7 +1470,7 @@ pylutron==0.2.5
 pymailgunner==1.4
 
 # homeassistant.components.firmata
-pymata-express==1.13
+pymata-express==1.19
 
 # homeassistant.components.mediaroom
 pymediaroom==0.6.4.1
@@ -1849,7 +1849,7 @@ pyvolumio==0.1.2
 pywebpush==1.9.2
 
 # homeassistant.components.wemo
-pywemo==0.4.46
+pywemo==0.5.0
 
 # homeassistant.components.wilight
 pywilight==0.0.65
@@ -2265,7 +2265,7 @@ xboxapi==2.0.1
 xfinity-gateway==0.0.4
 
 # homeassistant.components.knx
-xknx==0.14.2
+xknx==0.14.3
 
 # homeassistant.components.bluesound
 # homeassistant.components.rest
