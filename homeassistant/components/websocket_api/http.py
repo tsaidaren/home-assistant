@@ -92,6 +92,7 @@ class WebSocketHandler:
                     )
                     continue
 
+                self.logger.warning("Message: %s", dumped)
                 await self.wsock.send_str(dumped)
 
         # Clean up the peaker checker when we shut down the writer
