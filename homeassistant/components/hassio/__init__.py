@@ -133,8 +133,7 @@ async def async_get_addon_info(hass: HomeAssistantType, slug: str) -> dict:
     The caller of the function should handle HassioAPIError.
     """
     hassio = hass.data[DOMAIN]
-    result = await hassio.get_addon_info(slug)
-    return result["data"]
+    return await hassio.get_addon_info(slug)
 
 
 @bind_hass
@@ -145,6 +144,17 @@ async def async_install_addon(hass: HomeAssistantType, slug: str) -> None:
     """
     hassio = hass.data[DOMAIN]
     command = f"/addons/{slug}/install"
+    await hassio.send_command(command)
+
+
+@bind_hass
+async def async_uninstall_addon(hass: HomeAssistantType, slug: str) -> None:
+    """Uninstall add-on.
+
+    The caller of the function should handle HassioAPIError.
+    """
+    hassio = hass.data[DOMAIN]
+    command = f"/addons/{slug}/uninstall"
     await hassio.send_command(command)
 
 
