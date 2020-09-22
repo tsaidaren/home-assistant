@@ -1,8 +1,6 @@
 """View to accept incoming websocket connection."""
 import asyncio
 from contextlib import suppress
-from functools import lru_cache
-import json
 import logging
 from typing import Optional
 
@@ -13,7 +11,6 @@ from homeassistant.components.http import HomeAssistantView
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import callback
 from homeassistant.helpers.event import async_call_later
-from homeassistant.helpers.json import JSONEncoder
 from homeassistant.util.json import (
     find_paths_unserializable_data,
     format_unserializable_data,
@@ -74,32 +71,7 @@ class WebSocketHandler:
                     break
 
                 self._logger.debug("Sending %s", message)
-
-                if isinstance(message, str):
-                    await self.wsock.send_str(message)
-                    continue
-
-                try:
-                    dumped = cached_serialize_to_json(message)
-                except (ValueError, TypeError):
-                    await self.wsock.send_json(
-                        error_message(
-                            message["id"], ERR_UNKNOWN_ERROR, "Invalid JSON in response"
-                        )
-                    )
-                    self._logger.error(
-                        "Unable to serialize to JSON. Bad data found at %s",
-                        format_unserializable_data(
-                            find_paths_unserializable_data(message, dump=JSON_DUMP)
-                        ),
-                    )
-                    continue
-                except Exception:
-                    self._logger.exception("failed")
-
-                self._logger.warning("Message: %s", dumped)
-                self._logger.warning("Cache: %s", cached_serialize_to_json.cache_info())
-                await self.wsock.send_str(dumped)
+                await self.wsock.send_str(message)
 
         # Clean up the peaker checker when we shut down the writer
         if self._peak_checker_unsub:
@@ -114,6 +86,22 @@ class WebSocketHandler:
 
         Async friendly.
         """
+        if not isinstance(message, str):
+            try:
+                message = JSON_DUMP(message)
+            except (ValueError, TypeError):
+                message = JSON_DUMP(
+                    error_message(
+                        message["id"], ERR_UNKNOWN_ERROR, "Invalid JSON in response"
+                    )
+                )
+                self._logger.error(
+                    "Unable to serialize to JSON. Bad data found at %s",
+                    format_unserializable_data(
+                        find_paths_unserializable_data(message, dump=JSON_DUMP)
+                    ),
+                )
+
         try:
             self._to_write.put_nowait(message)
         except asyncio.QueueFull:
@@ -269,14 +257,3 @@ class WebSocketHandler:
             )
 
         return wsock
-
-
-@lru_cache  # type: ignore
-def cached_serialize_to_json(obj):
-    """Serialize to json once per message.
-
-    Since we can have many clients connected that are
-    all getting many of the same events (mostly state changed)
-    we can avoid serializing the same data for each connection.
-    """
-    return json.dumps(obj, cls=JSONEncoder, allow_nan=False)
