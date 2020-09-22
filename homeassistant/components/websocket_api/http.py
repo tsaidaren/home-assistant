@@ -93,12 +93,8 @@ class WebSocketHandler:
                     )
                     continue
 
-                self._logger.warning(
-                    "Message: %s",  dumped
-                )
-                self._logger.warning(
-                    "Cache: %s", cached_serialize_to_json.cache_info()
-                )
+                self._logger.warning("Message: %s", dumped)
+                self._logger.warning("Cache: %s", cached_serialize_to_json.cache_info())
                 await self.wsock.send_str(dumped)
 
         # Clean up the peaker checker when we shut down the writer
