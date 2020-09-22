@@ -385,7 +385,6 @@ class Recorder(threading.Thread):
                 if event.event_type == EVENT_STATE_CHANGED:
                     dbevent.event_data = "{}"
                 self.event_session.add(dbevent)
-                self.event_session.flush()
             except (TypeError, ValueError):
                 _LOGGER.warning("Event is not JSON serializable: %s", event)
             except Exception as err:  # pylint: disable=broad-except
@@ -393,17 +392,21 @@ class Recorder(threading.Thread):
                 _LOGGER.exception("Error adding event: %s", err)
 
             if dbevent and event.event_type == EVENT_STATE_CHANGED:
+                self.event_session.flush()
                 try:
                     dbstate = States.from_event(event)
                     has_new_state = event.data.get("new_state")
-                    dbstate.old_state_id = self._old_state_ids.get(dbstate.entity_id)
+                    if dbstate.entity_id in self._old_state_ids:
+                        old_state = self._old_state_ids[dbstate.entity_id]
+                        if old_state.state_id is None:
+                            self.event_session.flush()
+                        dbstate.old_state_id = old_state.state_id
                     if not has_new_state:
                         dbstate.state = None
                     dbstate.event_id = dbevent.event_id
                     self.event_session.add(dbstate)
-                    self.event_session.flush()
                     if has_new_state:
-                        self._old_state_ids[dbstate.entity_id] = dbstate.state_id
+                        self._old_state_ids[dbstate.entity_id] = dbstate
                     elif dbstate.entity_id in self._old_state_ids:
                         del self._old_state_ids[dbstate.entity_id]
                 except (TypeError, ValueError):
