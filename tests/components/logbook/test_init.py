@@ -94,6 +94,7 @@ class TestComponentLogbook(unittest.TestCase):
         # Logbook entry service call results in firing an event.
         # Our service call will unblock when the event listeners have been
         # scheduled. This means that they may not have been processed yet.
+        trigger_db_commit(self.hass)
         self.hass.block_till_done()
         self.hass.data[recorder.DATA_INSTANCE].block_till_done()
 
@@ -1473,6 +1474,8 @@ async def test_logbook_describe_event(hass, hass_client):
     ):
         hass.bus.async_fire("some_event")
         await hass.async_block_till_done()
+        await hass.async_add_job(trigger_db_commit, hass)
+        await hass.async_block_till_done()
         await hass.async_add_executor_job(
             hass.data[recorder.DATA_INSTANCE].block_till_done
         )
@@ -1540,6 +1543,8 @@ async def test_exclude_described_event(hass, hass_client):
         hass.bus.async_fire(
             "some_event", {logbook.ATTR_NAME: name, logbook.ATTR_ENTITY_ID: entity_id3}
         )
+        await hass.async_block_till_done()
+        await hass.async_add_job(trigger_db_commit, hass)
         await hass.async_block_till_done()
         await hass.async_add_executor_job(
             hass.data[recorder.DATA_INSTANCE].block_till_done
