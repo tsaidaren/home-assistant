@@ -78,9 +78,6 @@ def handle_subscribe_events(hass, connection, msg):
                 return
 
             connection.send_message(messages.cached_event_message(msg["id"], event))  # type: ignore
-            connection.logger.warning(
-                "Cache results: %s", messages.cached_event_message.cache_info()  # type: ignore
-            )
 
     else:
 
@@ -91,9 +88,6 @@ def handle_subscribe_events(hass, connection, msg):
                 return
 
             connection.send_message(messages.cached_event_message(msg["id"], event))  # type: ignore
-            connection.logger.warning(
-                "Cache results: %s", messages.cached_event_message.cache_info()  # type: ignore
-            )
 
     connection.subscriptions[msg["id"]] = hass.bus.async_listen(
         event_type, forward_events
