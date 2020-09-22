@@ -71,7 +71,28 @@ class WebSocketHandler:
                     break
 
                 self._logger.debug("Sending %s", message)
-                await self.wsock.send_str(message)
+
+                if isinstance(message, str):
+                    await self.wsock.send_str(message)
+                    continue
+
+                try:
+                    dumped = JSON_DUMP(message)
+                except (ValueError, TypeError):
+                    await self.wsock.send_json(
+                        error_message(
+                            message["id"], ERR_UNKNOWN_ERROR, "Invalid JSON in response"
+                        )
+                    )
+                    self._logger.error(
+                        "Unable to serialize to JSON. Bad data found at %s",
+                        format_unserializable_data(
+                            find_paths_unserializable_data(message, dump=JSON_DUMP)
+                        ),
+                    )
+                    continue
+
+                await self.wsock.send_str(dumped)
 
         # Clean up the peaker checker when we shut down the writer
         if self._peak_checker_unsub:
@@ -86,22 +107,6 @@ class WebSocketHandler:
 
         Async friendly.
         """
-        if not isinstance(message, str):
-            try:
-                message = JSON_DUMP(message)
-            except (ValueError, TypeError):
-                message = JSON_DUMP(
-                    error_message(
-                        message["id"], ERR_UNKNOWN_ERROR, "Invalid JSON in response"
-                    )
-                )
-                self._logger.error(
-                    "Unable to serialize to JSON. Bad data found at %s",
-                    format_unserializable_data(
-                        find_paths_unserializable_data(message, dump=JSON_DUMP)
-                    ),
-                )
-
         try:
             self._to_write.put_nowait(message)
         except asyncio.QueueFull:
