@@ -396,22 +396,16 @@ class Recorder(threading.Thread):
                 try:
                     dbstate = States.from_event(event)
                     has_new_state = event.data.get("new_state")
-                    if dbstate.entity_id in self._old_state_ids:
-                        old_state = self._old_state_ids[dbstate.entity_id]
-                        if isinstance(old_state, States):
-                            self.event_session.flush()
-                            dbstate.old_state_id = old_state.state_id
-                            self._old_state_ids[dbstate.entity_id] = old_state.state_id
-                        else:
-                            dbstate.old_state_id = old_state
+                    entity_id = dbstate.entity_id
+                    if entity_id in self._old_state_ids:
+                        old_state = self._old_state_ids.pop(entity_id)
+                        dbstate.old_state_id = old_state.state_id
                     if not has_new_state:
                         dbstate.state = None
                     dbstate.event_id = dbevent.event_id
                     self.event_session.add(dbstate)
                     if has_new_state:
-                        self._old_state_ids[dbstate.entity_id] = dbstate
-                    elif dbstate.entity_id in self._old_state_ids:
-                        del self._old_state_ids[dbstate.entity_id]
+                        self._old_state_ids[entity_id] = dbstate
                 except (TypeError, ValueError):
                     _LOGGER.warning(
                         "State is not JSON serializable: %s",
