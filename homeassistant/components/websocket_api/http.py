@@ -95,7 +95,6 @@ class WebSocketHandler:
                 except Exception:
                     self._logger.exception("failed")
 
-
                 self._logger.warning("Message: %s", dumped)
                 self._logger.warning("Cache: %s", cached_serialize_to_json.cache_info())
                 await self.wsock.send_str(dumped)
