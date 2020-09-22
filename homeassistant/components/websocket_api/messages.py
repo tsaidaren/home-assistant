@@ -1,11 +1,14 @@
 """Message templates for websocket commands."""
 
 from functools import lru_cache
+import json
+from typing import Any, Dict
 
 import voluptuous as vol
 
 from homeassistant.core import Event
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.json import JSONEncoder
 
 from . import const
 
@@ -36,8 +39,13 @@ def error_message(iden, code, message):
     }
 
 
+def event_message(iden: int, event: Any) -> Dict:
+    """Return an event message."""
+    return {"id": iden, "type": "event", "event": event}
+
+
 @lru_cache  # type: ignore
-def event_message(iden: int, event: Event) -> str:
+def cached_event_message(iden: int, event: Event) -> str:
     """Return an event message.
 
     Serialize to json once per message.
@@ -46,4 +54,4 @@ def event_message(iden: int, event: Event) -> str:
     all getting many of the same events (mostly state changed)
     we can avoid serializing the same data for each connection.
     """
-    return const.JSON_DUMP({"id": iden, "type": "event", "event": event})
+    return json.dumps(event_message(iden, event), cls=JSONEncoder, allow_nan=False)
