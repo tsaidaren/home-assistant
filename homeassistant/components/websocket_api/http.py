@@ -1,6 +1,7 @@
 """View to accept incoming websocket connection."""
 import asyncio
 from contextlib import suppress
+from functools import lru_cache
 import logging
 from typing import Optional
 
@@ -77,7 +78,7 @@ class WebSocketHandler:
                     continue
 
                 try:
-                    dumped = JSON_DUMP(message)
+                    dumped = cached_serialize_to_json(message)
                 except (ValueError, TypeError):
                     await self.wsock.send_json(
                         error_message(
@@ -92,7 +93,9 @@ class WebSocketHandler:
                     )
                     continue
 
-                self._logger.warning("Message: %s", dumped)
+                self._logger.warning(
+                    "Message: %s, %s", cached_serialize_to_json.cache_info(), dumped
+                )
                 await self.wsock.send_str(dumped)
 
         # Clean up the peaker checker when we shut down the writer
@@ -263,3 +266,14 @@ class WebSocketHandler:
             )
 
         return wsock
+
+
+@lru_cache  # type: ignore
+def cached_serialize_to_json(obj):
+    """Serialize to json once per message.
+
+    Since we can have many clients connected that are
+    all getting many of the same events (mostly state changed)
+    we can avoid serializing the same data for each connection.
+    """
+    return JSON_DUMP(obj)
