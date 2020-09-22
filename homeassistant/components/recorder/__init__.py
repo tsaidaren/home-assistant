@@ -398,9 +398,12 @@ class Recorder(threading.Thread):
                     has_new_state = event.data.get("new_state")
                     if dbstate.entity_id in self._old_state_ids:
                         old_state = self._old_state_ids[dbstate.entity_id]
-                        if old_state.state_id is None:
+                        if isinstance(old_state, States):
                             self.event_session.flush()
-                        dbstate.old_state_id = old_state.state_id
+                            dbstate.old_state_id = old_state.state_id
+                            self._old_state_ids[dbstate.entity_id] = old_state.state_id
+                        else:
+                            dbstate.old_state_id = old_state
                     if not has_new_state:
                         dbstate.state = None
                     dbstate.event_id = dbevent.event_id
