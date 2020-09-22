@@ -2,6 +2,7 @@
 import asyncio
 from contextlib import suppress
 from functools import lru_cache
+import json
 import logging
 from typing import Optional
 
@@ -12,6 +13,7 @@ from homeassistant.components.http import HomeAssistantView
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import callback
 from homeassistant.helpers.event import async_call_later
+from homeassistant.helpers.json import JSONEncoder
 from homeassistant.util.json import (
     find_paths_unserializable_data,
     format_unserializable_data,
@@ -277,4 +279,4 @@ def cached_serialize_to_json(obj):
     all getting many of the same events (mostly state changed)
     we can avoid serializing the same data for each connection.
     """
-    return JSON_DUMP(obj)
+    return json.dumps(obj, cls=JSONEncoder, allow_nan=False)
