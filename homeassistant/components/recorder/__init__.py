@@ -395,21 +395,18 @@ class Recorder(threading.Thread):
                 try:
                     dbstate = States.from_event(event)
                     has_new_state = event.data.get("new_state")
-                    entity_id = dbstate.entity_id
-                    if entity_id in self._old_states:
-                        old_state = self._old_states.pop(entity_id)
-                        dbstate.old_state = old_state
+                    if dbstate.entity_id in self._old_states:
+                        dbstate.old_state = self._old_states.pop(dbstate.entity_id)
                     if not has_new_state:
                         dbstate.state = None
                     dbstate.event = dbevent
                     self.event_session.add(dbstate)
                     if has_new_state:
-                        self._old_states[entity_id] = dbstate
-                except (TypeError, ValueError) as ex:
+                        self._old_states[dbstate.entity_id] = dbstate
+                except (TypeError, ValueError):
                     _LOGGER.warning(
-                        "State is not JSON serializable: %s (%s)",
+                        "State is not JSON serializable: %s",
                         event.data.get("new_state"),
-                        ex,
                     )
                 except Exception as err:  # pylint: disable=broad-except
                     # Must catch the exception to prevent the loop from collapsing
