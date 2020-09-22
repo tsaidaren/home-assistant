@@ -48,7 +48,7 @@ def event_message(iden: int, event: Any) -> Dict:
     return {"id": iden, "type": "event", "event": event}
 
 
-@lru_cache  # type: ignore
+@lru_cache(maxsize=128)
 def cached_event_message(iden: int, event: Event) -> str:
     """Return an event message.
 
