@@ -77,6 +77,8 @@ def handle_subscribe_events(hass, connection, msg):
             ):
                 return
 
+            # TODO do not compress if not the websocket does not have
+            # a compress object
             connection.send_message(
                 messages.cached_compressed_event_message(
                     connection.compressobj, msg["id"], event
