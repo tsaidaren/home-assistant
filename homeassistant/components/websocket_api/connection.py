@@ -1,6 +1,7 @@
 """Connection session."""
 import asyncio
 from typing import Any, Callable, Dict, Hashable, Optional
+import zlib
 
 import voluptuous as vol
 
@@ -28,6 +29,7 @@ class ActiveConnection:
 
         self.subscriptions: Dict[Hashable, Callable[[], Any]] = {}
         self.last_id = 0
+        self.compressobj = zlib.compressobj(level=1)
 
     def context(self, msg):
         """Return a context."""
