@@ -77,13 +77,7 @@ def handle_subscribe_events(hass, connection, msg):
             ):
                 return
 
-            # TODO do not compress if not the websocket does not have
-            # a compress object
-            connection.send_message(
-                messages.cached_compressed_event_message(
-                    connection.compressobj, msg["id"], event
-                )
-            )
+            connection.send_message(messages.cached_event_message(msg["id"], event))
 
     else:
 
@@ -93,11 +87,7 @@ def handle_subscribe_events(hass, connection, msg):
             if event.event_type == EVENT_TIME_CHANGED:
                 return
 
-            connection.send_message(
-                messages.cached_compressed_event_message(
-                    connection.compressobj, msg["id"], event
-                )
-            )
+            connection.send_message(messages.cached_event_message(msg["id"], event))
 
     connection.subscriptions[msg["id"]] = hass.bus.async_listen(
         event_type, forward_events
