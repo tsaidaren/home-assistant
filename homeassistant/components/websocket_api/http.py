@@ -3,10 +3,8 @@ import asyncio
 from contextlib import suppress
 import logging
 from typing import Optional
-import zlib
 
 from aiohttp import WSMsgType, web
-from aiohttp.client import WebSocketWriter
 import async_timeout
 
 from homeassistant.components.http import HomeAssistantView
@@ -130,7 +128,7 @@ class WebSocketHandler:
     async def async_handle(self) -> web.WebSocketResponse:
         """Handle a websocket response."""
         request = self.request
-        wsock = self.wsock = HASSWebSocketResponse(heartbeat=55)
+        wsock = self.wsock = web.WebSocketResponse(heartbeat=55)
         await wsock.prepare(request)
         self._logger.debug("Connected")
         self._handle_task = asyncio.current_task()
@@ -241,34 +239,3 @@ class WebSocketHandler:
             )
 
         return wsock
-
-
-class HASSWebSocketResponse(web.WebSocketResponse):
-    def _pre_start(self, request):
-        protocol, writer = super()._pre_start(request)
-
-        new_writer = HASSWebSocketWriter(
-            request._protocol,
-            request._protocol.transport,
-            compress=writer.compress,
-            notakeover=writer.notakeover,
-        )
-
-        return protocol, new_writer
-
-
-class HASSWebSocketWriter(WebSocketWriter):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._compressobj = CachedCompress(self.compress)
-
-
-class CachedCompress:
-    def __init__(self, compress):
-        self._compressobj = zlib.compressobj(level=1, wbits=-compress)
-
-    def compress(self, data):
-        return self._compressobj.compress(data)
-
-    def flush(self, mode):
-        return self._compressobj.flush(mode)
