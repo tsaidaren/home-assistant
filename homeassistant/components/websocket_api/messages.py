@@ -63,8 +63,7 @@ def cached_compressed_event_message(compressobj: Any, iden: int, event: Event) -
     """
     message = compressobj.compress(
         message_to_json(event_message(iden, event)).encode("utf-8")
-    )
-    message = message + compressobj.flush(zlib.Z_SYNC_FLUSH)
+    ) + compressobj.flush(zlib.Z_SYNC_FLUSH)
 
     if message.endswith(DEFLATE_TAIL):
         return message[:-4]
