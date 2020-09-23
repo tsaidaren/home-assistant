@@ -245,7 +245,7 @@ class WebSocketHandler:
 
 class HASSWebSocketResponse(web.WebSocketResponse):
     def _pre_start(self, request):
-        protocol, writer = super()._pre_start(*args)
+        protocol, writer = super()._pre_start(request)
 
         new_writer = HASSWebSocketWriter(
             request._protocol,
