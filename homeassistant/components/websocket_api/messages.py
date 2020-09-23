@@ -3,6 +3,7 @@
 from functools import lru_cache
 import logging
 from typing import Any, Dict
+import zlib
 
 import voluptuous as vol
 
@@ -27,6 +28,8 @@ MINIMAL_MESSAGE_SCHEMA = vol.Schema(
 # Base schema to extend by message handlers
 BASE_COMMAND_MESSAGE_SCHEMA = vol.Schema({vol.Required("id"): cv.positive_int})
 
+DEFLATE_TAIL = bytes([0x00, 0x00, 0xFF, 0xFF])
+
 
 def result_message(iden: int, result: Any = None) -> Dict:
     """Return a success result message."""
@@ -49,7 +52,7 @@ def event_message(iden: int, event: Any) -> Dict:
 
 
 @lru_cache(maxsize=128)
-def cached_event_message(iden: int, event: Event) -> str:
+def cached_compressed_event_message(compressobj: Any, iden: int, event: Event) -> Any:
     """Return an event message.
 
     Serialize to json once per message.
@@ -58,7 +61,16 @@ def cached_event_message(iden: int, event: Event) -> str:
     all getting many of the same events (mostly state changed)
     we can avoid serializing the same data for each connection.
     """
-    return message_to_json(event_message(iden, event))
+    message = compressobj.compress(
+        message_to_json(event_message(iden, event)).encode("utf-8")
+    )
+    message = message + compressobj.flush(zlib.Z_SYNC_FLUSH)
+
+    if message.endswith(DEFLATE_TAIL):
+        return message[:-4]
+
+    _LOGGER.warning("cached_compressed_event_message: %s", message)
+    return message
 
 
 def message_to_json(message: Any) -> str:
