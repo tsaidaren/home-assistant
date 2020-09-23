@@ -69,6 +69,7 @@ def cached_compressed_event_message(compressobj: Any, iden: int, event: Event) -
     if message.endswith(DEFLATE_TAIL):
         return message[:-4]
 
+    _LOGGER.warning("cached_compressed_event_message: %s", message)
     return message
 
 
