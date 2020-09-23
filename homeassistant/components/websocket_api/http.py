@@ -66,6 +66,10 @@ class WebSocketHandler:
 
                 self._logger.debug("Sending %s", message)
 
+                if isinstance(message, bytes):
+                    await self.wsock.send_bytes(message)
+                    return
+
                 if not isinstance(message, str):
                     message = message_to_json(message)
 
