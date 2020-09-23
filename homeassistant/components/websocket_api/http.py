@@ -244,17 +244,14 @@ class WebSocketHandler:
 
 
 class HASSWebSocketResponse(web.WebSocketResponse):
-    def _pre_start(self, *args):
-        protocol, writer = super()._pre_start(*args)
-
+    def _post_start(self, request, protocol, writer):
         new_writer = HASSWebSocketWriter(
             protocol,
             protocol.transport,
             compress=writer.compress,
             notakeover=writer.notakeover,
         )
-
-        return protocol, new_writer
+        return super()._post_start(request, protocol, new_writer)
 
 
 class HASSWebSocketWriter(WebSocketWriter):
