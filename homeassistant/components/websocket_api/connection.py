@@ -29,7 +29,7 @@ class ActiveConnection:
 
         self.subscriptions: Dict[Hashable, Callable[[], Any]] = {}
         self.last_id = 0
-        self.compressobj = zlib.compressobj(level=1)
+        self.compressobj = zlib.compressobj(level=1, wbits=-15)
 
     def context(self, msg):
         """Return a context."""
