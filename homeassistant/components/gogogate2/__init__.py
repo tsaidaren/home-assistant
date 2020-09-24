@@ -54,7 +54,7 @@ async def _async_create_device_entry(
         config_entry_id=config_entry.entry_id,
         identifiers={(DOMAIN, config_entry.unique_id)},
         manufacturer=MANUFACTURER,
-        name=config_entry.name,
+        name=config_entry.title,
         model=data.model,
         sw_version=data.firmwareversion,
     )
