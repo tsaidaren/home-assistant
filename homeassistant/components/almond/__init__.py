@@ -217,6 +217,7 @@ async def _configure_almond_for_ha(
             devices = await api.async_list_devices()
             _LOGGER.warning("Almond devices: %s", devices)
     except (asyncio.TimeoutError, ClientError):
+        _LOGGER.exception("Error getting devices")
         pass
 
     # Clear all other refresh tokens
