@@ -119,7 +119,7 @@ def _mocked_ismartgate_closed_door_response():
         apiversion="",
         remoteaccessenabled=False,
         remoteaccess="abc321.blah.blah",
-        firmwareversion="",
+        firmwareversion="555",
         pin=123,
         lang="en",
         newfirmware=False,
@@ -450,3 +450,4 @@ async def test_device_info(ismartgateapi_mock, hass: HomeAssistant) -> None:
     assert device.manufacturer == MANUFACTURER
     assert device.name == "mycontroller"
     assert device.model == "ismartgatePRO"
+    assert device.sw_version == "555"
