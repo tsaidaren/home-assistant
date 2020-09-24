@@ -1,4 +1,5 @@
 """Event parser and human readable log generator."""
+import cProfile
 from datetime import timedelta
 from itertools import groupby
 import json
@@ -244,7 +245,6 @@ class LogbookView(HomeAssistantView):
 
         def json_events():
             """Fetch events and generate JSON."""
-            import cProfile
 
             pr = cProfile.Profile()
             pr.enable()
