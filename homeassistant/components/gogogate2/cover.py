@@ -160,10 +160,9 @@ class DeviceCover(CoordinatorEntity, CoverEntity):
         """Device info for the controller."""
         data = self.coordinator.data
         return {
-            "identifiers": {(DOMAIN, self._unique_id)},
-            "name": self.name,
+            "identifiers": {(DOMAIN, self._config_entry.unique_id)},
+            "name": self._config_entry.title,
             "manufacturer": MANUFACTURER,
             "model": data.model,
             "sw_version": data.firmwareversion,
-            "via_device": (DOMAIN, self._config_entry.unique_id),
         }
