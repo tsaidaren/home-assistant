@@ -1,5 +1,4 @@
 """Event parser and human readable log generator."""
-import asyncio
 from datetime import timedelta
 from itertools import groupby
 import json
@@ -257,14 +256,6 @@ class LogbookView(HomeAssistantView):
                 )
             )
 
-        import cProfile
-
-        pr = cProfile.Profile()
-        pr.enable()
-        await asyncio.sleep(300)
-        pr.disable()
-        pr.create_stats()
-        pr.dump_stats("301.cprof")
         return await hass.async_add_executor_job(json_events)
 
 
