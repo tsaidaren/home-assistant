@@ -211,6 +211,14 @@ async def _configure_almond_for_ha(
         await hass.auth.async_remove_refresh_token(refresh_token)
         raise ConfigEntryNotReady from err
 
+    # Store token in Almond
+    try:
+        with async_timeout.timeout(30):
+            devices = await api.async_list_devices()
+            _LOGGER.warning("Almond devices: %s", devices)
+    except (asyncio.TimeoutError, ClientError):
+        pass
+
     # Clear all other refresh tokens
     for token in list(user.refresh_tokens.values()):
         if token.id != refresh_token.id:
