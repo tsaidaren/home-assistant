@@ -182,6 +182,7 @@ async def _configure_almond_for_ha(
     refresh_token = await hass.auth.async_create_refresh_token(
         user,
         # Almond will be fine as long as we restart once every 5 years
+        client_name="almond",
         access_token_expiration=timedelta(days=365 * 5),
     )
 
