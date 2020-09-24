@@ -25,6 +25,7 @@ from homeassistant.components.gogogate2.const import (
     DEVICE_TYPE_GOGOGATE2,
     DEVICE_TYPE_ISMARTGATE,
     DOMAIN,
+    MANUFACTURER,
 )
 from homeassistant.components.homeassistant import DOMAIN as HA_DOMAIN
 from homeassistant.config import async_process_ha_core_config
@@ -49,7 +50,75 @@ from homeassistant.setup import async_setup_component
 from homeassistant.util.dt import utcnow
 
 from tests.async_mock import MagicMock, patch
-from tests.common import MockConfigEntry, async_fire_time_changed
+from tests.common import MockConfigEntry, async_fire_time_changed, mock_device_registry
+
+
+def _mocked_ismartgate_closed_door_response():
+    return ISmartGateInfoResponse(
+        user="user1",
+        ismartgatename="ismartgatename0",
+        model="magic",
+        apiversion="",
+        remoteaccessenabled=False,
+        remoteaccess="abc123.blah.blah",
+        firmwareversion="",
+        pin=123,
+        lang="en",
+        newfirmware=False,
+        door1=ISmartGateDoor(
+            door_id=1,
+            permission=True,
+            name="Door1",
+            gate=False,
+            mode=DoorMode.GARAGE,
+            status=DoorStatus.CLOSED,
+            sensor=True,
+            sensorid=None,
+            camera=False,
+            events=2,
+            temperature=None,
+            enabled=True,
+            apicode="apicode0",
+            customimage=False,
+            voltage=40,
+        ),
+        door2=ISmartGateDoor(
+            door_id=2,
+            permission=True,
+            name="Door2",
+            gate=True,
+            mode=DoorMode.GARAGE,
+            status=DoorStatus.CLOSED,
+            sensor=True,
+            sensorid=None,
+            camera=False,
+            events=2,
+            temperature=None,
+            enabled=True,
+            apicode="apicode0",
+            customimage=False,
+            voltage=40,
+        ),
+        door3=ISmartGateDoor(
+            door_id=3,
+            permission=True,
+            name=None,
+            gate=False,
+            mode=DoorMode.GARAGE,
+            status=DoorStatus.UNDEFINED,
+            sensor=True,
+            sensorid=None,
+            camera=False,
+            events=0,
+            temperature=None,
+            enabled=True,
+            apicode="apicode0",
+            customimage=False,
+            voltage=40,
+        ),
+        network=Network(ip=""),
+        wifi=Wifi(SSID="", linkquality="", signal=""),
+    )
 
 
 @patch("homeassistant.components.gogogate2.common.GogoGate2Api")
@@ -364,71 +433,7 @@ async def test_open_close_update(gogogat2api_mock, hass: HomeAssistant) -> None:
 @patch("homeassistant.components.gogogate2.common.ISmartGateApi")
 async def test_availability(ismartgateapi_mock, hass: HomeAssistant) -> None:
     """Test availability."""
-    closed_door_response = ISmartGateInfoResponse(
-        user="user1",
-        ismartgatename="ismartgatename0",
-        model="",
-        apiversion="",
-        remoteaccessenabled=False,
-        remoteaccess="abc123.blah.blah",
-        firmwareversion="",
-        pin=123,
-        lang="en",
-        newfirmware=False,
-        door1=ISmartGateDoor(
-            door_id=1,
-            permission=True,
-            name="Door1",
-            gate=False,
-            mode=DoorMode.GARAGE,
-            status=DoorStatus.CLOSED,
-            sensor=True,
-            sensorid=None,
-            camera=False,
-            events=2,
-            temperature=None,
-            enabled=True,
-            apicode="apicode0",
-            customimage=False,
-            voltage=40,
-        ),
-        door2=ISmartGateDoor(
-            door_id=2,
-            permission=True,
-            name="Door2",
-            gate=True,
-            mode=DoorMode.GARAGE,
-            status=DoorStatus.CLOSED,
-            sensor=True,
-            sensorid=None,
-            camera=False,
-            events=2,
-            temperature=None,
-            enabled=True,
-            apicode="apicode0",
-            customimage=False,
-            voltage=40,
-        ),
-        door3=ISmartGateDoor(
-            door_id=3,
-            permission=True,
-            name=None,
-            gate=False,
-            mode=DoorMode.GARAGE,
-            status=DoorStatus.UNDEFINED,
-            sensor=True,
-            sensorid=None,
-            camera=False,
-            events=0,
-            temperature=None,
-            enabled=True,
-            apicode="apicode0",
-            customimage=False,
-            voltage=40,
-        ),
-        network=Network(ip=""),
-        wifi=Wifi(SSID="", linkquality="", signal=""),
-    )
+    closed_door_response = _mocked_ismartgate_closed_door_response()
 
     api = MagicMock(ISmartGateApi)
     api.info.return_value = closed_door_response
@@ -470,3 +475,37 @@ async def test_availability(ismartgateapi_mock, hass: HomeAssistant) -> None:
     async_fire_time_changed(hass, utcnow() + timedelta(hours=2))
     await hass.async_block_till_done()
     assert hass.states.get("cover.door1").state == STATE_CLOSED
+
+
+@patch("homeassistant.components.gogogate2.common.ISmartGateApi")
+async def test_device_info(ismartgateapi_mock, hass: HomeAssistant) -> None:
+    """Test device info."""
+    device_registry = mock_device_registry(hass)
+
+    closed_door_response = _mocked_ismartgate_closed_door_response()
+
+    api = MagicMock(ISmartGateApi)
+    api.info.return_value = closed_door_response
+    ismartgateapi_mock.return_value = api
+
+    config_entry = MockConfigEntry(
+        domain=DOMAIN,
+        source=SOURCE_USER,
+        title="mycontroller",
+        unique_id="xyz",
+        data={
+            CONF_DEVICE: DEVICE_TYPE_ISMARTGATE,
+            CONF_IP_ADDRESS: "127.0.0.1",
+            CONF_USERNAME: "admin",
+            CONF_PASSWORD: "password",
+        },
+    )
+    config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    device = device_registry.async_get_device({(DOMAIN, "xyz")}, set())
+    assert device
+    assert device.manufacturer == MANUFACTURER
+    assert device.name == "mycontroller"
+    assert device.model == "magic"
