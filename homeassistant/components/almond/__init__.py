@@ -211,11 +211,11 @@ async def _configure_almond_for_ha(
         await hass.auth.async_remove_refresh_token(refresh_token)
         raise ConfigEntryNotReady from err
 
-    # Store token in Almond
+    # List Apps
     try:
         with async_timeout.timeout(30):
-            devices = await api.async_list_devices()
-            _LOGGER.warning("Almond devices: %s", devices)
+            devices = await api.async_list_apps()
+            _LOGGER.warning("almond apps: %s", devices)
     except (asyncio.TimeoutError, ClientError):
         _LOGGER.exception("Error getting devices")
         pass
