@@ -17,7 +17,6 @@ from homeassistant.components.http import HomeAssistantView
 from homeassistant.components.recorder.models import (
     Events,
     States,
-    process_timestamp,
     process_timestamp_to_utc_isoformat,
 )
 from homeassistant.components.recorder.util import session_scope
@@ -677,7 +676,6 @@ class LazyEventPartialState:
     __slots__ = [
         "_row",
         "_event_data",
-        "_time_fired",
         "_time_fired_isoformat",
         "_attributes",
         "event_type",
@@ -693,7 +691,6 @@ class LazyEventPartialState:
         """Init the lazy event."""
         self._row = row
         self._event_data = None
-        self._time_fired = None
         self._time_fired_isoformat = None
         self._attributes = None
         self.event_type = self._row.event_type
@@ -756,15 +753,6 @@ class LazyEventPartialState:
             else:
                 self._event_data = json.loads(self._row.event_data)
         return self._event_data
-
-    @property
-    def time_fired(self):
-        """Time event was fired in utc."""
-        if not self._time_fired:
-            self._time_fired = (
-                process_timestamp(self._row.time_fired) or dt_util.utcnow()
-            )
-        return self._time_fired
 
     @property
     def time_fired_isoformat(self):
