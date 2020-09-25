@@ -758,12 +758,10 @@ class LazyEventPartialState:
     def time_fired_isoformat(self):
         """Time event was fired in utc isoformat."""
         if not self._time_fired_isoformat:
-            if self._time_fired:
-                self._time_fired_isoformat = self._time_fired.isoformat()
-            else:
-                self._time_fired_isoformat = process_timestamp_to_utc_isoformat(
-                    self._row.time_fired or dt_util.utcnow()
-                )
+            self._time_fired_isoformat = process_timestamp_to_utc_isoformat(
+                self._row.time_fired or dt_util.utcnow()
+            )
+
         return self._time_fired_isoformat
 
 
