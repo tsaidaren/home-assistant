@@ -698,9 +698,6 @@ class LazyEventPartialState:
         if self._attributes:
             return self._attributes.get(ATTR_ICON)
 
-        if ICON_JSON not in self._row.attributes:
-            return
-
         result = ICON_JSON_EXTRACT.search(self._row.attributes)
         return result and result.group(1)
 
