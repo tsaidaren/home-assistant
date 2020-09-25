@@ -53,7 +53,8 @@ import homeassistant.util.dt as dt_util
 ENTITY_ID_JSON_TEMPLATE = '"entity_id": "{}"'
 ENTITY_ID_JSON_EXTRACT = re.compile('"entity_id": "([^"]+)"')
 DOMAIN_JSON_EXTRACT = re.compile('"domain": "([^"]+)"')
-ICON_JSON_EXTRACT = re.compile('"icon": "([^"]+)"')
+ICON_JSON = '"icon": "'
+ICON_JSON_EXTRACT = re.compile(f'{ICON_JSON}([^"]+)"')
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -717,6 +718,9 @@ class LazyEventPartialState:
         """Extract the icon from the decoded attributes or json."""
         if self._attributes:
             return self._attributes.get(ATTR_ICON)
+
+        if ICON_JSON not in self._row.attributes:
+            return
 
         result = ICON_JSON_EXTRACT.search(self._row.attributes)
         return result and result.group(1)
