@@ -224,8 +224,8 @@ def process_timestamp_to_utc_isoformat(ts):
     """Process a timestamp into UTC isotime."""
     if ts is None:
         return None
-    if ts.tzinfo is None:
-        return f"{ts.isoformat()}{DB_TIMEZONE}"
     if ts.tzinfo == UTC:
         return ts.isoformat()
+    if ts.tzinfo is None:
+        return f"{ts.isoformat()}{DB_TIMEZONE}"
     return ts.astimezone(UTC).isoformat()
