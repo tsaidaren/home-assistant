@@ -909,7 +909,7 @@ class StateMachine:
         This method must be run in the event loop.
         """
         if domain_filter is None:
-            return list(self._states.keys())
+            return list(self._states)
 
         if isinstance(domain_filter, str):
             domain_filter = (domain_filter.lower(),)
@@ -929,13 +929,13 @@ class StateMachine:
         This method must be run in the event loop.
         """
         if domain_filter is None:
-            return len(self._states.keys())
+            return len(self._states)
 
         if isinstance(domain_filter, str):
             domain_filter = (domain_filter.lower(),)
 
         return len(
-            [state for state in self._states.values() if state.domain in domain_filter]
+            [None for state in self._states.values() if state.domain in domain_filter]
         )
 
     def all(self, domain_filter: Optional[Union[str, Iterable]] = None) -> List[State]:
