@@ -327,7 +327,7 @@ class Template:
         self.hass.data[_RENDER_INFO] = render_info
         try:
             render_info._result = self.async_render(variables, **kwargs)
-        except (TemplateError, vol.Invalid) as ex:
+        except TemplateError as ex:
             render_info.exception = ex
         finally:
             del self.hass.data[_RENDER_INFO]
