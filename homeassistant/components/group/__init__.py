@@ -709,13 +709,6 @@ class Group(Entity):
         if domain in _ON_STATES_BY_DOMAIN:
             self._on_states.update(domain_on_state)
 
-    @property
-    def _on_state(self):
-        if len(self._on_states) == 1:
-            return list(self._on_states)[0]
-
-        return STATE_ON
-
     @callback
     def _async_update_group_state(self, tr_state=None):
         """Update group state.
