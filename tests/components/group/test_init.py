@@ -285,7 +285,7 @@ class TestComponentsGroup(unittest.TestCase):
             "entities": f"light.Bowl, {test_group.entity_id}",
             "icon": "mdi:work",
         }
-        group_conf["test_group"] = "hello.world,light.happy"
+        group_conf["test_group"] = "hello.world,sensor.happy"
         group_conf["empty_group"] = {"name": "Empty Group", "entities": None}
 
         setup_component(self.hass, "group", {"group": group_conf})
@@ -301,7 +301,7 @@ class TestComponentsGroup(unittest.TestCase):
 
         group_state = self.hass.states.get(f"{group.DOMAIN}.test_group")
         assert STATE_UNKNOWN == group_state.state
-        assert {"light.happy", "hello.world"} == set(
+        assert {"sensor.happy", "hello.world"} == set(
             group_state.attributes["entity_id"]
         )
         assert group_state.attributes.get(group.ATTR_AUTO) is None
@@ -375,7 +375,7 @@ class TestComponentsGroup(unittest.TestCase):
             {
                 "group": {
                     "second_group": {"entities": "light.Bowl", "icon": "mdi:work"},
-                    "test_group": "hello.world,light.happy",
+                    "test_group": "hello.world,sensor.happy",
                     "empty_group": {"name": "Empty Group", "entities": None},
                 }
             },
@@ -393,7 +393,6 @@ class TestComponentsGroup(unittest.TestCase):
         ]
         assert self.hass.bus.listeners["state_changed"] == 1
         assert len(self.hass.data[TRACK_STATE_CHANGE_CALLBACKS]["hello.world"]) == 1
-        assert len(self.hass.data[TRACK_STATE_CHANGE_CALLBACKS]["light.happy"]) == 1
         assert len(self.hass.data[TRACK_STATE_CHANGE_CALLBACKS]["light.bowl"]) == 1
         assert len(self.hass.data[TRACK_STATE_CHANGE_CALLBACKS]["test.one"]) == 1
         assert len(self.hass.data[TRACK_STATE_CHANGE_CALLBACKS]["test.two"]) == 1

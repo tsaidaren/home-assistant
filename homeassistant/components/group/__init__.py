@@ -607,18 +607,24 @@ class Group(Entity):
 
     def _set_tracked(self, entity_ids):
         """Tuple of entities to be tracked."""
+        # tracking are the entities we want to track
+        # trackable are the entities we actually watch
+
         if not entity_ids:
             self.tracking = ()
+            self.trackable = ()
             return
 
         tracking = []
+        trackable = []
         for ent_id in entity_ids:
             ent_id_lower = ent_id.lower()
             domain = split_entity_id(ent_id_lower)[0]
-            if domain in _EXCLUDE_DOMAINS:
-                continue
             tracking.append(ent_id_lower)
+            if domain not in _EXCLUDE_DOMAINS:
+                trackable.append(ent_id_lower)
 
+        self.trackable = tuple(trackable)
         self.tracking = tuple(tracking)
 
     @callback
@@ -627,9 +633,12 @@ class Group(Entity):
 
         This method must be run in the event loop.
         """
+        if not self.trackable:
+            return
+
         if self._async_unsub_state_changed is None:
             self._async_unsub_state_changed = async_track_state_change_event(
-                self.hass, self.tracking, self._async_state_changed_listener
+                self.hass, self.trackable, self._async_state_changed_listener
             )
 
     async def async_stop(self):
@@ -652,9 +661,7 @@ class Group(Entity):
             self._reset_tracked_state()
 
         self._async_update_group_state()
-
-        if self.tracking:
-            self.async_start()
+        self.async_start()
 
     async def async_will_remove_from_hass(self):
         """Handle removal from Home Assistant."""
@@ -681,7 +688,7 @@ class Group(Entity):
         self._assumed = {}
         self._on_states = set()
 
-        for entity_id in self.tracking:
+        for entity_id in self.trackable:
             state = self.hass.states.get(entity_id)
 
             if state is not None:
