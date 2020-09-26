@@ -284,6 +284,8 @@ def handle_render_template(hass, connection, msg):
         error = vol.humanize.humanize_error(msg, ex)
     except TemplateError as ex:
         error = str(ex)
+    except Exception as ex:
+        error = type(ex).__name__ + ":" + str(ex)
 
     if error:
         connection.send_message(
