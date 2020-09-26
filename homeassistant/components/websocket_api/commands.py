@@ -17,8 +17,8 @@ from homeassistant.exceptions import (
 from homeassistant.helpers import config_validation as cv, entity
 from homeassistant.helpers.event import TrackTemplate, async_track_template_result
 from homeassistant.helpers.service import async_get_all_descriptions
+from homeassistant.helpers.template import Template
 from homeassistant.loader import IntegrationNotFound, async_get_integration
-from homeassistant.template import Template
 
 from . import const, decorators, messages
 
