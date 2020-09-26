@@ -285,7 +285,7 @@ class TestComponentsGroup(unittest.TestCase):
             "entities": f"light.Bowl, {test_group.entity_id}",
             "icon": "mdi:work",
         }
-        group_conf["test_group"] = "hello.world,sensor.happy"
+        group_conf["test_group"] = "hello.world,light.happy"
         group_conf["empty_group"] = {"name": "Empty Group", "entities": None}
 
         setup_component(self.hass, "group", {"group": group_conf})
@@ -301,7 +301,7 @@ class TestComponentsGroup(unittest.TestCase):
 
         group_state = self.hass.states.get(f"{group.DOMAIN}.test_group")
         assert STATE_UNKNOWN == group_state.state
-        assert {"sensor.happy", "hello.world"} == set(
+        assert {"light.happy", "hello.world"} == set(
             group_state.attributes["entity_id"]
         )
         assert group_state.attributes.get(group.ATTR_AUTO) is None
@@ -375,7 +375,7 @@ class TestComponentsGroup(unittest.TestCase):
             {
                 "group": {
                     "second_group": {"entities": "light.Bowl", "icon": "mdi:work"},
-                    "test_group": "hello.world,sensor.happy",
+                    "test_group": "hello.world,light.happy",
                     "empty_group": {"name": "Empty Group", "entities": None},
                 }
             },
@@ -393,7 +393,7 @@ class TestComponentsGroup(unittest.TestCase):
         ]
         assert self.hass.bus.listeners["state_changed"] == 1
         assert len(self.hass.data[TRACK_STATE_CHANGE_CALLBACKS]["hello.world"]) == 1
-        assert len(self.hass.data[TRACK_STATE_CHANGE_CALLBACKS]["sensor.happy"]) == 1
+        assert len(self.hass.data[TRACK_STATE_CHANGE_CALLBACKS]["light.happy"]) == 1
         assert len(self.hass.data[TRACK_STATE_CHANGE_CALLBACKS]["light.bowl"]) == 1
         assert len(self.hass.data[TRACK_STATE_CHANGE_CALLBACKS]["test.one"]) == 1
         assert len(self.hass.data[TRACK_STATE_CHANGE_CALLBACKS]["test.two"]) == 1
@@ -563,3 +563,231 @@ async def test_group_order_with_dynamic_creation(hass):
     await hass.async_block_till_done()
 
     assert hass.states.get("group.new_group2").attributes["order"] == 4
+
+
+async def test_group_persons(hass):
+    """Test group of persons."""
+    hass.states.async_set("person.one", "Work")
+    hass.states.async_set("person.two", "Work")
+    hass.states.async_set("person.three", "home")
+
+    assert await async_setup_component(
+        hass,
+        "group",
+        {
+            "group": {
+                "group_zero": {"entities": "person.one, person.two, person.three"},
+            }
+        },
+    )
+    await hass.async_block_till_done()
+
+    assert hass.states.get("group.group_zero").state == "home"
+
+
+async def test_group_mixed_domains(hass):
+    """Test group of mixed domains."""
+    hass.states.async_set("lock.alexander_garage_exit_door", "locked")
+    hass.states.async_set("binary_sensor.alexander_garage_side_door_open", "on")
+    hass.states.async_set("cover.small_garage_door", "closed")
+
+    assert await async_setup_component(
+        hass,
+        "group",
+        {
+            "group": {
+                "group_zero": {
+                    "entities": "lock.alexander_garage_exit_door, binary_sensor.alexander_garage_side_door_open, cover.small_garage_door"
+                },
+            }
+        },
+    )
+    await hass.async_block_till_done()
+
+    assert hass.states.get("group.group_zero").state == "on"
+
+
+async def test_group_sensors(hass):
+    """Test group of sensors."""
+    hass.states.async_set("sensor.one", "locked")
+    hass.states.async_set("sensor.two", "on")
+    hass.states.async_set("sensor.three", "closed")
+
+    assert await async_setup_component(
+        hass,
+        "group",
+        {
+            "group": {
+                "group_zero": {"entities": "sensor.one, sensor.two, sensor.three"},
+            }
+        },
+    )
+    await hass.async_block_till_done()
+
+    assert hass.states.get("group.group_zero").state == "unknown"
+
+
+async def test_group_climate_mixed(hass):
+    """Test group of climate with mixed states."""
+    hass.states.async_set("climate.one", "off")
+    hass.states.async_set("climate.two", "cool")
+    hass.states.async_set("climate.three", "heat")
+
+    assert await async_setup_component(
+        hass,
+        "group",
+        {
+            "group": {
+                "group_zero": {"entities": "climate.one, climate.two, climate.three"},
+            }
+        },
+    )
+    await hass.async_block_till_done()
+
+    assert hass.states.get("group.group_zero").state == STATE_ON
+
+
+async def test_group_climate_all_cool(hass):
+    """Test group of climate all set to cool."""
+    hass.states.async_set("climate.one", "cool")
+    hass.states.async_set("climate.two", "cool")
+    hass.states.async_set("climate.three", "cool")
+
+    assert await async_setup_component(
+        hass,
+        "group",
+        {
+            "group": {
+                "group_zero": {"entities": "climate.one, climate.two, climate.three"},
+            }
+        },
+    )
+    await hass.async_block_till_done()
+
+    assert hass.states.get("group.group_zero").state == STATE_ON
+
+
+async def test_group_climate_all_off(hass):
+    """Test group of climate all set to off."""
+    hass.states.async_set("climate.one", "off")
+    hass.states.async_set("climate.two", "off")
+    hass.states.async_set("climate.three", "off")
+
+    assert await async_setup_component(
+        hass,
+        "group",
+        {
+            "group": {
+                "group_zero": {"entities": "climate.one, climate.two, climate.three"},
+            }
+        },
+    )
+    await hass.async_block_till_done()
+
+    assert hass.states.get("group.group_zero").state == STATE_OFF
+
+
+async def test_group_alarm(hass):
+    """Test group of alarm control panels."""
+    hass.states.async_set("alarm_control_panel.one", "armed_away")
+    hass.states.async_set("alarm_control_panel.two", "armed_home")
+    hass.states.async_set("alarm_control_panel.three", "armed_away")
+
+    assert await async_setup_component(
+        hass,
+        "group",
+        {
+            "group": {
+                "group_zero": {
+                    "entities": "alarm_control_panel.one, alarm_control_panel.two, alarm_control_panel.three"
+                },
+            }
+        },
+    )
+    await hass.async_block_till_done()
+
+    assert hass.states.get("group.group_zero").state == STATE_ON
+
+
+async def test_group_alarm_disarmed(hass):
+    """Test group of alarm control panels disarmed."""
+    hass.states.async_set("alarm_control_panel.one", "disarmed")
+    hass.states.async_set("alarm_control_panel.two", "disarmed")
+    hass.states.async_set("alarm_control_panel.three", "disarmed")
+
+    assert await async_setup_component(
+        hass,
+        "group",
+        {
+            "group": {
+                "group_zero": {
+                    "entities": "alarm_control_panel.one, alarm_control_panel.two, alarm_control_panel.three"
+                },
+            }
+        },
+    )
+    await hass.async_block_till_done()
+
+    assert hass.states.get("group.group_zero").state == STATE_OFF
+
+
+async def test_group_vacuum_off(hass):
+    """Test group of vacuums."""
+    hass.states.async_set("vacuum.one", "docked")
+    hass.states.async_set("vacuum.two", "off")
+    hass.states.async_set("vacuum.three", "off")
+
+    assert await async_setup_component(
+        hass,
+        "group",
+        {
+            "group": {
+                "group_zero": {"entities": "vacuum.one, vacuum.two, vacuum.three"},
+            }
+        },
+    )
+    await hass.async_block_till_done()
+
+    assert hass.states.get("group.group_zero").state == STATE_OFF
+
+
+async def test_group_vacuum_on(hass):
+    """Test group of vacuums."""
+    hass.states.async_set("vacuum.one", "cleaning")
+    hass.states.async_set("vacuum.two", "off")
+    hass.states.async_set("vacuum.three", "off")
+
+    assert await async_setup_component(
+        hass,
+        "group",
+        {
+            "group": {
+                "group_zero": {"entities": "vacuum.one, vacuum.two, vacuum.three"},
+            }
+        },
+    )
+    await hass.async_block_till_done()
+
+    assert hass.states.get("group.group_zero").state == STATE_ON
+
+
+async def test_device_tracker_not_home(hass):
+    """Test group of device_tracker not_home."""
+    hass.states.async_set("device_tracker.one", "not_home")
+    hass.states.async_set("device_tracker.two", "not_home")
+    hass.states.async_set("device_tracker.three", "not_home")
+
+    assert await async_setup_component(
+        hass,
+        "group",
+        {
+            "group": {
+                "group_zero": {
+                    "entities": "device_tracker.one, device_tracker.two, device_tracker.three"
+                },
+            }
+        },
+    )
+    await hass.async_block_till_done()
+
+    assert hass.states.get("group.group_zero").state == "not_home"
