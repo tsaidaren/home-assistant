@@ -18,6 +18,7 @@ from homeassistant.helpers import config_validation as cv, entity
 from homeassistant.helpers.event import TrackTemplate, async_track_template_result
 from homeassistant.helpers.service import async_get_all_descriptions
 from homeassistant.loader import IntegrationNotFound, async_get_integration
+from homeassistant.template import Template
 
 from . import const, decorators, messages
 
@@ -242,16 +243,15 @@ def handle_ping(hass, connection, msg):
 @decorators.websocket_command(
     {
         vol.Required("type"): "render_template",
-        vol.Required("template"): cv.template,
+        vol.Required("template"): str,
         vol.Optional("entity_ids"): cv.entity_ids,
         vol.Optional("variables"): dict,
     }
 )
 def handle_render_template(hass, connection, msg):
     """Handle render_template command."""
-    template = msg["template"]
-    template.hass = hass
-
+    template_str = msg["template"]
+    template = Template(template_str, hass)
     variables = msg.get("variables")
     info = None
 
@@ -272,7 +272,6 @@ def handle_render_template(hass, connection, msg):
             )
         )
 
-    error = None
     try:
         info = async_track_template_result(
             hass,
@@ -280,20 +279,11 @@ def handle_render_template(hass, connection, msg):
             _template_listener,
             raise_on_template_error=True,
         )
-    except vol.Invalid as ex:
-        error = vol.humanize.humanize_error(msg, ex)
     except TemplateError as ex:
-        error = str(ex)
-    except Exception as ex:
-        error = type(ex).__name__ + ":" + str(ex)
-
-    if error:
         connection.send_message(
-            messages.error_message(msg["id"], const.ERR_TEMPLATE_ERROR, error)
+            messages.error_message(msg["id"], const.ERR_TEMPLATE_ERROR, str(ex))
         )
         return
-
-    assert info
 
     connection.subscriptions[msg["id"]] = info.async_remove
 
