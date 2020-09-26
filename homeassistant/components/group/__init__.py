@@ -1,5 +1,6 @@
 """Provide the functionality to group entities."""
 import asyncio
+from itertools import chain
 import logging
 from typing import Any, Iterable, List, Optional, cast
 
@@ -132,10 +133,12 @@ _ON_OFF_MAPPING = {
     STATE_LOCKED: STATE_UNLOCKED,
     STATE_PROBLEM: STATE_OK,
     STATE_CLEANING: STATE_OFF,
-    **{k: STATE_OFF for k in _ALARM_CONTROL_PANEL_ON},
-    **{k: STATE_OFF for k in _CLIMATE_ON},
-    **{k: STATE_OFF for k in _VACUUM_ON},
-    **{k: STATE_OFF for k in _WATER_HEATER_ON},
+    **{
+        k: STATE_OFF
+        for k in chain(
+            _ALARM_CONTROL_PANEL_ON, _CLIMATE_ON, _VACUUM_ON, _WATER_HEATER_ON
+        )
+    },
 }
 
 # The on states for known domains
