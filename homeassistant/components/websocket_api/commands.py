@@ -249,12 +249,15 @@ def handle_ping(hass, connection, msg):
         vol.Optional("variables"): dict,
     }
 )
+@decorators.async_response
 async def handle_render_template(hass, connection, msg):
     """Handle render_template command."""
     template_str = msg["template"]
     template = Template(template_str, hass)
     variables = msg.get("variables")
     info = None
+
+    _LOGGER.error("handle_render_template: %s", msg)
 
     if await template.async_render_will_timeout(MAX_TEMPLATE_RENDER_TIME):
         connection.send_error(
@@ -263,6 +266,8 @@ async def handle_render_template(hass, connection, msg):
             f"Exceeded maximum execution time of {MAX_TEMPLATE_RENDER_TIME}s",
         )
         return
+
+    _LOGGER.error("handle_render_template2: %s", msg)
 
     @callback
     def _template_listener(event, updates):
@@ -278,6 +283,8 @@ async def handle_render_template(hass, connection, msg):
                 msg["id"], {"result": result, "listeners": info.listeners}  # type: ignore
             )
         )
+
+    _LOGGER.error("handle_render_template3: %s", msg)
 
     try:
         info = async_track_template_result(
