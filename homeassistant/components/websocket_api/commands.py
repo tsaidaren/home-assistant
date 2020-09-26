@@ -260,7 +260,7 @@ async def handle_render_template(hass, connection, msg):
         connection.send_error(
             msg["id"],
             const.ERR_TEMPLATE_ERROR,
-            "Exceeded maximum execution time of {MAX_TEMPLATE_RENDER_TIME}s",
+            f"Exceeded maximum execution time of {MAX_TEMPLATE_RENDER_TIME}s",
         )
         return
 
@@ -294,7 +294,7 @@ async def handle_render_template(hass, connection, msg):
 
     connection.send_result(msg["id"])
 
-    hass.loop.call_soon_threadsafe(info.async_refresh)
+    info.async_refresh()
 
 
 @callback
