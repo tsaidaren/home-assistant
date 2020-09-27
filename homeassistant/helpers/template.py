@@ -346,12 +346,19 @@ class Template:
                 pass
             run_callback_threadsafe(self.hass.loop, finish_event.set)
 
+        timed_out = False
         try:
             template_render_thread = ThreadWithException(target=_render_template)
             template_render_thread.start()
             await asyncio.wait_for(finish_event.wait(), timeout=timeout)
         except asyncio.TimeoutError:
-            template_render_thread.raise_exc(TimeoutError)
+            timed_out = True
+
+        if timed_out:
+            try:
+                template_render_thread.raise_exc(TimeoutError)
+            except TimeoutError:
+                pass
             return True
 
         return False

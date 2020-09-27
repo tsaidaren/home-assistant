@@ -53,26 +53,5 @@ class ThreadWithException(threading.Thread):
     """
 
     def raise_exc(self, exctype: Any) -> None:
-        """Raise the given exception type in the context of this thread.
-
-        If the thread is busy in a system call (time.sleep(),
-        socket.accept(), ...), the exception is simply ignored.
-
-        If you are sure that your exception should terminate the thread,
-        one way to ensure that it works is:
-
-            t = ThreadWithException( ... )
-            ...
-            t.raise_exc( SomeException )
-            while t.isAlive():
-                time.sleep( 0.1 )
-                t.raise_exc( SomeException )
-
-        If the exception is to be caught by the thread, you need a way to
-        check that your thread has caught it.
-
-        CAREFUL : this function is executed in the context of the
-        caller thread, to raise an exception in the context of the
-        thread represented by this instance.
-        """
+        """Raise the given exception type in the context of this thread."""
         _async_raise(threading.get_ident(), exctype)
