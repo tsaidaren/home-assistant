@@ -74,10 +74,12 @@ class TrackTemplate:
 
     The template is template to calculate.
     The variables are variables to pass to the template.
+    The rate_limit is a rate limit on how often the template is re-rendered.
     """
 
     template: Template
     variables: TemplateVarsType
+    rate_limit: Optional[timedelta] = None
 
 
 @dataclass
@@ -561,6 +563,8 @@ class _TrackTemplateResultInfo:
 
         self._last_result: Dict[Template, Union[str, TemplateError]] = {}
         self._last_info: Dict[Template, RenderInfo] = {}
+        self._last_rendered: Dict[Template, datetime] = {}
+        self._rate_limit_timers: Dict[Template, asyncio.TimerHandle] = {}
         self._info: Dict[Template, RenderInfo] = {}
         self._last_domains: Set = set()
         self._last_entities: Set = set()
@@ -649,6 +653,13 @@ class _TrackTemplateResultInfo:
         self._listeners.pop(listener_name)()
 
     @callback
+    def _cancel_rate_limit_timer(self, template: Template) -> None:
+        if template not in self._rate_limit_timers:
+            return
+
+        self._rate_limit_timers.pop(template).cancel()
+
+    @callback
     def _update_listeners(self) -> None:
         had_all_listener = _TEMPLATE_ALL_LISTENER in self._listeners
 
@@ -715,20 +726,70 @@ class _TrackTemplateResultInfo:
         self._cancel_listener(_TEMPLATE_ALL_LISTENER)
         self._cancel_listener(_TEMPLATE_DOMAINS_LISTENER)
         self._cancel_listener(_TEMPLATE_ENTITIES_LISTENER)
+        for track_template_ in self._track_templates:
+            self._cancel_rate_limit_timer(track_template_.template)
 
     @callback
     def async_refresh(self) -> None:
         """Force recalculate the template."""
-        self._refresh(None)
+        self._refresh(None, bypass_rate_limit=True)
 
     @callback
-    def _refresh(self, event: Optional[Event]) -> None:
+    def _handle_rate_limit(
+        self,
+        track_template_: TrackTemplate,
+        event: Optional[Event],
+        now: datetime,
+    ) -> bool:
+        """Check rate limits and call later if the rate limit is hit.
+
+        If there is already a call later scheduled for the template
+        we do not setup a second one.
+
+        Returns True if the rate limit has been hit or False on miss.
+        """
+        template = track_template_.template
+        rate_limit = self._last_info[template].rate_limit or track_template_.rate_limit
+        if not rate_limit:
+            return False
+
+        if template not in self._last_rendered:
+            next_allowed_fire_time = now
+        else:
+            next_allowed_fire_time = self._last_rendered[template] + rate_limit
+
+        if next_allowed_fire_time <= now:
+            self._cancel_rate_limit_timer(template)
+            return False
+
+        _LOGGER.debug(
+            "Template rate_limit %s triggered by event %s deferred by rate_limit %s to %s",
+            template.template,
+            event,
+            rate_limit,
+            next_allowed_fire_time,
+        )
+
+        if template not in self._rate_limit_timers:
+            self._rate_limit_timers[template] = self.hass.loop.call_later(
+                (next_allowed_fire_time - now).total_seconds(), self._refresh, event
+            )
+
+        return True
+
+    @callback
+    def _refresh(
+        self,
+        event: Optional[Event],
+        bypass_rate_limit: bool = False,
+    ) -> None:
         entity_id = event and event.data.get(ATTR_ENTITY_ID)
         lifecycle_event = event and (
             event.data.get("new_state") is None or event.data.get("old_state") is None
         )
         updates = []
         info_changed = False
+        now = dt_util.utcnow()
 
         for track_template_ in self._track_templates:
             template = track_template_.template
@@ -748,6 +809,12 @@ class _TrackTemplateResultInfo:
                 event,
             )
 
+            if not bypass_rate_limit and self._handle_rate_limit(
+                track_template_, event, now
+            ):
+                continue
+
+            self._last_rendered[template] = now
             self._info[template] = template.async_render_to_info(
                 track_template_.variables
             )
