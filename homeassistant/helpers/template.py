@@ -14,7 +14,6 @@ from typing import Any, Generator, Iterable, List, Optional, Union
 from urllib.parse import urlencode as urllib_urlencode
 import weakref
 
-import async_timeout
 import jinja2
 from jinja2 import contextfilter, contextfunction
 from jinja2.sandbox import ImmutableSandboxedEnvironment
@@ -350,8 +349,7 @@ class Template:
         try:
             template_render_thread = ThreadWithException(target=_render_template)
             template_render_thread.start()
-            async with async_timeout.timeout(timeout):
-                await finish_event.wait()
+            await asyncio.wait_for(finish_event.wait(), timeout=timeout)
         except asyncio.TimeoutError:
             template_render_thread.raise_exc(TimeoutError)
             return True
