@@ -346,7 +346,6 @@ class Template:
                 pass
             run_callback_threadsafe(self.hass.loop, finish_event.set)
 
-        timed_out = False
         try:
             template_render_thread = ThreadWithException(target=_render_template)
             template_render_thread.start()
