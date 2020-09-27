@@ -355,10 +355,11 @@ class Template:
             timed_out = True
 
         if timed_out:
-            try:
-                template_render_thread.raise_exc(TimeoutError)
-            except TimeoutError:
-                pass
+            template_render_thread.raise_exc(TimeoutError)
+#            try:
+#                template_render_thread.raise_exc(TimeoutError)
+#            except TimeoutError:
+#                pass
             return True
 
         return False
