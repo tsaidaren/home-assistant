@@ -352,14 +352,7 @@ class Template:
             template_render_thread.start()
             await asyncio.wait_for(finish_event.wait(), timeout=timeout)
         except asyncio.TimeoutError:
-            timed_out = True
-
-        if timed_out:
             template_render_thread.raise_exc(TimeoutError)
-#            try:
-#                template_render_thread.raise_exc(TimeoutError)
-#            except TimeoutError:
-#                pass
             return True
 
         return False
