@@ -54,4 +54,5 @@ class ThreadWithException(threading.Thread):
 
     def raise_exc(self, exctype: Any) -> None:
         """Raise the given exception type in the context of this thread."""
+        assert self.ident
         _async_raise(self.ident, exctype)
