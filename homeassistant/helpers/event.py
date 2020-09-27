@@ -727,6 +727,9 @@ class _TrackTemplateResultInfo:
         self._info: Dict[Template, RenderInfo] = {}
         self._track_state_changes: Optional[_TrackStateChangeFiltered] = None
 
+        self._time_patterns: Dict[Template, timedelta] = {}
+        self._time_pattern_listeners: Dict[Template, Callable] = {}
+
     def async_setup(self, raise_on_template_error: bool) -> None:
         """Activation of template tracking."""
         for track_template_ in self._track_templates:
@@ -756,13 +759,52 @@ class _TrackTemplateResultInfo:
     def listeners(self) -> Dict:
         """State changes that will cause a re-render."""
         assert self._track_state_changes
-        return self._track_state_changes.listeners
+        return {
+            **self._track_state_changes.listeners,
+            "time_patterns": list(self._time_patterns.values()),
+        }
+
+    @callback
+    def _setup_time_pattern_listener(
+        self, template: Template, time_pattern: timedelta
+    ) -> None:
+        self._time_patterns[template] = time_pattern
+
+        # Set to None
+        if not time_pattern:
+            return
+
+        @callback
+        def _refresh_from_time_pattern(now: datetime) -> None:
+            self._refresh(None, template)
+
+        self._time_pattern_listeners[template] = async_track_time_change(
+            self.hass, _refresh_from_time_pattern, time_pattern
+        )
+
+    @callback
+    def _cancel_time_pattern_listener(self, template: Template) -> None:
+        if template not in self._time_pattern_listeners:
+            return
+
+        self._time_patterns.pop(template)
+        self._time_pattern_listeners.pop(template)()
+
+    @callback
+    def _update_time_pattern_listeners(self) -> None:
+        for template, info in self._info.items():
+            if info.time_pattern == self._time_patterns.get(template):
+                continue
+            self._cancel_time_pattern_listener(template)
+            self._setup_time_pattern_listener(template, info.time_pattern)
 
     @callback
     def async_remove(self) -> None:
         """Cancel the listener."""
         assert self._track_state_changes
         self._track_state_changes.async_remove()
+        for template in list(self._time_pattern_listeners):
+            self._time_pattern_listeners.pop(template)()
 
     @callback
     def async_refresh(self) -> None:
@@ -780,48 +822,68 @@ class _TrackTemplateResultInfo:
             and self._info[template].filter_lifecycle(entity_id)
         )
 
+    def _render_template_if_ready(
+        self,
+        track_template_: TrackTemplate,
+        event: Optional[Event],
+        template_filter: Optional[Template],
+    ) -> Union[bool, TrackTemplateResult]:
+        template = track_template_.template
+        if template_filter and template != template_filter:
+            return False
+
+        if event and template not in self._time_pattern_listeners:
+            if not self._event_triggers_template(template, event):
+                return False
+
+            _LOGGER.debug(
+                "Template update %s triggered by event: %s",
+                template.template,
+                event,
+            )
+
+        self._info[template] = template.async_render_to_info(track_template_.variables)
+
+        try:
+            result: Union[str, TemplateError] = self._info[template].result()
+        except TemplateError as ex:
+            result = ex
+
+        last_result = self._last_result.get(template)
+
+        # Check to see if the result has changed
+        if (
+            result == last_result
+            or isinstance(result, TemplateError)
+            and isinstance(last_result, TemplateError)
+        ):
+            return True
+
+        return TrackTemplateResult(template, last_result, result)
+
     @callback
-    def _refresh(self, event: Optional[Event]) -> None:
+    def _refresh(
+        self, event: Optional[Event], template_filter: Optional[Template] = None
+    ) -> None:
         updates = []
         info_changed = False
 
         for track_template_ in self._track_templates:
-            template = track_template_.template
-            if event:
-                if not self._event_triggers_template(template, event):
-                    continue
-
-                _LOGGER.debug(
-                    "Template update %s triggered by event: %s",
-                    template.template,
-                    event,
-                )
-
-            self._info[template] = template.async_render_to_info(
-                track_template_.variables
+            update = self._render_template_if_ready(
+                track_template_,
+                event,
+                template_filter,
             )
+            if not update:
+                continue
+
             info_changed = True
-
-            try:
-                result: Union[str, TemplateError] = self._info[template].result()
-            except TemplateError as ex:
-                result = ex
-
-            last_result = self._last_result.get(template)
-
-            # Check to see if the result has changed
-            if result == last_result:
-                continue
-
-            if isinstance(result, TemplateError) and isinstance(
-                last_result, TemplateError
-            ):
-                continue
-
-            updates.append(TrackTemplateResult(template, last_result, result))
+            if isinstance(update, TrackTemplateResult):
+                updates.append(update)
 
         if info_changed:
             assert self._track_state_changes
+            self._update_time_pattern_listeners()
             self._track_state_changes.async_update_listeners(
                 _render_infos_to_track_states(self._info.values()),
             )
@@ -1297,6 +1359,8 @@ def _entities_domains_from_render_infos(
     domains = set()
 
     for render_info in render_infos:
+        if render_info.time_pattern:
+            continue
         if render_info.entities:
             entities.update(render_info.entities)
         if render_info.domains:
