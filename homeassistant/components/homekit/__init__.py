@@ -458,6 +458,7 @@ class HomeKit:
     def reset_accessories(self, entity_ids):
         """Reset the accessory to load the latest configuration."""
         if not self.bridge:
+            self.driver.config_changed()
             return
 
         aid_storage = self.hass.data[DOMAIN][self._entry_id][AID_STORAGE]
@@ -649,8 +650,11 @@ class HomeKit:
         self.status = STATUS_STOPPED
         _LOGGER.debug("Driver stop for %s", self._name)
         await self.driver.async_stop()
-        for acc in self.driver.accessory.accessories.values():
-            acc.async_stop()
+        if self.bridge:
+            for acc in self.bridge.accessories.values():
+                acc.async_stop()
+        else:
+            self.driver.accessory.async_stop()
 
     @callback
     def _async_configure_linked_sensors(self, ent_reg_ent, device_lookup, state):
