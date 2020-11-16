@@ -357,6 +357,14 @@ class HomeAssistant:
 
         return self.async_add_hass_job(HassJob(target), *args)
 
+    def add_hass_job(self, hassjob: HassJob, *args: Any) -> None:
+        """Add a HassJob from outside the event loop.
+
+        hassjob: HassJob to call.
+        args: parameters for method to call.
+        """
+        self.loop.call_soon_threadsafe(self.async_add_hass_job, hassjob, *args)
+
     @callback
     def async_add_hass_job(
         self, hassjob: HassJob, *args: Any
