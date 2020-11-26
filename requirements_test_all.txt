@@ -148,6 +148,9 @@ aioymaps==1.1.0
 # homeassistant.components.airly
 airly==1.0.0
 
+# homeassistant.components.recorder
+alembic==1.4.3
+
 # homeassistant.components.ambiclimate
 ambiclimate==0.2.1
 

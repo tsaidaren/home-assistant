@@ -235,6 +235,9 @@ airly==1.0.0
 # homeassistant.components.aladdin_connect
 aladdin_connect==0.3
 
+# homeassistant.components.recorder
+alembic==1.4.3
+
 # homeassistant.components.alpha_vantage
 alpha_vantage==2.2.0
 
