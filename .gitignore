@@ -1,3 +1,5 @@
+alembic/homeassistant-v2.db
+
 config/*
 config2/*
 
