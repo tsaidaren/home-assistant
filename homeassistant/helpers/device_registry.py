@@ -1,5 +1,6 @@
 """Provide a way to connect entities belonging to one device."""
 from collections import OrderedDict
+from datetime import datetime
 import logging
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
@@ -7,6 +8,7 @@ import attr
 
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import Event, callback
+from homeassistant.util import dt as dt_util
 import homeassistant.util.uuid as uuid_util
 
 from .debounce import Debouncer
@@ -83,6 +85,7 @@ class DeletedDeviceEntry:
     connections: Set[Tuple[str, str]] = attr.ib()
     identifiers: Set[Tuple[str, str]] = attr.ib()
     id: str = attr.ib()
+    deleted_on: Optional[datetime] = attr.ib(factory=dt_util.utcnow)
 
     def to_device_entry(
         self,
@@ -433,6 +436,17 @@ class DeviceRegistry:
     def async_remove_device(self, device_id: str) -> None:
         """Remove a device from the device registry."""
         device = self.devices[device_id]
+        self._remove_device_add_deleted(device)
+        self.hass.bus.async_fire(
+            EVENT_DEVICE_REGISTRY_UPDATED, {"action": "remove", "device_id": device_id}
+        )
+        self.async_schedule_save()
+
+    @callback
+    def _remove_device_add_deleted(
+        self, device: Union[DeviceEntry, DeletedDeviceEntry]
+    ) -> None:
+        """Remove a device from the device registry and add it to the deleted."""
         self._remove_device(device)
         self._add_device(
             DeletedDeviceEntry(
@@ -442,16 +456,13 @@ class DeviceRegistry:
                 id=device.id,
             )
         )
-        self.hass.bus.async_fire(
-            EVENT_DEVICE_REGISTRY_UPDATED, {"action": "remove", "device_id": device_id}
-        )
-        self.async_schedule_save()
 
     async def async_load(self) -> None:
         """Load the device registry."""
         async_setup_cleanup(self.hass, self)
 
         data = await self._store.async_load()
+        utcnow = dt_util.utcnow()
 
         devices = OrderedDict()
         deleted_devices = OrderedDict()
@@ -483,12 +494,18 @@ class DeviceRegistry:
                 )
             # Introduced in 0.111
             for device in data.get("deleted_devices", []):
+                deleted_on = (
+                    dt_util.parse_datetime(device["deleted_on"])
+                    if "deleted_on" in device
+                    else utcnow
+                )
                 deleted_devices[device["id"]] = DeletedDeviceEntry(
                     config_entries=set(device["config_entries"]),
                     # type ignores (if tuple arg was cast): likely https://github.com/python/mypy/issues/8625
                     connections={tuple(conn) for conn in device["connections"]},  # type: ignore[misc]
                     identifiers={tuple(iden) for iden in device["identifiers"]},  # type: ignore[misc]
                     id=device["id"],
+                    deleted_on=deleted_on,
                 )
 
         self.devices = devices
@@ -545,8 +562,9 @@ class DeviceRegistry:
             if config_entry_id not in config_entries:
                 continue
             if config_entries == {config_entry_id}:
-                # Permanently remove the device from the device registry.
-                self._remove_device(deleted_device)
+                # Remove the device from the device registry but save it as
+                # deleted in case the integration gets re-added.
+                self._remove_device_add_deleted(deleted_device)
             else:
                 config_entries = config_entries - {config_entry_id}
                 # No need to reindex here since we currently
