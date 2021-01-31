@@ -5,7 +5,7 @@ import dataclasses
 import logging
 from typing import Any, Dict, Optional
 
-from homeassistant import bootstrap
+from homeassistant import bootstrap, futures
 from homeassistant.core import callback
 from homeassistant.helpers.frame import warn_use
 
@@ -74,6 +74,7 @@ class HassEventLoopPolicy(asyncio.DefaultEventLoopPolicy):  # type: ignore[valid
         orig_close = loop.close
 
         def close() -> None:
+            futures.stop_loop()
             executor.shutdown(wait=True)
             orig_close()
 

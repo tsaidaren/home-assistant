@@ -8,6 +8,8 @@ import threading
 from traceback import extract_stack
 from typing import Any, Awaitable, Callable, Coroutine, TypeVar
 
+from homeassistant import futures
+
 _LOGGER = logging.getLogger(__name__)
 
 T = TypeVar("T")
@@ -41,11 +43,15 @@ def run_callback_threadsafe(
 
     Return a concurrent.futures.Future to access the result.
     """
+    if futures.loop_is_stopping():
+        raise RuntimeError("The event loop is stopping")
+
     ident = loop.__dict__.get("_thread_ident")
     if ident is not None and ident == threading.get_ident():
         raise RuntimeError("Cannot be called from within the event loop")
 
     future: concurrent.futures.Future = concurrent.futures.Future()
+    futures.add_future(future)
 
     def run_callback() -> None:
         """Run callback and store result."""
@@ -56,6 +62,8 @@ def run_callback_threadsafe(
                 future.set_exception(exc)
             else:
                 _LOGGER.warning("Exception on lost future: ", exc_info=True)
+        finally:
+            futures.remove_future(future)
 
     loop.call_soon_threadsafe(run_callback)
     return future
