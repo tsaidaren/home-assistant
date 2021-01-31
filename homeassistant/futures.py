@@ -1,5 +1,6 @@
 """Loop future tracking for Home Assistant."""
 
+import concurrent.futures
 import threading
 from typing import Any, Set
 
@@ -24,11 +25,12 @@ def loop_is_stopping() -> bool:
     return LOOP_STOPPING.is_set()
 
 
-def add_future(future: Any) -> None:
-    """Add a pending future to be tracked."""
+def create() -> None:
+    """Create and track a future tracked."""
+    future: concurrent.futures.Future = concurrent.futures.Future()
     LOOP_PENDING_FUTURES.add(future)
 
 
-def remove_future(future: Any) -> None:
+def done(future: Any) -> None:
     """Remove a completed from being tracked."""
     LOOP_PENDING_FUTURES.remove(future)

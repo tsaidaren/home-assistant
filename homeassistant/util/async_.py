@@ -50,8 +50,7 @@ def run_callback_threadsafe(
     if ident is not None and ident == threading.get_ident():
         raise RuntimeError("Cannot be called from within the event loop")
 
-    future: concurrent.futures.Future = concurrent.futures.Future()
-    futures.add_future(future)
+    future: concurrent.futures.Future = futures.create()
 
     def run_callback() -> None:
         """Run callback and store result."""
@@ -63,7 +62,7 @@ def run_callback_threadsafe(
             else:
                 _LOGGER.warning("Exception on lost future: ", exc_info=True)
         finally:
-            futures.remove_future(future)
+            futures.done(future)
 
     loop.call_soon_threadsafe(run_callback)
     return future
