@@ -64,6 +64,8 @@ class RestData:
             self.data = response.text
             self.headers = response.headers
         except httpx.RequestError as ex:
-            _LOGGER.error("Error fetching data: %s failed with %s", self._resource, ex)
+            _LOGGER.exception(
+                "Error fetching data: %s failed with %s", self._resource, ex
+            )
             self.data = None
             self.headers = None
