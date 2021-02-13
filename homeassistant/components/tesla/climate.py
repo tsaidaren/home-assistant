@@ -14,6 +14,7 @@ from homeassistant.components.climate.const import (
 from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS, TEMP_FAHRENHEIT
 
 from . import DOMAIN as TESLA_DOMAIN, TeslaDevice
+from .helper import check_for_reauth
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -79,6 +80,7 @@ class TeslaThermostat(TeslaDevice, ClimateEntity):
         """Return the temperature we try to reach."""
         return self.tesla_device.get_goal_temp()
 
+    @check_for_reauth
     async def async_set_temperature(self, **kwargs):
         """Set new target temperatures."""
         temperature = kwargs.get(ATTR_TEMPERATURE)
@@ -86,6 +88,7 @@ class TeslaThermostat(TeslaDevice, ClimateEntity):
             _LOGGER.debug("%s: Setting temperature to %s", self.name, temperature)
             await self.tesla_device.set_temperature(temperature)
 
+    @check_for_reauth
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
         _LOGGER.debug("%s: Setting hvac mode to %s", self.name, hvac_mode)
@@ -94,6 +97,7 @@ class TeslaThermostat(TeslaDevice, ClimateEntity):
         elif hvac_mode == HVAC_MODE_HEAT_COOL:
             await self.tesla_device.set_status(True)
 
+    @check_for_reauth
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set new preset mode."""
         _LOGGER.debug("%s: Setting preset_mode to: %s", self.name, preset_mode)
