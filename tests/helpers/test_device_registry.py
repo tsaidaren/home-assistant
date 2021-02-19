@@ -42,7 +42,7 @@ async def test_get_or_create_returns_same_entry(hass, registry, update_events):
         name="name",
         manufacturer="manufacturer",
         model="model",
-        suggested_area="Man Cave",
+        suggested_area="Game Room",
     )
     entry2 = registry.async_get_or_create(
         config_entry_id="1234",
@@ -50,7 +50,7 @@ async def test_get_or_create_returns_same_entry(hass, registry, update_events):
         identifiers={("bridgeid", "0123")},
         manufacturer="manufacturer",
         model="model",
-        suggested_area="Man Cave",
+        suggested_area="Game Room",
     )
     entry3 = registry.async_get_or_create(
         config_entry_id="1234",
@@ -66,7 +66,7 @@ async def test_get_or_create_returns_same_entry(hass, registry, update_events):
     assert entry3.model == "model"
     assert entry3.name == "name"
     assert entry3.sw_version == "sw-version"
-    assert entry3.suggested_area == "Man Cave"
+    assert entry3.suggested_area == "Game Room"
 
     await hass.async_block_till_done()
 
